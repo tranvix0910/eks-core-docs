@@ -4,14 +4,17 @@ const { themes } = require('prism-react-renderer');
 const fs = require('fs');
 
 const REPO = 'https://github.com/tranvix0910/eks-core-docs';
-const platformHTML = fs.readFileSync('./src/snippets/platform.html', 'utf-8');
-const runbooksHTML = fs.readFileSync('./src/snippets/runbooks.html', 'utf-8');
+const currentLocale = process.env.DOCUSAURUS_CURRENT_LOCALE || 'en';
+const snippetsDirectory = currentLocale === 'vi' ? './i18n/vi/snippets' : './src/snippets';
+const platformHTML = fs.readFileSync(`${snippetsDirectory}/platform.html`, 'utf-8');
+const runbooksHTML = fs.readFileSync(`${snippetsDirectory}/runbooks.html`, 'utf-8');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'EKS Workshop',
-  tagline:
-    'Deploy and operate microservices with Terraform, Karpenter, ArgoCD, EFS, and centralized observability.',
+  tagline: currentLocale === 'vi'
+    ? 'Triển khai và vận hành microservices với Terraform, Karpenter, ArgoCD, EFS và observability tập trung.'
+    : 'Deploy and operate microservices with Terraform, Karpenter, ArgoCD, EFS, and centralized observability.',
   url: 'https://tranvix0910.github.io',
   baseUrl: '/eks-core-docs/',
   favicon: '/img/favicon.svg',
@@ -20,7 +23,14 @@ const config = {
   onBrokenLinks: 'warn',
   onBrokenAnchors: 'warn',
 
-  i18n: { defaultLocale: 'en', locales: ['en'] },
+  i18n: {
+    defaultLocale: 'en',
+    locales: ['en', 'vi'],
+    localeConfigs: {
+      en: { label: 'English', htmlLang: 'en' },
+      vi: { label: 'Tiếng Việt', htmlLang: 'vi' },
+    },
+  },
 
   markdown: {
     // Plain .md files are parsed as CommonMark, so `{}` and `<` in the
@@ -36,10 +46,14 @@ const config = {
       require.resolve('@easyops-cn/docusaurus-search-local'),
       {
         hashed: true,
-        docsDir: 'docs',
+        docsDir: currentLocale === 'vi'
+          ? 'i18n/vi/docusaurus-plugin-content-docs/current'
+          : 'docs',
         docsRouteBasePath: '/docs',
         indexBlog: false,
         highlightSearchTermsOnTargetPage: true,
+        removeDefaultStemmer: currentLocale === 'vi',
+        removeDefaultStopWordFilter: currentLocale === 'vi',
       },
     ],
   ],
@@ -61,7 +75,9 @@ const config = {
           exclude: ['README.md'],
           breadcrumbs: true,
           sidebarCollapsible: true,
-          editUrl: ({ docPath }) => `${REPO}/edit/main/docs/${docPath}`,
+          editUrl: ({ docPath }) => currentLocale === 'vi'
+            ? `${REPO}/edit/main/i18n/vi/docusaurus-plugin-content-docs/current/${docPath}`
+            : `${REPO}/edit/main/docs/${docPath}`,
         },
         blog: false,
         theme: {
@@ -106,6 +122,7 @@ const config = {
             items: [{ type: 'html', value: runbooksHTML, className: 'ec-dropdown' }],
           },
           { type: 'search', position: 'right' },
+          { type: 'localeDropdown', position: 'right' },
           {
             label: 'GitHub',
             href: REPO,

@@ -1,0 +1,130 @@
+{
+  "version.label": {
+    "message": "Tiếp theo",
+    "description": "The label for version current"
+  },
+  "sidebar.guides.category.0 · Before you start": {
+    "message": "0 · Trước khi bắt đầu",
+    "description": "The label for category '0 · Before you start' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.1 · Infrastructure with Terraform": {
+    "message": "1 · Hạ tầng bằng Terraform",
+    "description": "The label for category '1 · Infrastructure with Terraform' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.2 · Platform on cluster 1": {
+    "message": "2 · Nền tảng trên cluster 1",
+    "description": "The label for category '2 · Platform on cluster 1' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.3 · Microservices": {
+    "message": "3 · Microservices",
+    "description": "The label for category '3 · Microservices' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.4 · Centralized observability": {
+    "message": "4 · Observability tập trung",
+    "description": "The label for category '4 · Centralized observability' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.5 · Accept and operate": {
+    "message": "5 · Nghiệm thu và vận hành",
+    "description": "The label for category '5 · Accept and operate' in sidebar 'guides'"
+  },
+  "sidebar.guides.category.Extensions and reference": {
+    "message": "Mở rộng và tham khảo",
+    "description": "The label for category 'Extensions and reference' in sidebar 'guides'"
+  },
+  "sidebar.guides.doc.Workshop overview": {
+    "message": "Tổng quan workshop",
+    "description": "The label for the doc item 'Workshop overview' in sidebar 'guides', linking to the doc index"
+  },
+  "sidebar.guides.doc.Troubleshooting": {
+    "message": "Xử lý sự cố",
+    "description": "The label for the doc item 'Troubleshooting' in sidebar 'guides', linking to the doc operations/master-incident-catalogue"
+  },
+  "sidebar.guides.doc.Diagnostics commands": {
+    "message": "Lệnh chẩn đoán",
+    "description": "The label for the doc item 'Diagnostics commands' in sidebar 'guides', linking to the doc operations/system-verification-and-diagnostics"
+  },
+  "sidebar.guides.doc.ShopNow services and ports": {
+    "message": "Service và cổng ShopNow",
+    "description": "The label for the doc item 'ShopNow services and ports' in sidebar 'guides', linking to the doc apps-shopnow/shopnow-microservices-architecture"
+  },
+  "sidebar.guides.doc.API gateway checks": {
+    "message": "Kiểm tra API gateway",
+    "description": "The label for the doc item 'API gateway checks' in sidebar 'guides', linking to the doc apps-shopnow/shopnow-api-gateway"
+  },
+  "sidebar.guides.doc.Connect JavaMelody": {
+    "message": "Kết nối JavaMelody",
+    "description": "The label for the doc item 'Connect JavaMelody' in sidebar 'guides', linking to the doc platform-addons/javamelody"
+  },
+  "sidebar.guides.doc.Karpenter concepts": {
+    "message": "Khái niệm Karpenter",
+    "description": "The label for the doc item 'Karpenter concepts' in sidebar 'guides', linking to the doc karpenter-autoscaling-nodepools"
+  },
+  "sidebar.guides.doc.Karpenter: AWS side vs controller": {
+    "message": "Karpenter: phần AWS và controller",
+    "description": "The label for the doc item 'Karpenter: AWS side vs controller' in sidebar 'guides', linking to the doc karpenter/karpenter-two-halves-architecture"
+  },
+  "sidebar.guides.doc.Consolidation and Spot interruption": {
+    "message": "Consolidation và Spot interruption",
+    "description": "The label for the doc item 'Consolidation and Spot interruption' in sidebar 'guides', linking to the doc karpenter/disruption-and-spot-interruption"
+  },
+  "sidebar.guides.doc.Autoscaling: HPA, CPA, KEDA": {
+    "message": "Autoscaling: HPA, CPA, KEDA",
+    "description": "The label for the doc item 'Autoscaling: HPA, CPA, KEDA' in sidebar 'guides', linking to the doc workload-autoscaling-hpa-cpa-keda"
+  },
+  "sidebar.guides.doc.Autoscaling lab": {
+    "message": "Bài thử autoscaling",
+    "description": "The label for the doc item 'Autoscaling lab' in sidebar 'guides', linking to the doc operations/workload-autoscaling-implementation-and-testing"
+  },
+  "sidebar.guides.doc.Release strategies": {
+    "message": "Chiến lược phát hành",
+    "description": "The label for the doc item 'Release strategies' in sidebar 'guides', linking to the doc blue-green-deployment-argo-rollouts"
+  },
+  "sidebar.guides.doc.Blue-green frontend": {
+    "message": "Frontend blue-green",
+    "description": "The label for the doc item 'Blue-green frontend' in sidebar 'guides', linking to the doc apps-shopnow/blue-green-argo-rollouts"
+  },
+  "sidebar.guides.doc.Load Balancer Controller": {
+    "message": "Load Balancer Controller",
+    "description": "The label for the doc item 'Load Balancer Controller' in sidebar 'guides', linking to the doc platform-addons/aws-load-balancer-controller"
+  },
+  "sidebar.guides.doc.Public admin ingress": {
+    "message": "Ingress quản trị công khai",
+    "description": "The label for the doc item 'Public admin ingress' in sidebar 'guides', linking to the doc platform-addons/admin-ingress-and-hardening"
+  },
+  "sidebar.guides.doc.Security overview": {
+    "message": "Tổng quan bảo mật",
+    "description": "The label for the doc item 'Security overview' in sidebar 'guides', linking to the doc eks-security"
+  },
+  "sidebar.guides.doc.Pod Identity": {
+    "message": "Pod Identity",
+    "description": "The label for the doc item 'Pod Identity' in sidebar 'guides', linking to the doc security/eks-pod-identity"
+  },
+  "sidebar.guides.doc.Cluster access": {
+    "message": "Truy cập cluster",
+    "description": "The label for the doc item 'Cluster access' in sidebar 'guides', linking to the doc security/sts-tokens-and-access-entries"
+  },
+  "sidebar.guides.doc.Secrets": {
+    "message": "Secrets",
+    "description": "The label for the doc item 'Secrets' in sidebar 'guides', linking to the doc security/secrets-management-and-rotation"
+  },
+  "sidebar.guides.doc.Certificate renewal": {
+    "message": "Gia hạn chứng chỉ",
+    "description": "The label for the doc item 'Certificate renewal' in sidebar 'guides', linking to the doc security/tls-certificate-lifecycle"
+  },
+  "sidebar.guides.doc.Rancher": {
+    "message": "Rancher",
+    "description": "The label for the doc item 'Rancher' in sidebar 'guides', linking to the doc platform-addons/rancher-multi-cluster"
+  },
+  "sidebar.guides.doc.VPC CNI custom networking": {
+    "message": "VPC CNI Custom Networking",
+    "description": "The label for the doc item 'VPC CNI custom networking' in sidebar 'guides', linking to the doc architecture/custom-networking-lab-session"
+  },
+  "sidebar.guides.doc.Service mesh (Istio)": {
+    "message": "Service mesh (Istio)",
+    "description": "The label for the doc item 'Service mesh (Istio)' in sidebar 'guides', linking to the doc service-mesh-and-istio"
+  },
+  "sidebar.guides.doc.Deploy to another region": {
+    "message": "Triển khai sang region khác",
+    "description": "The label for the doc item 'Deploy to another region' in sidebar 'guides', linking to the doc operations/tokyo-region-migration-runbook"
+  }
+}

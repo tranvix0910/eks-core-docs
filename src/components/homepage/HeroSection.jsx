@@ -1,3 +1,4 @@
+import {translate} from '@docusaurus/Translate';
 // Layout adapted from dyte-io/docs (Apache-2.0)
 import React from 'react';
 import Link from '@docusaurus/Link';
@@ -10,25 +11,25 @@ import {
 
 const PRODUCTS = [
   {
-    title: 'Build infrastructure',
+    title: translate({id: "site.HeroSection.01", message: "Build infrastructure"}),
     link: '/docs/architecture/layer-20-cluster-workload',
     icon: ServerMultipleRegular,
-    stats: ['Terraform → EKS', 'Managed Nodes · Spot · Mixed · ARM64'],
-    text: 'Create two clusters, run controllers on managed nodes, and provision capacity with Karpenter.',
+    stats: [translate({id: "site.HeroSection.02", message: "Terraform → EKS"}), translate({id: "site.HeroSection.03", message: "Managed Nodes · Spot · Mixed · ARM64"})],
+    text: translate({id: "site.HeroSection.04", message: "Create two clusters, run controllers on managed nodes, and provision capacity with Karpenter."}),
   },
   {
-    title: 'Deploy applications',
+    title: translate({id: "site.HeroSection.05", message: "Deploy applications"}),
     link: '/docs/apps-shopnow/shopnow-end-to-end-deployment-guide',
     icon: DataHistogramRegular,
-    stats: ['Git → ArgoCD → Microservices', 'EFS · Pod placement · PDB'],
-    text: 'Build images, deploy from Git, and verify shared storage, replica distribution, and availability.',
+    stats: [translate({id: "site.HeroSection.06", message: "Git → ArgoCD → Microservices"}), translate({id: "site.HeroSection.07", message: "EFS · Pod placement · PDB"})],
+    text: translate({id: "site.HeroSection.08", message: "Build images, deploy from Git, and verify shared storage, replica distribution, and availability."}),
   },
   {
-    title: 'Verify and operate',
+    title: translate({id: "site.HeroSection.09", message: "Verify and operate"}),
     link: '/docs/operations/workshop-acceptance',
     icon: BranchRegular,
-    stats: ['Metrics + Logs → Cluster 2', 'Grafana · Evidence · Cleanup'],
-    text: 'Find telemetry in the observability cluster, verify every requirement, and manage changes after the lab.',
+    stats: [translate({id: "site.HeroSection.10", message: "Metrics + Logs → Cluster 2"}), translate({id: "site.HeroSection.11", message: "Grafana · Evidence · Cleanup"})],
+    text: translate({id: "site.HeroSection.12", message: "Find telemetry in the observability cluster, verify every requirement, and manage changes after the lab."}),
   },
 ];
 
@@ -63,27 +64,17 @@ export default function HeroSection() {
     <div className="noise-bg pb-14">
       <section className="no-underline-links px-4 pt-16 lg:py-0">
         <div className="flex flex-col items-center justify-between py-14">
-          <h1 className="mb-4 max-w-4xl text-center font-jakarta text-5xl font-bold">
-            Deploy and operate microservices on EKS
-          </h1>
-          <p className="max-w-xl text-center text-text-400">
-            From Terraform and ArgoCD to EFS, capacity groups, metrics, and logs.
-            Follow each step, verify every requirement, and learn to manage
-            the environment after deployment.
-          </p>
+          <h1 className="mb-4 max-w-4xl text-center font-jakarta text-5xl font-bold">{translate({id: "site.HeroSection.13", message: "Deploy and operate microservices on EKS"})}</h1>
+          <p className="max-w-xl text-center text-text-400">{translate({id: "site.HeroSection.14", message: "From Terraform and ArgoCD to EFS, capacity groups, metrics, and logs. Follow each step, verify every requirement, and learn to manage the environment after deployment."})}</p>
           <div className="mt-4 flex gap-3">
             <Link
               to="/docs"
               className="rounded-lg bg-primary px-5 py-2.5 font-jakarta text-sm font-semibold text-white hover:text-white hover:no-underline"
-            >
-              Start the workshop
-            </Link>
+            >{translate({id: "site.HeroSection.15", message: "Start the workshop"})}</Link>
             <Link
               to="/docs/operations/workshop-acceptance"
               className="rounded-lg border border-solid border-secondary-700 px-5 py-2.5 font-jakarta text-sm font-semibold text-black hover:border-primary hover:no-underline dark:text-white"
-            >
-              View acceptance criteria
-            </Link>
+            >{translate({id: "site.HeroSection.16", message: "View acceptance criteria"})}</Link>
           </div>
         </div>
       </section>

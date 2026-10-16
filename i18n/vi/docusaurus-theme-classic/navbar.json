@@ -1,0 +1,26 @@
+{
+  "logo.alt": {
+    "message": "Tài liệu EKS Core",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Get started": {
+    "message": "Bắt đầu",
+    "description": "Navbar item with label Get started"
+  },
+  "item.label.Labs": {
+    "message": "Bài thực hành",
+    "description": "Navbar item with label Labs"
+  },
+  "item.label.Access & secrets": {
+    "message": "Quyền truy cập và secrets",
+    "description": "Navbar item with label Access & secrets"
+  },
+  "item.label.Operations": {
+    "message": "Vận hành",
+    "description": "Navbar item with label Operations"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}

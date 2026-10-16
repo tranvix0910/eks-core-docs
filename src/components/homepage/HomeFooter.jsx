@@ -1,3 +1,4 @@
+import {translate} from '@docusaurus/Translate';
 // Layout adapted from dyte-io/docs (Apache-2.0)
 import React from 'react';
 import Link from '@docusaurus/Link';
@@ -6,77 +7,77 @@ import useBaseUrl from '@docusaurus/useBaseUrl';
 
 const COLUMNS = [
   {
-    "name": "Get started",
+    "name": translate({id: "site.HomeFooter.01", message: "Get started"}),
     "links": [
       {
-        "name": "Requirements and learning path",
+        "name": translate({id: "site.HomeFooter.02", message: "Requirements and learning path"}),
         "to": "/docs/platform-overview-and-deployment"
       },
       {
-        "name": "Prerequisites",
+        "name": translate({id: "site.HomeFooter.03", message: "Prerequisites"}),
         "to": "/docs/architecture/organizational-constraints-and-prerequisites"
       },
       {
-        "name": "Terraform",
+        "name": translate({id: "site.HomeFooter.04", message: "Terraform"}),
         "to": "/docs/architecture/layer-10-network"
       }
     ]
   },
   {
-    "name": "Deployment",
+    "name": translate({id: "site.HomeFooter.05", message: "Deployment"}),
     "links": [
       {
-        "name": "Three capacity groups",
+        "name": translate({id: "site.HomeFooter.06", message: "Three capacity groups"}),
         "to": "/docs/karpenter-autoscaling-nodepools"
       },
       {
-        "name": "Build images",
+        "name": translate({id: "site.HomeFooter.07", message: "Build images"}),
         "to": "/docs/apps-shopnow/docker-build-multi-arch-and-ci"
       },
       {
-        "name": "ArgoCD",
+        "name": translate({id: "site.HomeFooter.08", message: "ArgoCD"}),
         "to": "/docs/apps-shopnow/shopnow-end-to-end-deployment-guide"
       }
     ]
   },
   {
-    "name": "Verification",
+    "name": translate({id: "site.HomeFooter.09", message: "Verification"}),
     "links": [
       {
-        "name": "EFS",
+        "name": translate({id: "site.HomeFooter.10", message: "EFS"}),
         "to": "/docs/apps-shopnow/efs-persistent-volumes"
       },
       {
-        "name": "Pod placement",
+        "name": translate({id: "site.HomeFooter.11", message: "Pod placement"}),
         "to": "/docs/apps-shopnow/pod-placement"
       },
       {
-        "name": "PDB",
+        "name": translate({id: "site.HomeFooter.12", message: "PDB"}),
         "to": "/docs/apps-shopnow/availability-and-pdb"
       },
       {
-        "name": "Metrics and logs",
+        "name": translate({id: "site.HomeFooter.13", message: "Metrics and logs"}),
         "to": "/docs/observability/observability-architecture-overview"
       }
     ]
   },
   {
-    "name": "Operations",
+    "name": translate({id: "site.HomeFooter.14", message: "Operations"}),
     "links": [
       {
-        "name": "Acceptance",
+        "name": translate({id: "site.HomeFooter.15", message: "Acceptance"}),
         "to": "/docs/operations/workshop-acceptance"
       },
       {
-        "name": "Incident catalogue",
+        "name": translate({id: "site.HomeFooter.16", message: "Incident catalogue"}),
         "to": "/docs/operations/master-incident-catalogue"
       },
       {
-        "name": "Cleanup",
+        "name": translate({id: "site.HomeFooter.17", message: "Cleanup"}),
         "to": "/docs/operations/lifecycle-and-cleanup"
       },
       {
-        "name": "Access and secrets",
+        "name": translate({id: "site.HomeFooter.18", message: "Access and secrets"}),
         "to": "/docs/eks-security"
       }
     ]
@@ -122,8 +123,7 @@ export default function HomeFooter() {
 
         <div className="flex flex-col gap-6 text-sm text-gray-500 lg:flex-row lg:items-center lg:justify-between">
           <span className="dark:text-[#999]">
-            &copy; {new Date().getFullYear()} EKS Workshop
-          </span>
+            &copy; {new Date().getFullYear()}{translate({id: "site.HomeFooter.19", message: " EKS Workshop"})}</span>
         </div>
       </div>
     </footer>
