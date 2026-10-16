@@ -14,47 +14,15 @@ import {
 import { ChevronRight } from 'react-feather';
 
 const guides = [
-  {
-    title: 'Deploy ShopNow end to end',
-    icon: CloudFlowRegular,
-    text: 'Build images, push to ECR and roll the services out with ArgoCD.',
-    link: '/docs/apps-shopnow/shopnow-end-to-end-deployment-guide',
-  },
-  {
-    title: 'Blue-green with Argo Rollouts',
-    icon: ArrowSyncRegular,
-    text: 'Preview, promote and roll back the frontend safely.',
-    link: '/docs/apps-shopnow/blue-green-argo-rollouts',
-  },
-  {
-    title: 'Custom networking lab',
-    icon: GlobeRegular,
-    text: 'Give pods CGNAT 100.64.0.0/16 addresses with ENIConfig.',
-    link: '/docs/architecture/custom-networking-lab-session',
-  },
+  {title: 'Plan and apply infrastructure', icon: CloudFlowRegular, text: 'Create the network, clusters, and states in dependency order.', link: '/docs/architecture/layer-10-network'},
+  {title: 'Deploy microservices through ArgoCD', icon: ArrowSyncRegular, text: 'Build images and deploy application layers from Git.', link: '/docs/apps-shopnow/shopnow-end-to-end-deployment-guide'},
+  {title: 'EFS, placement, and PDBs', icon: GlobeRegular, text: 'Verify storage, replica distribution, and eviction.', link: '/docs/apps-shopnow/efs-persistent-volumes'},
 ];
-
 const runbooks = [
-  {
-    title: 'Tokyo region migration',
-    icon: GlobeRegular,
-    link: '/docs/operations/tokyo-region-migration-runbook',
-  },
-  {
-    title: 'Incident catalogue',
-    icon: WarningRegular,
-    link: '/docs/operations/master-incident-catalogue',
-  },
-  {
-    title: 'Verification & diagnostics',
-    icon: StethoscopeRegular,
-    link: '/docs/operations/system-verification-and-diagnostics',
-  },
-  {
-    title: 'Autoscaling load test',
-    icon: FlashRegular,
-    link: '/docs/operations/workload-autoscaling-implementation-and-testing',
-  },
+  {title: 'Verify every requirement', icon: StethoscopeRegular, link: '/docs/operations/workshop-acceptance'},
+  {title: 'Diagnose and resolve failures', icon: WarningRegular, link: '/docs/operations/master-incident-catalogue'},
+  {title: 'Updates, rollback, and cleanup', icon: FlashRegular, link: '/docs/operations/lifecycle-and-cleanup'},
+  {title: 'Centralized metrics and logs', icon: GlobeRegular, link: '/docs/observability/observability-architecture-overview'},
 ];
 
 function Guide({ title, text, icon: Icon, link }) {
@@ -97,9 +65,9 @@ export default function GuidesAndRunbooks() {
     <section className="no-underline-links my-32 mx-auto flex w-full max-w-5xl flex-col gap-10 p-4 py-0 md:flex-row md:gap-0">
       <div className="flex-1">
         <div className="mb-8 flex items-center justify-between">
-          <h3 className="m-0">Popular how-to guides</h3>
+          <h3 className="m-0">Step-by-step labs</h3>
           <Link to="/docs" className="font-jakarta text-sm font-semibold">
-            View all guides <ArrowRightFilled className="ml-1" />
+            View the learning path <ArrowRightFilled className="ml-1" />
           </Link>
         </div>
         <div className="flex flex-col gap-4">
@@ -118,7 +86,7 @@ export default function GuidesAndRunbooks() {
 
       <div className="w-full md:max-w-sm">
         <div className="mb-8 flex items-center justify-between">
-          <h3 className="m-0">Runbooks</h3>
+          <h3 className="m-0">Operations</h3>
           <Link
             to="/docs/operations/tokyo-region-migration-runbook"
             className="font-jakarta text-sm font-semibold"

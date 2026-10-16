@@ -1,41 +1,45 @@
-# EKS Authentication: STS Tokens & Access Entries
-
-Technical guide covering AWS STS pre-signed URL authentication, short-lived Bearer tokens, and **EKS Access Entries** replacing the legacy `aws-auth` ConfigMap.
-
+---
+title: "Authenticate and authorize EKS access"
 ---
 
-## 1. Authentication Mechanics: STS SigV4 Bearer Tokens
+# Identify the layer rejecting access
 
-`kubectl` never stores static passwords or API tokens. On every command:
-1. `kubectl` executes the `exec` plugin in `~/.kube/config`:
-   `aws eks get-token --cluster-name eks-workload --region ap-northeast-1`
-2. AWS CLI creates a pre-signed AWS STS `GetCallerIdentity` request signed with SigV4.
-3. The pre-signed URL is base64-encoded and passed in the HTTP `Authorization: Bearer k8s-aws-v1.<base64>` header.
-4. EKS Control Plane calls STS to validate caller identity and extracts the caller's IAM ARN.
-5. **Token Lifetime**: Fixed to **15 minutes** (automatically refreshed by `kubectl`).
+AWS CLI credentials, EKS authentication, and Kubernetes RBAC are separate layers. Success in one does not automatically authorize the next.
 
----
+## 1. Check account and kubeconfig
 
-## 2. EKS Access Entries Replacing `aws-auth` ConfigMap
-
-Historically, EKS mapped IAM roles to Kubernetes RBAC via ConfigMap `kube-system/aws-auth`.
-* **Legacy Risk**: Syntax errors in `aws-auth` would lock administrators out of the cluster permanently.
-* **Modern EKS Standard**: **EKS Access Entries** are native AWS API objects managed directly in Terraform:
-
-```hcl
-access_entries = {
-  karpenter = {
-    principal_arn = module.karpenter.node_iam_role_arn
-    type          = "EC2_LINUX" # Automatically grants node joining permissions
-  }
-  admin = {
-    principal_arn = "arn:aws:iam::<AWS_ACCOUNT_ID>:role/admin"
-    policy_associations = {
-      admin = {
-        policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
-        access_scope = { type = "cluster" }
-      }
-    }
-  }
-}
+```bash
+aws sts get-caller-identity
+aws eks update-kubeconfig --name eks-workload --region "$AWS_REGION" --alias eks-workload
+aws eks update-kubeconfig --name eks-observability --region "$AWS_REGION" --alias eks-observability
+kubectl config get-contexts
+kubectl --context eks-workload auth can-i get pods -A
+kubectl --context eks-workload auth can-i create applications.argoproj.io -n argocd
 ```
+
+Kubeconfig uses an exec plugin to call `aws eks get-token`; do not store a fixed token in shared files or documentation. If kubeconfig was created with another profile, inspect `users[].user.exec` to avoid using the wrong identity.
+
+## 2. Access entries
+
+```bash
+aws eks list-access-entries --cluster-name eks-workload
+aws eks list-access-entries --cluster-name eks-observability
+```
+
+The module currently grants cluster creator admin permissions. Other operators need appropriately scoped access entries/policies or RBAC; do not share the creator's credentials. Karpenter's node IAM role also needs the correct entry type for nodes to join.
+
+## 3. Common symptoms
+
+| Error | Layer to inspect |
+|---|---|
+| AWS `ExpiredToken` | AWS/SSO session |
+| AWS `AccessDenied` describing the cluster | IAM/SCP before Kubernetes |
+| Kubernetes `Unauthorized` | Identity, token, access entry |
+| Kubernetes `Forbidden` | RBAC or access-policy scope |
+| Endpoint timeout | Networking, public/private endpoint, allowed CIDRs |
+
+To manage permissions through Terraform, declare the principal/scope and plan/review/apply using an already-authorized identity. Editing `aws-auth` is not a general remedy for a cluster using access entries.
+
+## 4. Specify context for every operation
+
+Commands use `--context` for kubectl and `--kube-context` for Helm. Relying on `use-context` before a long command sequence makes it easier to send receiver manifests to the workload cluster accidentally. Record cluster/account and timestamp with evidence.

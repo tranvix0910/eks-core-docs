@@ -10,25 +10,25 @@ import {
 
 const PRODUCTS = [
   {
-    title: 'Workload Cluster',
+    title: 'Build infrastructure',
     link: '/docs/architecture/layer-20-cluster-workload',
     icon: ServerMultipleRegular,
-    stats: ['eks-workload', 'Karpenter · KEDA · Argo Rollouts'],
-    text: 'Runs the ShopNow microservices on Karpenter-managed node pools with HPA, KEDA and blue-green releases through Argo Rollouts.',
+    stats: ['Terraform → EKS', 'Managed Nodes · Spot · Mixed · ARM64'],
+    text: 'Create two clusters, run controllers on managed nodes, and provision capacity with Karpenter.',
   },
   {
-    title: 'Observability Cluster',
-    link: '/docs/observability/observability-architecture-overview',
+    title: 'Deploy applications',
+    link: '/docs/apps-shopnow/shopnow-end-to-end-deployment-guide',
     icon: DataHistogramRegular,
-    stats: ['eks-observability', 'Mimir · Loki · Grafana'],
-    text: 'Central metrics and logs: Prometheus remote_write and Alloy ship into Mimir and Loki on S3, viewed through Grafana.',
+    stats: ['Git → ArgoCD → Microservices', 'EFS · Pod placement · PDB'],
+    text: 'Build images, deploy from Git, and verify shared storage, replica distribution, and availability.',
   },
   {
-    title: 'GitOps Platform',
-    link: '/docs/platform-addons/gitops-bootstrap-order',
+    title: 'Verify and operate',
+    link: '/docs/operations/workshop-acceptance',
     icon: BranchRegular,
-    stats: ['ArgoCD app-of-apps', 'LBC · cert-manager · Rancher'],
-    text: 'Terraform builds the network and clusters; ArgoCD reconciles every add-on and application from the eks-core-gitops repository.',
+    stats: ['Metrics + Logs → Cluster 2', 'Grafana · Evidence · Cleanup'],
+    text: 'Find telemetry in the observability cluster, verify every requirement, and manage changes after the lab.',
   },
 ];
 
@@ -63,26 +63,26 @@ export default function HeroSection() {
     <div className="noise-bg pb-14">
       <section className="no-underline-links px-4 pt-16 lg:py-0">
         <div className="flex flex-col items-center justify-between py-14">
-          <h2 className="mb-4 text-center font-jakarta text-5xl font-bold">
-            Build on EKS Core
-          </h2>
+          <h1 className="mb-4 max-w-4xl text-center font-jakarta text-5xl font-bold">
+            Deploy and operate microservices on EKS
+          </h1>
           <p className="max-w-xl text-center text-text-400">
-            A two-cluster Amazon EKS platform in ap-northeast-1: a workload
-            cluster for applications, an observability cluster for metrics and
-            logs, and GitOps for everything in between.
+            From Terraform and ArgoCD to EFS, capacity groups, metrics, and logs.
+            Follow each step, verify every requirement, and learn to manage
+            the environment after deployment.
           </p>
           <div className="mt-4 flex gap-3">
             <Link
               to="/docs"
               className="rounded-lg bg-primary px-5 py-2.5 font-jakarta text-sm font-semibold text-white hover:text-white hover:no-underline"
             >
-              Get started
+              Start the workshop
             </Link>
             <Link
-              to="/docs/platform-overview-and-deployment"
+              to="/docs/operations/workshop-acceptance"
               className="rounded-lg border border-solid border-secondary-700 px-5 py-2.5 font-jakarta text-sm font-semibold text-black hover:border-primary hover:no-underline dark:text-white"
             >
-              Deploy the platform
+              View acceptance criteria
             </Link>
           </div>
         </div>

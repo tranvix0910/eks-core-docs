@@ -1,74 +1,66 @@
-# System Verification & Diagnostics Guide
-
-Standard CLI commands to verify, inspect, and diagnose the complete health of EKS clusters, Karpenter Autoscaling, Observability Pipelines, and ShopNow applications.
-
+---
+title: "Verify the system and collect evidence"
 ---
 
-## 1. Inspecting EKS Clusters & Nodes
+# Check infrastructure through application behavior
+
+Run at the repository root after setting variables. These commands inspect state; they do not replace the load/eviction tests used for acceptance.
+
+## 1. Account, clusters, nodes
 
 ```bash
-# 1. Check all nodes in the workload cluster
+aws sts get-caller-identity
+aws eks describe-cluster --name eks-workload --query 'cluster.{Name:name,Status:status,Version:version}'
+aws eks describe-cluster --name eks-observability --query 'cluster.{Name:name,Status:status,Version:version}'
 kubectl --context eks-workload get nodes -o wide
-
-# 2. Check infra node group (3x t3.large, role=infra)
-kubectl --context eks-workload get nodes -l role=infra
-
-# 3. Check monitoring nodes in the observability cluster
 kubectl --context eks-observability get nodes -o wide
+kubectl --context eks-workload get nodes -L role,workload,capacity,karpenter.sh/nodepool,karpenter.sh/capacity-type,kubernetes.io/arch
 ```
 
----
-
-## 2. Verifying Karpenter & NodePools
+## 2. Capacity and scheduling
 
 ```bash
-# 1. Check Karpenter Controller Pods
-kubectl --context eks-workload get pods -n kube-system -l app.kubernetes.io/name=karpenter
-
-# 2. Inspect all 8 readiness conditions on EC2NodeClass
-kubectl --context eks-workload get ec2nodeclass default \
-  -o jsonpath='{range .status.conditions[*]}{.type}{"\t"}{.status}{"\n"}{end}'
-
-# 3. List NodePools
-kubectl --context eks-workload get nodepools
-
-# 4. Stream real-time NodeClaim provisioning events
-kubectl --context eks-workload get nodeclaims -w
+kubectl --context eks-workload get nodepools,nodeclaims,ec2nodeclasses
+kubectl --context eks-workload -n shopnow get pods -o wide
+kubectl --context eks-workload -n shopnow get events --sort-by=.metadata.creationTimestamp
+kubectl --context eks-workload -n kube-system logs deployment/karpenter --since=10m
+kubectl --context eks-workload top nodes
+kubectl --context eks-workload top pods -n shopnow
 ```
 
----
+`top` requires a healthy Metrics Server; Prometheus does not serve that API. For Pending Pods, use `describe pod` to distinguish scheduling from volume-binding failures.
 
-## 3. Verifying the Observability Pipeline (Metrics & Logs)
-
-### Check Metrics Ingested into Mimir:
-```bash
-kubectl --context eks-workload exec -n monitoring prometheus-prometheus-kube-prometheus-prometheus-0 -- \
-  promtool query instant http://localhost:9090 'prometheus_remote_storage_samples_total'
-```
-
-### Check Logs Streamed into Loki:
-```bash
-# Check Grafana Alloy DaemonSet logs
-kubectl --context eks-workload logs -n monitoring -l app.kubernetes.io/name=alloy --tail=50
-
-# Check Loki receiving logs
-kubectl --context eks-observability logs -n monitoring -l app.kubernetes.io/name=loki --tail=50
-```
-
----
-
-## 4. Verifying ShopNow Applications & Argo Rollouts
+## 3. GitOps and storage
 
 ```bash
-# 1. List all ShopNow pods
-kubectl --context eks-workload get pods -n shopnow
-
-# 2. Inspect the Frontend Blue-Green Rollout
-kubectl --context eks-workload argo rollouts get rollout shopnow-frontend-rollout -n shopnow
-
-# 3. Test API Gateway on port 5860
-curl -s http://<ALB_DNS>:5860/product | jq .
-
-# 4. Test Preview Service for Frontend
-kubectl --context eks-workload port-forward -n shopnow svc/shopnow-frontend-preview-service 8085:80
+kubectl --context eks-workload -n argocd get applications
+kubectl --context eks-workload -n shopnow get deployment,rollout,svc,pvc,pdb
+kubectl --context eks-workload get pv,storageclass
+argocd app get shopnow-product-service
+argocd app diff shopnow-product-service
 ```
+
+Check the actual revision in Application status, not just `Synced`. An old revision can also be synced to old desired state.
+
+## 4. Receivers and senders
+
+```bash
+kubectl --context eks-observability -n monitoring get pods,pvc,svc,ingress
+kubectl --context eks-workload -n monitoring get pods,daemonsets,prometheus
+kubectl --context eks-workload -n monitoring logs -l app.kubernetes.io/instance=alloy --tail=20 --prefix
+```
+
+Use the end-to-end queries in the [Mimir](../03-observability/02-mimir-metrics-pipeline.md) and [Loki](../03-observability/03-loki-logging-pipeline.md) labs. A successful receiver query through port-forward proves read access; new cluster 1 data proves the shipping path too.
+
+## 5. Save evidence without secrets
+
+```bash
+mkdir -p .workshop/evidence
+kubectl --context eks-workload -n shopnow get pods -o json > .workshop/evidence/shopnow-pods.json
+kubectl --context eks-workload get nodes -o json > .workshop/evidence/workload-nodes.json
+kubectl --context eks-workload -n shopnow get pdb -o json > .workshop/evidence/pdb.json
+kubectl --context eks-observability -n monitoring get pods -o json > .workshop/evidence/receiver-pods.json
+date -u +%FT%TZ > .workshop/evidence/checked-at.txt
+```
+
+Review before sharing: Pod specs/logs can contain environment values or application data. Do not save `kubectl get secrets -A -o yaml`, full Terraform state, or cloud credentials in evidence.

@@ -1,30 +1,26 @@
-# EKS Security — Identity, Secrets & TLS Certificates
-
-> Overview document covering security principles, identity federation, and secret management on the EKS Core Platform.
-> For deep-dive technical guides, see the [docs/05-security/](https://github.com/tranvix0910/eks-core-docs/tree/main/docs/05-security) directory.
-
+---
+title: "Access, secrets, and TLS in the workshop"
 ---
 
-## Table of Contents
+# Manage access by operational flow
 
-- [1. Base64 Bearer Tokens & STS SigV4 Mechanism](05-security/02-sts-tokens-and-access-entries.md)
-- [2. Identity: EKS Pod Identity vs IRSA](05-security/01-eks-pod-identity.md)
-- [3. API Server Access via EKS Access Entries](05-security/02-sts-tokens-and-access-entries.md#2-eks-access-entries-replacing-aws-auth-configmap)
-- [4. Secrets Management: KMS Envelope Encryption & ESO Rotation](05-security/03-secrets-management-and-rotation.md)
-- [5. TLS Certificate Lifecycle & ACM Import](05-security/04-tls-certificate-lifecycle.md)
-- [6. Admin Ingress Security Tradeoffs & Hardening Guidelines](01-platform-addons/05-admin-ingress-and-hardening.md)
+Security follows each access path through the labs rather than a disconnected list of technologies.
 
----
+| Flow | Mechanism | Guide |
+|---|---|---|
+| Operator → AWS/EKS | AWS identity, EKS access entries, Kubernetes RBAC | [Cluster access](05-security/02-sts-tokens-and-access-entries.md) |
+| Pod → AWS APIs | EKS Pod Identity and IAM policy | [Pod Identity](05-security/01-eks-pod-identity.md) |
+| Application → database/Keycloak | Kubernetes Secret and an optional synchronization mechanism | [Secrets](05-security/03-secrets-management-and-rotation.md) |
+| Cluster 1 → cluster 2 receivers | Private DNS/SGs, HTTPS, CA trust | [TLS](01-platform-addons/03-cert-manager-and-internal-tls.md) |
+| Certificate renewal | cert-manager, ACM re-import, client CA updates when needed | [Certificate lifecycle](05-security/04-tls-certificate-lifecycle.md) |
+| Browser → admin UI | Port-forward or an endpoint with HTTPS/authentication | [Tool access](01-platform-addons/05-admin-ingress-and-hardening.md) |
 
-## Core Security Tenets
+## Important distinctions
 
-1. **EKS Pod Identity Replaces IRSA Completely**:
-   * All ServiceAccounts (EBS CSI, EFS CSI, AWS LB Controller, Karpenter, Mimir, Loki) authenticate via EKS Pod Identity.
-   * No IRSA annotations (`eks.amazonaws.com/role-arn`) on ServiceAccounts.
-2. **Cluster Access Authentication via EKS Access Entries**:
-   * Legacy `aws-auth` ConfigMap is discarded. Karpenter node IAM roles join the cluster directly via EKS Access Entries.
-3. **Secrets Encryption via AWS KMS**:
-   * Envelope encryption enabled for Kubernetes Secrets in etcd.
-   * External Secrets Operator (ESO) fetches dynamic credentials from AWS Secrets Manager.
-4. **Internal In-Transit Encryption via Private TLS**:
-   * All `remote_write` and log `push` streams between clusters cross private subnets over HTTPS with cert-manager internal Private CA certs.
+- `sensitive=true` hides values in some Terraform output; state still needs protection.
+- Kubernetes Secret base64 encoding is not encryption.
+- Mimir's tenant header is not a login credential.
+- PDBs and topology spread provide availability controls, not authorization.
+- External Secrets documentation does not prove the operator/SecretStore is installed.
+
+Sample configuration contains synthetic-data credentials and some open ingress rules. Replace these following the relevant lab before sharing the environment. Do not put passwords, private keys, or registration tokens in the workshop report.

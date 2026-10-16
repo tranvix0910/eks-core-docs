@@ -32,38 +32,38 @@ export default function Stack() {
   return (
     <section className="mx-auto mb-32 flex w-full max-w-5xl flex-col p-4 py-0">
       <span className="mb-2 uppercase tracking-wider text-text-400">
-        Platform stack
+        What you will practice
       </span>
-      <h3 className="mb-12 text-4xl">Every layer, documented from code to cluster</h3>
+      <h3 className="mb-12 text-4xl">Verify the outcome of every step</h3>
 
       <div className="mb-10">
-        <h4 className="mb-2 text-2xl">Terraform layers</h4>
+        <h4 className="mb-2 text-2xl">Create infrastructure with Terraform</h4>
         <p className="mb-6 text-text-400">
-          Infrastructure is applied in order, each layer reading the previous
-          one&apos;s <span className="font-semibold">remote state</span>.
+          Prepare state, create the network, and bootstrap two clusters.
+          Review <span className="font-semibold">the plan before applying</span>.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-          <Item name="10 · Network" to="/docs/architecture/layer-10-network" icon={GlobeRegular} />
-          <Item name="20 · Workload" to="/docs/architecture/layer-20-cluster-workload" icon={ServerRegular} />
-          <Item name="21 · Observability" to="/docs/architecture/layer-21-cluster-observability" icon={DataHistogramRegular} />
-          <Item name="Constraints & SCP" to="/docs/architecture/organizational-constraints-and-prerequisites" icon={ShieldKeyholeRegular} />
+          <Item name="1 · Network" to="/docs/architecture/layer-10-network" icon={GlobeRegular} />
+          <Item name="2 · Workload" to="/docs/architecture/layer-20-cluster-workload" icon={ServerRegular} />
+          <Item name="3 · Observability" to="/docs/architecture/layer-21-cluster-observability" icon={DataHistogramRegular} />
+          <Item name="0 · Prerequisites" to="/docs/architecture/organizational-constraints-and-prerequisites" icon={ShieldKeyholeRegular} />
         </div>
       </div>
 
       <div>
-        <h4 className="mb-2 text-2xl">In-cluster platform</h4>
+        <h4 className="mb-2 text-2xl">Deploy and verify</h4>
         <p className="mb-6 text-text-400">
-          Add-ons reconciled by ArgoCD from the <span className="font-semibold">eks-core-gitops</span> repository.
+          Deploy applications from Git and verify <span className="font-semibold">every requirement</span>.
         </p>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
-          <Item name="ArgoCD" to="/docs/platform-addons/gitops-bootstrap-order" icon={BranchRegular} />
+          <Item name="Deploy ArgoCD" to="/docs/platform-addons/gitops-bootstrap-order" icon={BranchRegular} />
           <Item name="Karpenter" to="/docs/karpenter/karpenter-two-halves-architecture" icon={ServerMultipleRegular} />
-          <Item name="HPA · CPA · KEDA" to="/docs/workload-autoscaling-hpa-cpa-keda" icon={ArrowAutofitHeightRegular} />
-          <Item name="cert-manager" to="/docs/platform-addons/cert-manager-and-internal-tls" icon={CertificateRegular} />
+          <Item name="EFS and PVs" to="/docs/apps-shopnow/efs-persistent-volumes" icon={ArrowAutofitHeightRegular} />
+          <Item name="Pod placement" to="/docs/apps-shopnow/pod-placement" icon={CertificateRegular} />
           <Item name="Mimir" to="/docs/observability/mimir-metrics-pipeline" icon={ChartMultipleRegular} />
           <Item name="Loki" to="/docs/observability/loki-logging-pipeline" icon={DocumentTextRegular} />
-          <Item name="Load Balancer Controller" to="/docs/platform-addons/aws-load-balancer-controller" icon={BoxMultipleRegular} />
-          <Item name="Rancher" to="/docs/platform-addons/rancher-multi-cluster" icon={PeopleTeamRegular} />
+          <Item name="PDB" to="/docs/apps-shopnow/availability-and-pdb" icon={BoxMultipleRegular} />
+          <Item name="Acceptance" to="/docs/operations/workshop-acceptance" icon={PeopleTeamRegular} />
         </div>
       </div>
     </section>

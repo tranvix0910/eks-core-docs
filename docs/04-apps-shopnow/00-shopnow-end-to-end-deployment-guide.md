@@ -1,186 +1,103 @@
-# ShopNow E-Commerce End-to-End Deployment and Operations Guide
-
-This guide provides step-by-step instructions for deploying, operating, autoscaling, and managing the lifecycle of the ShopNow Microservices architecture on Amazon EKS using ArgoCD GitOps, KEDA Prometheus Autoscaling, and Karpenter Spot Node Optimization.
-
+---
+title: "Step 6 - Deploy microservices through ArgoCD"
 ---
 
-## 1. System Architecture and Startup Sequence (Sync Waves)
+# Deploy ShopNow on the mixed node pool
 
-The ShopNow application consists of 8 microservice components orchestrated sequentially via ArgoCD Sync Waves to enforce dependency resolution during startup:
+**Input:** both clusters; ArgoCD; Ready NodePools; `efs-sc`; seven ECR images with a common tag; code/values pushed to the revision ArgoCD reads. TLS/telemetry can be completed after application deployment, but workshop acceptance remains incomplete until that path works.
 
-```mermaid
-flowchart TD
-    subgraph Wave0 ["Wave 0: Data & Auth Layer"]
-        DB["PostgreSQL (5432)"]
-        MySQL["Keycloak MySQL (3306)"]
-        Keycloak["Keycloak SSO (8080)"]
-    end
+## 1. Prepare configuration sources
 
-    subgraph Wave1 ["Wave 1: Platform Core"]
-        Config["Spring Cloud Config Server (5859)"]
-        Eureka["Netflix Eureka Discovery Server (8761)"]
-    end
+Read the [image build lab](04-docker-build-multi-arch-and-ci.md) if images are missing. This repository has six backend charts and one frontend chart; do not deploy application Deployments outside ArgoCD with `kubectl apply`.
 
-    subgraph Wave2 ["Wave 2: Routing"]
-        Gateway["Spring Cloud API Gateway (5860)"]
-    end
+`examples/workshop/workload-values.yaml` enables EFS for every backend, selects the mixed pool, and configures two replicas and a PDB. `discovery-values.yaml` keeps Eureka at one replica because peer replication is not configured; report this exception rather than treating two independent registries as HA.
 
-    subgraph Wave3 ["Wave 3: Microservices"]
-        Product["Product Service (5861)"]
-        Cart["Cart Service (5863)"]
-        User["User Service (5865)"]
-    end
+Review your changes, then commit/push the required configuration files. Do not use `git add .` in a checkout containing certificates/state/plans. ArgoCD reads remote content only; the Application renderer does not push automatically.
 
-    subgraph Wave4 ["Wave 4: Client Interface"]
-        Frontend["Frontend UI (Argo Rollouts Blue-Green)"]
-    end
+## 2. Render environment-specific Applications
 
-    Wave0 --> Wave1
-    Wave1 --> Wave2
-    Wave2 --> Wave3
-    Wave3 --> Wave4
+```bash
+bash examples/workshop/prepare-applications.sh
 ```
 
-| Sync Wave | Component | Role / Purpose |
-| :--- | :--- | :--- |
-| Wave 0 | `shopnow-database-services` | Deploys PostgreSQL, MySQL, and Keycloak Authentication Service |
-| Wave 1 | `shopnow-discovery-server` | Service Registry (Netflix Eureka) for internal service discovery |
-| Wave 1 | `shopnow-config-server` | Centralized external configuration repository for Spring Boot microservices |
-| Wave 2 | `shopnow-api-gateway` | Reverse Proxy and edge router distributing traffic to backends |
-| Wave 3 | `shopnow-product-service` | Manages product catalog, pricing, and inventory |
-| Wave 3 | `shopnow-cart-service` | Handles shopping cart state and checkout sessions |
-| Wave 3 | `shopnow-user-service` | Manages customer profiles and role-based access control |
-| Wave 4 | `shopnow-frontend` | Next.js/React web interface managed via Argo Rollouts Blue-Green deployment |
+The script writes only `.workshop/applications` and does not apply anything. It uses `WORKSHOP_REPO_URL`, `WORKSHOP_REVISION`, `AWS_ACCOUNT_ID`, `AWS_REGION`, and `IMAGE_TAG`; preserves monorepo paths; and adds workshop values. Private repositories need credentials configured through your team's ArgoCD mechanism, never a token embedded in repoURL.
 
----
+Review rendered files, especially `repoURL`, `targetRevision`, `valueFiles`, `image.repository`, `image.tag`, project, and destination. Do not let legacy CI update a separate configuration repository while Applications read this monorepo.
 
-## 2. One-Click Deployment via GitOps
-
-### Step 1: Initialize the ArgoCD AppProject
-Grant ArgoCD permissions to manage the `shopnow` namespace on the `eks-workload` cluster:
+## 3. Create the AppProject and sign in
 
 ```bash
 kubectl --context eks-workload apply -f platform/addons/argocd/appproject-shopnow.yaml
+kubectl --context eks-workload -n argocd port-forward svc/argocd-server 8080:80
 ```
 
-### Step 2: Deploy All Applications
-Apply the consolidated application manifest containing all 8 components:
+In another terminal:
 
 ```bash
-kubectl --context eks-workload apply -f platform/bootstrap/shopnow-applications.yaml
+argocd login localhost:8080 --plaintext
 ```
 
-ArgoCD automatically executes:
-1. Namespace creation (`shopnow`).
-2. Wave-by-wave deployment ordering (Wave 0 to Wave 4).
-3. Readiness and liveness validation before progressing between waves.
+Use your own credentials. The current AppProject permits `sourceRepos: '*'`; narrow that to the workshop repository before sharing the environment. It permits namespace `shopnow` and selected resource groups. A fork must be included in allowed source repositories.
 
-### Step 3: Verify Deployment Status
+## 4. Deploy databases first
 
 ```bash
-# Check ArgoCD application sync status
-kubectl --context eks-workload get applications -n argocd
-
-# Monitor Pod initialization in real-time
-kubectl --context eks-workload get pods -n shopnow -w
+kubectl --context eks-workload apply -f .workshop/applications/shopnow-database-services.yaml
+argocd app wait shopnow-database-services --sync --health --timeout 900
+kubectl --context eks-workload -n shopnow get deployment,pods,pvc
 ```
 
-When all Pods transition to `Running (1/1 Ready)`, the application is fully operational.
+PostgreSQL, MySQL, and Keycloak must be Ready, with database gp3 PVCs Bound. Single-replica databases use On-Demand/EBS; EFS serves microservice directories. Sample credentials are for synthetic data only; replace them with Secrets before using a shared environment with real data.
 
----
-
-## 3. Workload Autoscaling and Cost Optimization (KEDA + Karpenter)
-
-Autoscaling is implemented using KEDA with dual triggers:
-1. Schedule-based scaling (Cron) to scale workloads to 0 outside business hours.
-2. In-cluster Prometheus metrics to scale workloads under traffic surges.
-
-### Apply KEDA ScaledObjects:
+## 5. Config and discovery
 
 ```bash
-kubectl --context eks-workload apply -f platform/addons/keda/shopnow-scaledobjects.yaml
+kubectl --context eks-workload apply -f .workshop/applications/shopnow-discovery-server.yaml
+kubectl --context eks-workload apply -f .workshop/applications/shopnow-config-server.yaml
+argocd app wait shopnow-discovery-server --sync --health --timeout 900
+argocd app wait shopnow-config-server --sync --health --timeout 900
 ```
 
-### Operational Behavior:
-* **Business Hours (09:00 - 19:00, Monday to Friday - Asia/Ho_Chi_Minh)**:
-  - Base capacity is maintained at 1 Gateway replica and 2 replicas per backend service.
-  - Under load, KEDA queries in-cluster Prometheus and scales replicas up to 5-6 Pods.
-  - If node capacity is exceeded, Karpenter provisions additional EC2 Spot instances within 30-40 seconds.
-* **Non-Business Hours (After 19:00, Weekends)**:
-  - Workload replicas scale down to 0 (`minReplicaCount: 0`).
-  - Karpenter detects empty worker nodes and terminates all Spot EC2 instances to eliminate idle infrastructure costs.
+Wait for foundational backends to become Healthy before API deployment. Sync-wave annotations on independent Applications do not replace these gates.
 
----
-
-## 4. Load Testing and Scaling Verification
-
-### Terminal 1: Monitor Autoscaling Metrics
+## 6. Four API backends
 
 ```bash
-while true; do clear; date; kubectl --context eks-workload get hpa,pods -n shopnow; sleep 2; done
+kubectl --context eks-workload apply -f .workshop/applications/shopnow-product-service.yaml
+kubectl --context eks-workload apply -f .workshop/applications/shopnow-cart-service.yaml
+kubectl --context eks-workload apply -f .workshop/applications/shopnow-user-service.yaml
+kubectl --context eks-workload apply -f .workshop/applications/shopnow-api-gateway.yaml
+argocd app wait shopnow-product-service --sync --health --timeout 900
+argocd app wait shopnow-cart-service --sync --health --timeout 900
+argocd app wait shopnow-user-service --sync --health --timeout 900
+argocd app wait shopnow-api-gateway --sync --health --timeout 900
 ```
 
-### Terminal 2: Generate Synthetic Traffic
-Run a multi-threaded load generator targeting the API Gateway:
+The cart Application name differs from its Deployment's `global.appName`: `shopnow-cart-service` creates `shopnow-shopping-cart-service-deployment`. Use the correct name for rollout/HPA inspection.
+
+## 7. Frontend
 
 ```bash
-kubectl --context eks-workload run load-tester --image=busybox --rm -it --restart=Never -- \
-  sh -c "for i in \$(seq 1 15); do (while true; do wget -q -O- http://shopnow-api-gateway-service.shopnow.svc:5860/product > /dev/null; done) & done; echo 'Generating load... Press Ctrl+C to stop'; wait"
+kubectl --context eks-workload apply -f .workshop/applications/shopnow-frontend.yaml
+argocd app get shopnow-frontend
+kubectl --context eks-workload -n shopnow get rollouts
 ```
 
-### Expected Observations:
-1. Target metric in HPA exceeds the configured threshold.
-2. Deployment replicas scale out (e.g., from 1 to 5 Pods).
-3. Karpenter provisions new EC2 Spot nodes if existing instances run out of allocatable CPU/RAM.
-4. Upon terminating the load test (`Ctrl + C`), the stabilization window (60s) elapses, HPA scales Pods back to base count, and Karpenter consolidates empty nodes.
+The frontend uses blue-green Rollout with `autoPromotionEnabled=false`. A valid update may be paused awaiting promotion; follow the [blue-green lab](03-blue-green-argo-rollouts.md) instead of manually changing replicas to force a green status.
 
----
-
-## 5. Centralized Monitoring on Grafana
-
-Access the centralized Grafana dashboard instance:
-* **URL**: `http://k8s-monitori-grafana-389ed4b9d3-80693196.ap-northeast-1.elb.amazonaws.com`
-* **Username**: `admin`
-* **Password**: `dPs4myzdJOgbhbkRF0KJWLg0E9Pk8Qzxi1WTlvkF`
-
-Key Dashboards:
-1. **Workload and Pods 360 Operations**: Visualizes RPS throughput, 5xx server error rate, Pod CPU/RAM consumption, and HPA replica trends.
-2. **KEDA Autoscaler (ID: 14513)**: Displays ScaledObject trigger health, Prometheus query metrics, and target evaluations.
-3. **Node Exporter Full (ID: 1860)**: Provides hardware utilization metrics for underlying Karpenter EC2 instances.
-
----
-
-## 6. Environment Lifecycle Management (Pause, Resume, Clean Destroy)
-
-### Pause Workloads to Save Costs (Immediate Scale-to-Zero):
-When pausing work during lab hours without deleting manifests:
+## 8. Verify functionality and placement
 
 ```bash
-# 1. Disable ArgoCD automated sync to prevent self-healing
-kubectl --context eks-workload patch application -n argocd shopnow-config-server shopnow-discovery-server shopnow-frontend shopnow-database-services --type merge -p '{"spec":{"syncPolicy":null}}'
-
-# 2. Pause KEDA and scale down all deployments and rollouts
-kubectl --context eks-workload annotate scaledobject --all -n shopnow autoscaling.keda.sh/paused-replicas="0" --overwrite
-kubectl --context eks-workload scale deployment,rollout --all -n shopnow --replicas=0
+kubectl --context eks-workload -n shopnow get pods -o wide
+kubectl --context eks-workload get nodes -L workload,capacity,role,karpenter.sh/capacity-type
+kubectl --context eks-workload -n shopnow get pvc,pdb
+kubectl --context eks-workload -n shopnow port-forward svc/shopnow-api-gateway-service 5860:5860
 ```
-Karpenter will automatically terminate all empty worker nodes within 1 minute.
 
-### Resume Workloads:
-To restore the environment:
+In another terminal, run `curl -f http://localhost:5860/product`. An empty array `[]` is valid if no products have been seeded. Access the frontend with `svc/shopnow-frontend-service 8082:80` port-forward; the browser must reach the API URL baked into its image.
 
-```bash
-# 1. Unpause KEDA
-kubectl --context eks-workload annotate scaledobject --all -n shopnow autoscaling.keda.sh/paused-replicas-
+**Pass:** Applications sync the intended commit, backend Pods are Ready on the mixed pool, every backend has an EFS PVC, and the frontend calls the API. Continue with EFS/placement/PDB tests to prove the requirements rather than relying on Pod status.
 
-# 2. Re-enable ArgoCD automated self-healing
-kubectl --context eks-workload patch application -n argocd shopnow-config-server shopnow-discovery-server shopnow-frontend shopnow-database-services --type merge -p '{"spec":{"syncPolicy":{"automated":{"prune":true,"selfHeal":true}}}}'
-```
-Karpenter will provision EC2 instances, and all microservices will be ready within 45 seconds.
+## 9. Managing changes
 
-### Complete Teardown (Clean Destroy):
-To remove all ShopNow resources:
-
-```bash
-kubectl --context eks-workload delete -f platform/bootstrap/shopnow-applications.yaml
-kubectl --context eks-workload delete namespace shopnow --ignore-not-found
-```
+Edit the chart/values in the repository the Application actually reads → render → commit/push → ArgoCD diff/sync → verify behavior. `selfHeal` can revert kubectl changes to managed resources. When updating image settings in rendered Applications, render again and apply the relevant Application. In this bootstrap procedure, the operator owns Application specs; editing a local file does not automatically update them.

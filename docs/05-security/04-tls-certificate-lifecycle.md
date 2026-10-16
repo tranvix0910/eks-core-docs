@@ -1,35 +1,42 @@
-# TLS Certificate Lifecycle & ACM Integration
-
-Technical guide covering the lifecycle of internal TLS certificates managed by cert-manager, automated in-cluster renewal, and the renewal workflow for certificates imported into AWS ACM.
-
+---
+title: "Renew certificates without breaking telemetry"
 ---
 
-## 1. Internal Certificate Lifecycles
+# Keep three certificate locations synchronized
 
-* **Root Certificate Authority (`internal-ca-secret`)**:
-  * Validity: **10 years** (`duration: 87600h`).
-  * Renew before: **30 days** before expiry.
-* **Internal ALB Certificate (`alb-tls-cert`)**:
-  * Validity: **1 year** (`duration: 8760h`).
-  * Renew before: **30 days** before expiry.
+cert-manager manages the leaf Secret, ACM holds the imported ALB certificate, and Prometheus/Alloy hold CA trust. Secret renewal does not update the other two locations automatically.
 
----
+## 1. Inspect expiration
 
-## 2. In-Cluster vs ACM Import Renewal Disconnect
+```bash
+kubectl --context eks-workload -n cert-manager get certificates
+kubectl --context eks-workload -n cert-manager describe certificate observability-alb-tls
+aws acm describe-certificate --certificate-arn "$WORKSHOP_CERT_ARN" \
+  --query 'Certificate.{NotAfter:NotAfter,Status:Status,Type:Type,InUseBy:InUseBy}'
+```
 
-* **In-Cluster**: cert-manager automatically re-issues and rotates the Kubernetes `Secret` `alb-tls-cert` before it expires.
-* **AWS ACM Disconnect**: Because the certificate is an **Imported Certificate** in AWS ACM (not issued directly by AWS Private CA), **AWS ACM CANNOT AUTO-RENEW IT**.
+The leaf manifest currently requests one year with renewal 30 days before expiry; the CA lasts longer. Operate from actual `NotAfter` values rather than local file creation dates.
 
-### Renewal Procedure for ACM:
-When cert-manager renews the certificate:
-1. Re-export the renewed certificate and key:
-   ```bash
-   kubectl -n monitoring get secret alb-tls-cert -o jsonpath="{.data['tls\.crt']}" | base64 -d > certs/cert.pem
-   kubectl -n monitoring get secret alb-tls-cert -o jsonpath="{.data['tls\.key']}" | base64 -d > certs/key.pem
-   kubectl -n monitoring get secret alb-tls-cert -o jsonpath="{.data['ca\.crt']}"  | base64 -d > certs/chain.pem
-   ```
-2. Re-apply Terraform to update the imported certificate in ACM:
-   ```bash
-   cd 21-cluster-observability && terraform apply -auto-approve
-   ```
-3. AWS ACM replaces the active certificate without modifying the Certificate ARN, maintaining zero downtime on the Internal ALB.
+## 2. Renew and re-import the leaf
+
+After cert-manager issues a new certificate, export it to a protected temporary directory using the TLS lab procedure. Re-import into the **same ARN**:
+
+```bash
+aws acm import-certificate --region "$AWS_REGION" \
+  --certificate-arn "$WORKSHOP_CERT_ARN" \
+  --certificate "fileb://$WORKSHOP_CERT_DIR/cert.pem" \
+  --private-key "fileb://$WORKSHOP_CERT_DIR/key.pem" \
+  --certificate-chain "fileb://$WORKSHOP_CERT_DIR/chain.pem"
+```
+
+This command uses newly exported files; it does not fetch renewed Kubernetes data itself. Check dates/SANs before import. An imported certificate should not be assumed to use the same automatic renewal as an ACM-managed certificate.
+
+## 3. If the CA changes too
+
+Use an overlap period with both old and new CAs trusted by clients. Deploy trust before switching the ALB certificate. Update the monitoring Secret and verify client reload or a controlled rollout. Do not remove the old CA until every client/endpoint has migrated.
+
+## 4. Verify after changes
+
+Mimir queries must return new samples and Loki must show new markers. Senders should have no x509 errors or prolonged retries, and the ALB must use the intended ARN. Record new expiration dates and renewal ownership, never private keys.
+
+Delete temporary key files after ensuring managed retention follows team policy. Do not use `insecure_skip_verify` to bypass a failed rotation.

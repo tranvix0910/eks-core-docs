@@ -1,34 +1,48 @@
-# ShopNow API Gateway Routing & Troubleshooting
-
-Technical guide on **Spring Cloud Gateway (Port 5860)**, path filtering mechanisms (`PrefixPath=/api`), Keycloak JWT authentication, and 4 verified production routing issues resolved.
-
+---
+title: "Verify the API gateway and request path"
 ---
 
-## 1. Routing Mechanics & `PrefixPath=/api`
+# Check the API one hop at a time
 
-Backend Spring Boot controllers are mapped to `@RequestMapping("api/...")` (e.g. `/api/products`, `/api/cart`).
-However, frontend clients send requests to bare paths (e.g. `/product/**`, `/shopping-cart/**`).
+## 1. Call the gateway
 
-### Gateway Route Configuration:
-```yaml
-spring:
-  cloud:
-    gateway:
-      routes:
-        - id: product-service
-          uri: lb://PRODUCT-SERVICE
-          predicates:
-            - Path=/product/**
-          filters:
-            - PrefixPath=/api
+```bash
+kubectl --context eks-workload -n shopnow port-forward svc/shopnow-api-gateway-service 5860:5860
 ```
-* **Filter `PrefixPath=/api`**: Automatically transforms incoming `/product` requests into `/api/product` before forwarding to the backend microservice.
 
----
+```bash
+curl -i http://localhost:5860/actuator/health
+curl -i http://localhost:5860/product
+```
 
-## 2. 4 Verified Production Routing Issues Resolved
+SecurityConfig allows anonymous GET requests to `/product`. Writes and cart operations require JWTs under the demo configuration. `[]` is not an error; HTML instead of JSON usually indicates a request sent to frontend/Nginx by mistake.
 
-1. **Bug 1: Service Name Mismatch**: Config had `lb://SHOPNOW-PRODUCT-SERVICE` while Eureka registered `PRODUCT-SERVICE` -> Fixed to `lb://PRODUCT-SERVICE`.
-2. **Bug 2: Missing Path Prefix (`/api`)**: Direct calls resulted in HTTP 404 because controllers expected `/api/products` -> Added `PrefixPath=/api`.
-3. **Bug 3: Keycloak JWT Issuer Misconfiguration**: Internal backend could not resolve Keycloak's external public URL -> Standardized internal Keycloak DNS (`http://keycloak.shopnow.svc:8080/realms/shopnow`).
-4. **Bug 4: CORS Preflight Blocking**: Browser preflight `OPTIONS` requests were blocked -> Configured global CORS in Spring Cloud Gateway.
+## 2. Understand route names
+
+| Incoming gateway request | Eureka target | Controller request |
+|---|---|---|
+| `/product/1` | `PRODUCT-SERVICE` | `/api/product/1` |
+| `/shopping-cart/1` | `CART-SERVICE` through the production override | `/api/shopping-cart/1` |
+| `/user/signin` | `USER-SERVICE` | `/api/user/signin` |
+
+`PrefixPath=/api` adds the prefix after matching the incoming path. Calling `/api/product` on the gateway is therefore different from calling the controller directly. The older Postman collection still uses gateway `/api/` paths; update those requests before using it for acceptance.
+
+## 3. Isolate failures
+
+- Browser calls the wrong URL: check build-time `REACT_APP_BASE_API_URL` and the Network tab.
+- Gateway 404: inspect incoming predicates and prefixes; the direct backend responds at `/api/product`.
+- Gateway 503: check Eureka registration, Ready endpoints, and service IDs.
+- 401: check JWT issuer/DNS, expiry, and SecurityConfig public paths.
+- CORS/preflight: inspect OPTIONS and allowed headers/origins; distinguish this from a missing backend route.
+
+```bash
+kubectl --context eks-workload -n shopnow logs deployment/shopnow-api-gateway-deployment --tail=100
+kubectl --context eks-workload -n shopnow logs deployment/shopnow-product-service-deployment --tail=100
+kubectl --context eks-workload -n shopnow get endpointslices
+```
+
+Local configuration and production ConfigMaps differ. Effective values combine image defaults with `/app/config-override/application.properties`.
+
+## 4. Demo authentication limits
+
+The user service validates a database user, then requests a token through `client_credentials`. This is not a complete per-end-user token model. A successful demo login does not prove user-to-cart authorization. The security labs distinguish platform identity from application authentication.

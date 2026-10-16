@@ -1,55 +1,51 @@
-# AWS Load Balancer Controller & ALB Ingress Grouping
-
-Technical deep-dive on the **AWS Load Balancer Controller (LBC) v3.5.0**, IP target registration mode (`target-type: ip`), Ingress Grouping, and common configuration pitfalls.
-
+---
+title: "Load Balancer Controller: route traffic to applications"
 ---
 
-## 1. Controller Architecture & Helm Configuration
+# Verify load balancing before exposing services
 
-* **Helm Chart**: `eks/aws-load-balancer-controller` v3.5.0 (Repository: `https://aws.github.io/eks-charts`).
-* **Namespace**: `kube-system`
-* **IAM Authentication**: Uses **EKS Pod Identity**, requiring zero `eks.amazonaws.com/role-arn` annotations on the ServiceAccount.
+LBC translates Services/Ingresses into AWS load balancers. Terraform now passes `clusterName`, region, and VPC ID directly to the chart. Separate values files containing old environment IDs are not the effective source for this release.
 
-### Mandatory Configuration in `values.yaml`:
-```yaml
-clusterName: eks-workload
-region: ap-northeast-1
-vpcId: <VPC_ID>
-defaultTargetType: ip
+## 1. Check the controller and IAM
+
+```bash
+kubectl --context eks-workload -n kube-system get deployment aws-load-balancer-controller
+kubectl --context eks-workload -n kube-system logs deployment/aws-load-balancer-controller --tail=80
+aws eks list-pod-identity-associations --cluster-name eks-workload
+helm --kube-context eks-workload -n kube-system get values aws-load-balancer-controller
 ```
 
-> [!WARNING]
-> If `vpcId` or `region` are mismatched (e.g. copied from another region), the controller fails silently with:
-> `{"level":"error","msg":"Reconciler error","error":"couldn't auto-discover subnets: Evaluated 0 subnets"}`.
-> Always verify that `vpcId` matches the Layer 10 Terraform output.
+Pod Identity must associate the correct `kube-system/aws-load-balancer-controller` ServiceAccount. Adding an IRSA annotation is not a general fix for AccessDenied.
 
----
+## 2. Create application ingress through ArgoCD
 
-## 2. IP Target Mode (`target-type: ip`) vs Instance Mode
+Backend charts create Ingresses in `shopnow`, using `target-type: ip`, the `eks-workload` group, and separate listener ports. The ALB targets Pod IPs; security groups must allow the **container target port**, not only the Service port.
 
-The platform uses `alb.ingress.kubernetes.io/target-type: ip`:
-
-```
-Client ──> ALB ──> Direct Pod IP (via VPC CNI ENI)
+```bash
+kubectl --context eks-workload -n shopnow get ingress
+kubectl --context eks-workload -n shopnow describe ingress shopnow-api-gateway-ingress
+kubectl --context eks-workload -n shopnow get endpointslices \
+  -l kubernetes.io/service-name=shopnow-api-gateway-service
 ```
 
-### Why IP Target Mode is Mandatory:
-1. **Bypasses NodePort Hop**: Traffic routes directly from ALB to the target Pod without traversing `kube-proxy` iptables or node port translation.
-2. **Karpenter Autoscaling Compatibility**: When Karpenter scales down, consolidates, or drains EC2 nodes, ALB target groups track Pod IPs directly. Pods migrating to new nodes are instantly registered without node-level disruption.
+If `ADDRESS` is empty, inspect Events/controller logs first. If DNS exists but requests return 503, check target health, Ready endpoints, and health-check paths.
 
----
+## 3. Shared ALB and access controls
 
-## 3. Ingress Grouping: Cost & Architecture Efficiency
+A shared group reduces ALB count, but all participating ingress resources affect listeners/rules. Restrict ingress creation in that group to trusted operators. A namespace is not an IngressGroup security boundary.
 
-Without Ingress Grouping, every Kubernetes `Ingress` manifest triggers AWS LB Controller to provision a distinct AWS Application Load Balancer ($16-$25/month each).
+The core lab can use port-forward for UI/API access. For public ingress, set `inboundCidrs` to the class's approved IP/VPN range before deployment. Do not retain `0.0.0.0/0` for admin tools.
 
-Using annotation `alb.ingress.kubernetes.io/group.name`:
+## 4. Internal telemetry ALB
 
-```yaml
-annotations:
-  alb.ingress.kubernetes.io/group.name: "eks-workload"
-  alb.ingress.kubernetes.io/group.order: "10"
-```
+Use the separate `eks-observability-internal` group, HTTPS listeners 9009/3100, an ACM certificate, and the node SG from Layer 20. Follow the [TLS lab](03-cert-manager-and-internal-tls.md); do not place internal ingress in the public group.
 
-* **On `eks-workload`**: Merges ArgoCD (80), Prometheus (9090), Alertmanager (9093), JavaMelody (8081), and ShopNow microservices into **1 single Public ALB**.
-* **On `eks-observability`**: Merges Mimir (9009) and Loki (3100) into **1 single Internal ALB** (`group.name: eks-observability-internal`).
+| Symptom | First check |
+|---|---|
+| `Evaluated 0 subnets` | Effective VPC/region in Helm values and subnet tags |
+| `AccessDenied` | Pod Identity association, logged IAM action, SCP |
+| 503 | Ready endpoints, target health, SG path to gateway/Pod |
+| 404 | Ingress path, host, and application controller route |
+| TLS failure | SAN hostname, ACM region, client CA trust |
+
+Compare rendered configuration with AWS before changing several annotations at once.

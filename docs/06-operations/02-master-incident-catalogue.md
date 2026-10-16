@@ -1,56 +1,48 @@
-# Master Incident & Troubleshooting Catalogue (32 Incidents)
-
-Complete, comprehensive catalogue of all 32 real-world technical incidents encountered, root-cause analyzed, and permanently resolved during the design, bootstrap, tuning, and migration of the EKS Core Platform.
-
+---
+title: "Troubleshoot by symptom"
 ---
 
-## 1. Infrastructure, Networking & Observability Incidents (#1 – #16)
+# Diagnose using components and evidence
 
-| # | Incident / Symptom | Root Cause | Permanent Resolution |
+This catalogue retains useful situations from earlier documentation and adds gaps found in configuration. Entries are **hypotheses to verify**, not claims that every incident occurred or was resolved in your environment.
+
+| # | Symptom | Evidence to check | Action after verification |
 |---|---|---|---|
-| **#1** | `SCP explicit deny` on EKS in Sydney/Singapore | AWS Organization SCP `<SCP_POLICY_ID>` restricts EKS creation to 3 regions (`ap-southeast-1`, `ap-southeast-5`, `ap-northeast-1`). | Migrated all infrastructure to Tokyo (`ap-northeast-1`). |
-| **#2** | `VPC Flow Log deletion denied` during teardown | SCP forbids `ec2:DeleteFlowLogs`. | Used `terraform state rm` to decouple Flow Logs from state. |
-| **#3** | Circular dependency: Layer 20 ↔ Layer 21 | Layer 20 references Layer 21 SG for Rancher; Layer 21 references Layer 20 SG for nodes. | 2-pass deployment workflow: comment rule in Layer 20 first, deploy 21, uncomment and re-apply 20. |
-| **#4** | Post-GitOps DNS/TLS dependency in Layer 21 | `dns.tf` and `tls.tf` require the Internal ALB and exported cert-manager certs. | Deployed core Layer 21 first, deployed GitOps add-ons, exported certs, then applied `dns.tf`/`tls.tf`. |
-| **#5** | AWS LB Controller: `Evaluated 0 subnets` | Stale `vpcId` and `region` in Helm `values.yaml` from old region. | Set `region: ap-northeast-1` and dynamic VPC ID `<VPC_ID>`. |
-| **#6** | Rancher Agent: `certificate verify failed` on ALB | ALB terminated TLS and changed the root CA hash, breaking agent `--ca-checksum`. | Replaced ALB with Internal NLB TCP Passthrough (`rancher-internal-nlb`). |
-| **#7** | Rancher Web UI: Login loops with `401 Unauthorized` | Rancher sets `Secure` cookie flag; plain HTTP ALB caused browsers to drop cookies. | Accessed via `kubectl port-forward -n cattle-system svc/rancher 8443:443`. |
-| **#8** | Mimir: `unexpected Kafka StatefulSet deployed` | Base chart defaulted `ingest_storage.enabled: true` and `kafka.enabled: true`. | Explicitly disabled Kafka and ingest storage in `mimir/values.yaml`. |
-| **#9** | Mimir: `storage prefix collision error` | All Mimir components wrote to the same root S3 prefix without subdirectories. | Added unique prefixes: `alertmanager_storage.storage_prefix: alertmanager`, `ruler_storage.storage_prefix: ruler`. |
-| **#10**| Mimir: `cannot disable Push gRPC method` | Base chart disabled push gRPC assuming Kafka was active. | Set `ingester.push_grpc_method_enabled: true` in `mimir/values.yaml`. |
-| **#11**| Mimir: `at least 2 live replicas required in ring` | Default replication factor was 3; single-replica lab failed quorum. | Configured `ingester.ring.replication_factor: 1`. |
-| **#12**| Grafana Alloy: `River parse error: expected expression` | Used bash `#` comments instead of River `//` comments in Alloy config. | Updated all comments to `//` River syntax. |
-| **#13**| Grafana Alloy: `TLS handshake error on log push` | Alloy lacked the internal cert-manager CA certificate for the Internal ALB. | Injected Private Root CA into Alloy's `tls_config.ca_pem`. |
-| **#14**| Loki: `replication factor quorum error` | SingleBinary Loki defaulted to replication factor 3. | Set `loki.commonConfig.replication_factor: 1`. |
-| **#15**| Loki: `memcached pod memory bloat` | Default cache allocated 8Gi RAM per memcached instance. | Disabled `chunksCache` and `resultsCache` for lab scale. |
-| **#16**| Mimir/Loki: `S3 PermanentRedirect 301` | S3 region was configured as `ap-southeast-1` while buckets were created in `ap-northeast-1`. | Updated S3 region and endpoint to `ap-northeast-1` in both charts. |
+| 1 | EKS/EFS AccessDenied despite IAM admin | Explicit deny/SCP and current region | Use an authorized region/permission set |
+| 2 | Flow Log destroy blocked | `DeleteFlowLogs` SCP and resource owner | Agree on retention/cleanup; do not silently remove state |
+| 3 | Layer 20 cannot read state 21 | Bucket/key and state existence | Use two-stage foundation bootstrap |
+| 4 | Provider cannot connect on first deployment | Cluster endpoint existence and exec credentials | Create AWS foundation before Helm resources |
+| 5 | LBC `Evaluated 0 subnets` | Effective region/VPC and subnet tags | Update configuration under its correct owner |
+| 6 | Internal ALB targets unhealthy | Container target port, second SG hop, gateway readiness | Permit current gateway port 8080 |
+| 7 | Rancher login loop | Browser HTTPS and Secure cookie | HTTPS port-forward or correct TLS endpoint |
+| 8 | Rancher agent CA mismatch | TLS termination changes the presented certificate | Correct passthrough/trust design |
+| 9 | Unexpected Mimir Kafka/MinIO | Rendered chart and ingest-storage flags | Align pins/configuration with the selected model |
+| 10 | Mimir storage-prefix collision | Blocks/ruler/alertmanager bucket/prefix | Separate prefixes in configuration |
+| 11 | Mimir push gRPC error | Ingest-storage path and push flag | Enable direct push when Kafka is disabled |
+| 12 | Mimir/Loki quorum errors | Replicas and replication factor | Align factor with lab topology |
+| 13 | S3 redirect or AccessDenied | Region/endpoint/bucket and Pod Identity | Correct environment/IAM for the target bucket |
+| 14 | Receiver PVC Pending | Default gp3, CSI logs, IAM/AZ | Create Terraform-owned StorageClass and repair CSI |
+| 15 | Alloy parsing failure | River syntax and rendered ConfigMap | Validate Alloy syntax before rollout |
+| 16 | Missing mixed-pool logs | DaemonSet tolerations and NODE_NAME selector | Use workshop overrides; check node coverage |
+| 17 | Duplicate logs | Several Alloy agents tail one Pod | Node-local discovery or deliberate clustering |
+| 18 | x509 during telemetry push | SAN, CA Secret, ALB certificate | Repair trust/ACM import; retain verification |
+| 19 | NodeClass NotReady | AMI alias, role, subnet/SG selectors | Correct pin/role/discovery using outputs |
+| 20 | NodePool kind not recognized | CRD/controller installation | Complete controller installation before manifests |
+| 21 | EC2 exists but cannot join EKS | Node access entry, bootstrap, egress | Repair authentication/network; inspect NodeClaim conditions |
+| 22 | Pod cannot enter mixed pool | Selector, toleration, requirements, requests | Describe Pod, then update chart/values through Git |
+| 23 | Expected 1:3 ratio absent | Node versus vCPU metric, load, existing capacity | Report observed capacity accurately; use the dedicated fixture |
+| 24 | ARM64 `exec format error` | Image platforms | Build/push ARM64 or multi-architecture image |
+| 25 | EFS mount timeout | SG 2049, mount target, DNS/AZ | Repair networking with the correct worker SG |
+| 26 | EFS write Permission denied | UID/GID, Access Point permissions, path | Align POSIX identity 10001 |
+| 27 | Frontend receives HTML instead of JSON | API build argument and browser URL | Rebuild with the correct API URL |
+| 28 | Gateway 404/503 | Prefix and Eureka service ID | Correct the failing hop |
+| 29 | ArgoCD resource forbidden | AppProject group/destination permissions | Add narrowly scoped required permissions |
+| 30 | HPA target missing | Helper fullname differs from Deployment name | Target `<appName>-deployment` in the correct namespace |
+| 31 | Replicas oscillate between values | ArgoCD/self-heal, HPA, KEDA competing | One scaler per target; define replica ownership |
+| 32 | Grafana No data or incorrect RPS | Datasource UID, tenant, labels, metric units | Repair query/UID; do not substitute CPU for traffic |
 
----
+## Using this during the lab
 
-## 2. Karpenter Autoscaling Incidents (#K1 – #K7)
+Save `describe`, Events, and timestamped logs before making changes. Change one cause at a time, render/plan when applicable, then repeat the failing test. Do not apply every listed remedy: one symptom may have several causes.
 
-| # | Incident / Symptom | Root Cause | Permanent Resolution |
-|---|---|---|---|
-| **#K1**| `no matches for kind "EC2NodeClass"` | Applied NodePool YAML before installing the Karpenter Helm chart. | Installed Helm chart v1.14.0 first to register CRDs. |
-| **#K2**| Karpenter Controller crash-looping in custom NS | Terraform module binds Pod Identity to `kube-system/karpenter`. | Installed Karpenter Controller explicitly in `kube-system`. |
-| **#K3**| Discrepancy in `limits.cpu` (2 vs 24 vs 72) | Mixed testing limits with target production ratios. | Standardized 1:3 ratio: `ms-od` (24 vCPUs, weight 100) and `ms-spot` (72 vCPUs, weight 10). |
-| **#K4**| 1 vCPU node leakage (`t3.medium` instances) | NodePool allowed `medium` instances, leaving only ~1.4 usable vCPUs. | Excluded sizes `["nano", "micro", "small", "medium"]`. |
-| **#K5**| Karpenter nodes failing to join cluster | IAM Role lacked cluster permissions. | Created native EKS Access Entry with type `EC2_LINUX`. |
-| **#K6**| Spot Interruption notices missed | EventBridge rules or SQS queue permissions were missing. | Configured full EventBridge pipeline + SQS queue in Terraform. |
-| **#K7**| Node consolidation thrashing | `consolidateAfter` was too aggressive. | Set `consolidateAfter: 30s` with policy `WhenEmptyOrUnderutilized`. |
-
----
-
-## 3. ShopNow Microservices & Rollouts Incidents (#R1 – #R9)
-
-| # | Incident / Symptom | Root Cause | Permanent Resolution |
-|---|---|---|---|
-| **#R1**| React Frontend home page blank crash | `REACT_APP_BASE_API_URL` was missing during Docker build time. | Added `--build-arg REACT_APP_BASE_API_URL="http://<ALB_DNS>:5860"`. |
-| **#R2**| Docker `exec format error` on EKS | Built images with ARM64 architecture on Apple Silicon Mac. | Built with `docker buildx build --platform linux/amd64`. |
-| **#R3**| API Gateway routing HTTP 404 | Controllers mapped to `@RequestMapping("api/...")` while gateway routed bare paths. | Added `PrefixPath=/api` filter in Spring Cloud Gateway. |
-| **#R4**| Eureka service lookup failure | Gateway used `lb://SHOPNOW-PRODUCT-SERVICE` while Eureka registered `PRODUCT-SERVICE`. | Standardized service IDs to match Eureka registration. |
-| **#R5**| Keycloak token validation failure | Backend could not resolve external Keycloak URL. | Configured internal Kubernetes DNS `http://keycloak.shopnow.svc:8080/realms/shopnow`. |
-| **#R6**| Browser CORS preflight blocked | Spring Cloud Gateway lacked CORS headers for frontend origin. | Configured global CORS filter in Spring Cloud Gateway. |
-| **#R7**| Argo Rollouts CRD rejected by ArgoCD | ArgoCD `AppProject` did not whitelist group `argoproj.io` for CRD `Rollout`. | Added `clusterResourceWhitelist` in `appproject-shopnow.yaml`. |
-| **#R8**| Rollout preview traffic bleeding to active users | Service selectors lacked dynamic rollout hash matching. | Configured explicit `activeService` and `previewService` in Rollout spec. |
-| **#R9**| Instant traffic disruption during promotion | Pods terminated immediately without drain time. | Added `scaleDownDelaySeconds: 30` to Rollout blueGreen strategy. |
+Collection commands: [verification and diagnostics](03-system-verification-and-diagnostics.md).

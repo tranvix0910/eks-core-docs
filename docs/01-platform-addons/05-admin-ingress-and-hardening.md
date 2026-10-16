@@ -1,47 +1,51 @@
-# Shared Administrative Ingress & Security Hardening
-
-Technical documentation on the consolidated administrative Ingress ([admin-ingress.yaml](https://github.com/tranvix0910/eks-core-gitops/blob/main/platform/ingress/admin-ingress.yaml)), listener port mappings, lab security tradeoffs, and production hardening recommendations.
-
+---
+title: "Access tools and manage endpoints"
 ---
 
-## 1. Structure of `admin-ingress.yaml`
+# Open workshop tools
 
-File [admin-ingress.yaml](https://github.com/tranvix0910/eks-core-gitops/blob/main/platform/ingress/admin-ingress.yaml) consolidates all operational dashboards into **1 single Public ALB** on `eks-workload`:
+Port-forward is the default classroom access method. It avoids personal hostnames in documentation and unnecessary Internet exposure of admin tools.
 
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: admin-ingress
-  namespace: argocd
-  annotations:
-    alb.ingress.kubernetes.io/group.name: "eks-workload"
-    alb.ingress.kubernetes.io/group.order: "10"
-    alb.ingress.kubernetes.io/scheme: "internet-facing"
-    alb.ingress.kubernetes.io/target-type: "ip"
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTP": 9090}, {"HTTP": 9093}, {"HTTP": 8081}]'
+## Access terminals
+
+Run each command in a separate terminal:
+
+```bash
+kubectl --context eks-workload -n argocd port-forward svc/argocd-server 8080:80
 ```
 
-### Ingress Rules:
-* Port **`80`** -> `argocd-server` (ArgoCD Web UI)
-* Port **`9090`** -> `prometheus-kube-prometheus-prometheus` (Prometheus Web UI)
-* Port **`9093`** -> `prometheus-kube-prometheus-alertmanager` (Alertmanager Web UI)
-* Port **`8081`** -> `javamelody-collector` (JavaMelody Application Performance Monitoring)
+```bash
+kubectl --context eks-workload -n monitoring port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090
+```
 
----
+```bash
+kubectl --context eks-workload -n javamelody port-forward svc/javamelody-collector 8081:8080
+```
 
-## 2. Lab Tradeoffs vs Production Hardening
+```bash
+kubectl --context eks-observability -n monitoring port-forward svc/grafana 3000:80
+```
 
-### The Lab Setup (`0.0.0.0/0`):
-In this demonstration lab environment:
-* Inbound CIDR is set to `0.0.0.0/0` for immediate browser accessibility.
-* Unauthenticated endpoints (Prometheus, Alertmanager, JavaMelody) are accessible to anyone with the ALB URL.
-* Traffic runs over unencrypted HTTP on standard ports.
+The ArgoCD release currently uses `--insecure`; access it at `http://localhost:8080`. Centralized Grafana is at `http://localhost:3000`. If a Service name differs, inspect `kubectl get svc` instead of guessing.
 
-### Production Hardening Guidelines:
-For production enterprise environments, apply the following controls:
+## Login credentials
 
-1. **IP Whitelisting**: Restrict `alb.ingress.kubernetes.io/inbound-cidrs` to enterprise VPN / Bastion subnets.
-2. **Mandatory HTTPS**: Attach public ACM certificates and force HTTP -> HTTPS 301 redirects.
-3. **SSO / OIDC Authentication**: Integrate AWS Cognito or OIDC (Keycloak / Okta) directly on ALB listener rules.
-4. **AWS WAF (Web Application Firewall)**: Attach AWS WAF to mitigate DDoS and block known malicious payloads.
+```bash
+kubectl --context eks-workload -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 --decode
+kubectl --context eks-observability -n monitoring get secret grafana \
+  -o jsonpath='{.data.admin-password}' | base64 --decode
+```
+
+Read credentials only in a personal terminal; do not redirect them into evidence. Cluster 1 Grafana uses a different Secret and is not the centralized Grafana account. The initial ArgoCD Secret may have been removed after a password change; use the current login method in that case.
+
+## If a public ALB is required
+
+`admin-ingress.yaml` shares the `eks-workload` group on ports 80/9090/9093/8081. Before applying it:
+
+1. Restrict `inbound-cidrs` to approved VPN/IP ranges.
+2. For a stable endpoint, use a domain you control and an appropriate ACM certificate.
+3. Protect Prometheus/Alertmanager/JavaMelody with authentication at the access layer; an obscure URL is not protection.
+4. Review both the Terraform-created Grafana ingress in cluster 1 and ingress in cluster 2, rather than updating only one manifest.
+
+JavaMelody can expose SQL, threads, and system properties. Use synthetic data in the workshop. Stop port-forwards with Ctrl+C afterward; remove unused public ingress under its correct owner to release load balancers.

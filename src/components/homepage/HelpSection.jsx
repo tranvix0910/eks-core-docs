@@ -11,22 +11,22 @@ import {
 const CARDS = [
   {
     icon: BookOpenRegular,
-    title: 'Start here',
-    text: 'New to the platform? Read the architecture overview and the deployment order first.',
-    link: '/docs/architecture/architecture-overview',
-    cta: 'Read the overview',
+    title: 'New to the workshop?',
+    text: 'Read the requirements, prepare your tools, and follow the steps from infrastructure to verification.',
+    link: '/docs/platform-overview-and-deployment',
+    cta: 'View the steps',
   },
   {
     icon: WarningRegular,
-    title: 'Something broke?',
-    text: 'Search 30+ real incidents with their root cause, fix and prevention.',
+    title: 'Troubleshooting a failure?',
+    text: 'Look up symptoms, collect evidence, and identify the failing component before making changes.',
     link: '/docs/operations/master-incident-catalogue',
-    cta: 'Open the catalogue',
+    cta: 'Incident catalogue',
   },
   {
     icon: CodeRegular,
-    title: 'Source code',
-    text: 'Terraform, GitOps manifests, ShopNow services and these docs, one repository each.',
+    title: 'Source code and lab examples',
+    text: 'Terraform, charts, values, and verification workloads live in four repositories so you can repeat the exercises.',
     link: 'https://github.com/tranvix0910?tab=repositories&q=eks-core',
     cta: 'Browse the repositories',
   },
@@ -41,7 +41,7 @@ export default function HelpSection({ className = '' }) {
           className,
         )}
       >
-        <h2 className="mb-12 text-center lg:text-3xl">Where do you want to go?</h2>
+        <h2 className="mb-12 text-center lg:text-3xl">Where to go next</h2>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {CARDS.map(({ icon: Icon, title, text, link, cta }) => (
             <div key={title} className="rounded-lg bg-zinc-100 p-6 dark:bg-zinc-900">

@@ -1,57 +1,34 @@
-# ShopNow Microservices Architecture & Service Topology
-
-Comprehensive architecture documentation for the **ShopNow** e-commerce microservices platform, covering the Spring Cloud stack, database topology, authentication flow, and Kubernetes deployment topology.
-
+---
+title: "ShopNow - Services, ports, and dependencies"
 ---
 
-## 1. Microservices Topology & Service Map
+# The application used to validate the platform
 
-```
-                                  Client Browser
-                                        │
-                                        ▼ (Port 8082)
-                         ┌─────────────────────────────┐
-                         │ shopnow-frontend (React Web)│
-                         └──────────────┬──────────────┘
-                                        │
-                                        ▼ (Port 5860)
-                         ┌─────────────────────────────┐
-                         │ shopnow-api-gateway         │
-                         │ (Spring Cloud Gateway)      │
-                         └──────┬───────┬───────┬──────┘
-                                │       │       │
-                ┌───────────────┘       │       └───────────────┐
-                ▼                       ▼                       ▼
-    ┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐
-    │shopnow-product-svc   │ │shopnow-shopping-cart │ │shopnow-user-service  │
-    │(Port 5861)           │ │(Port 5863)           │ │(Port 5865)           │
-    └──────────┬───────────┘ └──────────┬───────────┘ └──────────┬───────────┘
-               │                        │                        │
-               ▼                        ▼                        ▼
-        PostgreSQL (DB: product)   MySQL 8.0 (DB: cart)    Keycloak (PostgreSQL)
+ShopNow is a reference application for deployment, storage, scheduling, and telemetry tests. It is not a complete commerce implementation with production authorization or availability guarantees.
 
-    [Platform Services]
-    - shopnow-discovery-server (Eureka on Port 8761)
-    - shopnow-config-server (Spring Cloud Config on Port 8888)
-```
+| Component | Source | In-cluster Service/port | Purpose |
+|---|---|---|---|
+| Frontend | `shopnow-frontend` | `shopnow-frontend-service:80` | React SPA, Redux, Nginx |
+| API gateway | `shopnow-backend/api-gateway` | `shopnow-api-gateway-service:5860` | Routing, JWT |
+| Product | `shopnow-product-service` | `shopnow-product-service-service:5861` | Product CRUD, PostgreSQL |
+| Cart | `shopnow-shopping-cart-service` | `shopnow-shopping-cart-service-service:5863` | Shopping carts, PostgreSQL, product API calls |
+| User | `shopnow-user-service` | `shopnow-user-service-service:5865` | Profiles, registration/login |
+| Config server | `shopnow-config-server` | `shopnow-config-server-service:5859` | Spring Config Server |
+| Discovery | `shopnow-discovery-server` | `shopnow-discovery-server-service:8761` | Eureka |
+| PostgreSQL | Database manifests | `postgres:5432` | Application data |
+| MySQL | Database manifests | `shopnow-keycloak-mysql-service:3306` | Keycloak data |
+| Keycloak | Database manifests | `shopnow-keycloak-realms-service:8080` | JWT issuance for the demo configuration |
 
----
+The current config server port is 5859, not 8888. Cart uses PostgreSQL; MySQL serves Keycloak. The actual realm is `java-microservice-realm`, not `shopnow`.
 
-## 2. Component Directory
+## Request flow
 
-1. **`shopnow-frontend`** (Port 8082): React SPA, deployed as an **Argo Rollout** (Blue-Green).
-2. **`shopnow-api-gateway`** (Port 5860): Spring Cloud Gateway, Eureka client, OAuth2 JWT Resource Server.
-3. **`shopnow-product-service`** (Port 5861): Product catalogue API, backed by PostgreSQL.
-4. **`shopnow-shopping-cart-service`** (Port 5863): Shopping cart and checkout API, backed by MySQL.
-5. **`shopnow-user-service`** (Port 5865): User profiles and auth coordination.
-6. **`shopnow-discovery-server`** (Port 8761): Netflix Eureka Service Registry.
-7. **`shopnow-config-server`** (Port 8888): Centralized configuration server.
-8. **Databases & Keycloak**: PostgreSQL 15, MySQL 8.0, Keycloak 23.
+The browser calls gateway paths `/product`, `/shopping-cart`, and `/user`. The gateway resolves services through Eureka, adds `/api`, and forwards to Spring controllers. When troubleshooting, locate the failure in the browser, gateway, or backend before changing the ALB.
 
----
+## Workshop storage
 
-## 3. Kubernetes Deployment Structure
+All six backends mount a service-specific EFS PVC at `/data` through workshop overrides. Replicas of one service share its PVC; different services do not automatically share an Access Point. An EFS mount demonstrates shared filesystem support, but does not mean current code stores products/users there; those remain in PostgreSQL.
 
-All ShopNow manifests reside in `apps/` and follow a modular Kustomize structure:
-* `apps/shopnow-backend-config/`: Contains base deployments, configmaps, secrets, and database StatefulSets.
-* `apps/shopnow-frontend-config/`: Contains the Argo Rollout CRD manifest, active service, and preview service.
+## Availability boundaries
+
+The registry and databases remain single-replica. Backend PDBs do not provide database/Eureka HA or guarantee successful cross-service transactions. For the PDB report, identify the tested service and remaining singleton dependencies.

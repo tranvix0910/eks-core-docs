@@ -10,8 +10,8 @@ import HomeFooter from '../components/homepage/HomeFooter';
 export default function Homepage() {
   return (
     <Layout
-      title="EKS Core Documentation"
-      description="Two-cluster Amazon EKS platform documentation"
+      title="EKS Workshop"
+      description="Learn Terraform, Karpenter, ArgoCD, EFS, PDBs, and centralized observability."
       wrapperClassName="homepage flex flex-col"
       noFooter
     >

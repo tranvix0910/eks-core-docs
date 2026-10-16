@@ -9,9 +9,9 @@ const runbooksHTML = fs.readFileSync('./src/snippets/runbooks.html', 'utf-8');
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'EKS Core Docs',
+  title: 'EKS Workshop',
   tagline:
-    'Two-cluster Amazon EKS platform: network, workload and observability layers, GitOps add-ons and the ShopNow reference app.',
+    'Deploy and operate microservices with Terraform, Karpenter, ArgoCD, EFS, and centralized observability.',
   url: 'https://tranvix0910.github.io',
   baseUrl: '/eks-core-docs/',
   favicon: '/img/favicon.svg',
@@ -91,16 +91,16 @@ const config = {
           width: '150px',
         },
         items: [
-          { label: 'Guides', to: '/docs', className: 'guides-top-header' },
+          { label: 'Get started', to: '/docs', className: 'guides-top-header' },
           {
-            label: 'Platform',
+            label: 'Labs',
             type: 'dropdown',
             className: 'ec-dropdown',
             items: [{ type: 'html', value: platformHTML, className: 'ec-dropdown' }],
           },
-          { label: 'Security', to: '/docs/eks-security' },
+          { label: 'Access & secrets', to: '/docs/eks-security' },
           {
-            label: 'Runbooks',
+            label: 'Operations',
             type: 'dropdown',
             className: 'ec-dropdown resources-dropdown',
             items: [{ type: 'html', value: runbooksHTML, className: 'ec-dropdown' }],

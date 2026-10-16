@@ -6,41 +6,81 @@ import useBaseUrl from '@docusaurus/useBaseUrl';
 
 const COLUMNS = [
   {
-    name: 'Foundation',
-    links: [
-      { name: 'Platform overview', to: '/docs/platform-overview-and-deployment' },
-      { name: 'Architecture', to: '/docs/architecture/architecture-overview' },
-      { name: 'Network layer', to: '/docs/architecture/layer-10-network' },
-      { name: 'Constraints & SCP', to: '/docs/architecture/organizational-constraints-and-prerequisites' },
-    ],
+    "name": "Get started",
+    "links": [
+      {
+        "name": "Requirements and learning path",
+        "to": "/docs/platform-overview-and-deployment"
+      },
+      {
+        "name": "Prerequisites",
+        "to": "/docs/architecture/organizational-constraints-and-prerequisites"
+      },
+      {
+        "name": "Terraform",
+        "to": "/docs/architecture/layer-10-network"
+      }
+    ]
   },
   {
-    name: 'Platform',
-    links: [
-      { name: 'GitOps bootstrap', to: '/docs/platform-addons/gitops-bootstrap-order' },
-      { name: 'Karpenter', to: '/docs/karpenter-autoscaling-nodepools' },
-      { name: 'Observability', to: '/docs/observability/observability-architecture-overview' },
-      { name: 'Grafana dashboards', to: '/docs/observability/grafana-dashboards' },
-    ],
+    "name": "Deployment",
+    "links": [
+      {
+        "name": "Three capacity groups",
+        "to": "/docs/karpenter-autoscaling-nodepools"
+      },
+      {
+        "name": "Build images",
+        "to": "/docs/apps-shopnow/docker-build-multi-arch-and-ci"
+      },
+      {
+        "name": "ArgoCD",
+        "to": "/docs/apps-shopnow/shopnow-end-to-end-deployment-guide"
+      }
+    ]
   },
   {
-    name: 'Workloads',
-    links: [
-      { name: 'ShopNow architecture', to: '/docs/apps-shopnow/shopnow-microservices-architecture' },
-      { name: 'API gateway', to: '/docs/apps-shopnow/shopnow-api-gateway' },
-      { name: 'Workload autoscaling', to: '/docs/workload-autoscaling-hpa-cpa-keda' },
-      { name: 'Service mesh', to: '/docs/service-mesh-and-istio' },
-    ],
+    "name": "Verification",
+    "links": [
+      {
+        "name": "EFS",
+        "to": "/docs/apps-shopnow/efs-persistent-volumes"
+      },
+      {
+        "name": "Pod placement",
+        "to": "/docs/apps-shopnow/pod-placement"
+      },
+      {
+        "name": "PDB",
+        "to": "/docs/apps-shopnow/availability-and-pdb"
+      },
+      {
+        "name": "Metrics and logs",
+        "to": "/docs/observability/observability-architecture-overview"
+      }
+    ]
   },
   {
-    name: 'Security & Ops',
-    links: [
-      { name: 'Pod Identity', to: '/docs/security/eks-pod-identity' },
-      { name: 'Secrets & rotation', to: '/docs/security/secrets-management-and-rotation' },
-      { name: 'Incident catalogue', to: '/docs/operations/master-incident-catalogue' },
-      { name: 'Diagnostics', to: '/docs/operations/system-verification-and-diagnostics' },
-    ],
-  },
+    "name": "Operations",
+    "links": [
+      {
+        "name": "Acceptance",
+        "to": "/docs/operations/workshop-acceptance"
+      },
+      {
+        "name": "Incident catalogue",
+        "to": "/docs/operations/master-incident-catalogue"
+      },
+      {
+        "name": "Cleanup",
+        "to": "/docs/operations/lifecycle-and-cleanup"
+      },
+      {
+        "name": "Access and secrets",
+        "to": "/docs/eks-security"
+      }
+    ]
+  }
 ];
 
 export default function HomeFooter() {
@@ -82,7 +122,7 @@ export default function HomeFooter() {
 
         <div className="flex flex-col gap-6 text-sm text-gray-500 lg:flex-row lg:items-center lg:justify-between">
           <span className="dark:text-[#999]">
-            &copy; {new Date().getFullYear()} EKS Core Platform
+            &copy; {new Date().getFullYear()} EKS Workshop
           </span>
         </div>
       </div>

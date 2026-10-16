@@ -1,25 +1,71 @@
-# Mimir Distributed Metrics Pipeline & Configuration Fixes
-
-Technical reference on **Grafana Mimir Distributed v6.1.0**, S3 TSDB storage, and 6 essential configuration fixes resolved during lab tuning.
-
+---
+title: "Send Prometheus metrics to Mimir"
 ---
 
-## 1. Mimir Architecture & Microservices
+# Verify metrics hop by hop
 
-Mimir runs as a distributed set of microservices:
-* **`mimir-distributor`**: Receives incoming `remote_write` requests and splits series across ingesters.
-* **`mimir-ingester`**: In-memory ring buffer for active metric samples before flushing to S3.
-* **`mimir-compactor`**: Merges and de-duplicates historical blocks in S3.
-* **`mimir-store-gateway`**: Queries historical TSDB blocks stored in S3.
-* **`mimir-querier` & `query-frontend`**: Executes PromQL queries and provides caching.
+## 1. Verify scraping before remote_write
 
----
+Port-forward Prometheus in cluster 1:
 
-## 2. 6 Essential Configuration Fixes in `values.yaml`
+```bash
+kubectl --context eks-workload -n monitoring port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090
+```
 
-1. **Disable Bundled MinIO**: Set `minio.enabled: false` to use real AWS S3 directly.
-2. **Disable Ingest Storage (Kafka)**: Set `mimir.structuredConfig.ingest_storage.enabled: false` and `kafka.enabled: false` to prevent spinning up Kafka StatefulSets.
-3. **Explicit S3 Regional Endpoint**: AWS S3 requires `endpoint: s3.ap-northeast-1.amazonaws.com` explicitly in `values.yaml`.
-4. **Unique S3 Storage Prefixes**: Set `alertmanager_storage.storage_prefix: alertmanager` and `ruler_storage.storage_prefix: ruler` to avoid collision with blocks storage.
-5. **Re-enable Ingester Push gRPC**: Set `ingester.push_grpc_method_enabled: true` for direct distributor-to-ingester writes.
-6. **Set Replication Factor to 1**: Set `ingester.ring.replication_factor: 1` and `store_gateway.sharding_ring.replication_factor: 1` to support a single-replica lab setup without quorum failures.
+In another terminal:
+
+```bash
+curl -fsSG http://localhost:9090/api/v1/query --data-urlencode 'query=sum(up)' | jq .
+kubectl --context eks-workload -n monitoring get servicemonitors,podmonitors
+```
+
+If local Prometheus has no data, fix scraping/service discovery before debugging cross-cluster networking. `serviceMonitorSelectorNilUsesHelmValues=false` allows selecting monitors outside the release, but ServiceMonitor selectors and endpoints must still be correct.
+
+## 2. Inspect remote_write settings
+
+Cluster 1 values define endpoint `https://mimir.observability.internal:9009/api/v1/push`, tenant header `X-Scope-OrgID: eks-workload`, a CA file, and external label `cluster=eks-workload`.
+
+```bash
+kubectl --context eks-workload -n monitoring get prometheus -o yaml
+kubectl --context eks-workload -n monitoring get secret observability-alb-tls
+kubectl --context eks-workload -n monitoring logs \
+  prometheus-prometheus-kube-prometheus-prometheus-0 -c prometheus --tail=100
+```
+
+StatefulSet/Pod names depend on the release; inspect `get pods` if different. Look for TLS/x509, 401, 429, and dropped samples. A tenant header partitions data; it does not replace authentication or private SG access.
+
+## 3. Query Mimir directly in cluster 2
+
+```bash
+kubectl --context eks-observability -n monitoring port-forward svc/mimir-gateway 19009:80
+```
+
+In another terminal:
+
+```bash
+curl -fsSG http://localhost:19009/prometheus/api/v1/query \
+  -H 'X-Scope-OrgID: eks-workload' \
+  --data-urlencode 'query=sum(up{cluster="eks-workload"})' | jq .
+curl -fsSG http://localhost:19009/prometheus/api/v1/query \
+  -H 'X-Scope-OrgID: eks-workload' \
+  --data-urlencode 'query=count(kube_pod_info{cluster="eks-workload",namespace="shopnow"})' | jq .
+```
+
+Require `status=success` and nonempty results with values/recent timestamps. Empty results do not pass. Wait several scrape/remote_write intervals after an application starts, then compare the same query against local Prometheus.
+
+## 4. Mimir/S3 and lab settings
+
+Mimir uses ServiceAccount `mimir` and Pod Identity for the account's bucket. Values disable Kafka ingest storage and MinIO, enable direct push, and use replication factor 1 with zone-aware replication disabled. Do not enable Kafka or replication 3 without sufficient capacity and reviewed release configuration.
+
+```bash
+kubectl --context eks-observability -n monitoring get pods -l app.kubernetes.io/instance=mimir
+kubectl --context eks-observability -n monitoring get pvc
+export WORKSHOP_MIMIR_BUCKET=$(terraform -chdir=21-cluster-observability output -raw mimir_bucket_name)
+aws s3api list-objects-v2 --bucket "$WORKSHOP_MIMIR_BUCKET" --max-keys 10 --query 'Contents[].Key'
+```
+
+Objects need not appear immediately after the first request; blocks flush periodically. Resolve AccessDenied/endpoint mismatches in component logs. Do not raise ingestion limits merely to hide uncontrolled cardinality growth.
+
+## 5. Application HTTP metrics
+
+Five Spring MVC services have the Micrometer dependency; expose `/actuator/prometheus` in effective configuration and create ServiceMonitors. The gateway currently lacks the Prometheus registry dependency. Until instrumentation is complete, use infrastructure metrics as evidence; do not relabel CPU cores as RPS.

@@ -1,47 +1,51 @@
-# EKS Pod Identity Architecture & Implementation
-
-Comprehensive technical guide on **EKS Pod Identity**, comparing it with legacy IRSA, explaining the `eks-pod-identity-agent` mechanism, and detailing IAM role associations across both clusters.
-
+---
+title: "Pod Identity - Authorize controllers to call AWS APIs"
 ---
 
-## 1. Why EKS Pod Identity Over IRSA
+# Associate AWS permissions with the correct ServiceAccount
 
-| Feature | Legacy IRSA (IAM Roles for Service Accounts) | Modern EKS Pod Identity |
+Terraform creates IAM roles/policies and associations. Pod Identity Agent supplies credentials to SDKs inside Pods. Attaching policies to node roles is not the default substitute for repairing an incorrect association.
+
+## 1. Compare mappings
+
+| Cluster | Namespace/ServiceAccount | Required permissions |
 |---|---|---|
-| **OIDC Provider** | Required per EKS cluster | **Not Required** |
-| **Trust Policy** | Complex JSON with OIDC sub/aud matching | Standard EKS service principal: `pods.eks.amazonaws.com` |
-| **ServiceAccount** | Must add annotation `eks.amazonaws.com/role-arn` | **Zero annotations required** |
-| **Cross-Cluster IAM** | Separate IAM role per cluster OIDC | 1 IAM role can be reused across multiple clusters |
-| **Credential Injection** | Mutating Webhook + STS AssumeRoleWithWebIdentity | Node-local DaemonSet `eks-pod-identity-agent` |
+| Workload | `kube-system/karpenter` | EC2 provisioning and interruption queue access through the module |
+| Workload | `kube-system/aws-load-balancer-controller` | ELB/EC2 networking required by the controller |
+| Workload | `kube-system/ebs-csi-controller-sa` | EBS provisioning |
+| Workload | `kube-system/efs-csi-controller-sa` | EFS Access Point provisioning |
+| Observability | `kube-system/ebs-csi-controller-sa` | EBS provisioning |
+| Observability | `kube-system/aws-load-balancer-controller` | Load balancing |
+| Observability | `monitoring/mimir` | Access to the correct Mimir bucket |
+| Observability | `monitoring/loki` | Access to the correct Loki bucket |
 
----
+## 2. Verify AWS and Kubernetes
 
-## 2. Pod Identity Architecture & Mechanics
-
-```
-Pod (e.g. AWS LB Controller / Mimir)
-  │
-  ▼ (AWS SDK calls local link: http://169.254.170.23/v1/credentials)
-eks-pod-identity-agent DaemonSet (running on node)
-  │
-  ▼ (Authenticates Pod token via EKS Control Plane)
-AWS EKS Pod Identity Service
-  │
-  ▼ (Assumes configured IAM Role via STS)
-Temporary AWS IAM Credentials returned to Pod (15m - 1h TTL)
+```bash
+aws eks list-pod-identity-associations --cluster-name eks-workload
+aws eks list-pod-identity-associations --cluster-name eks-observability
+kubectl --context eks-workload -n kube-system get daemonset eks-pod-identity-agent
+kubectl --context eks-observability -n monitoring get serviceaccount mimir loki
 ```
 
----
+Select an association ID from the listing, set the variable below, and inspect its role/namespace/ServiceAccount in a personal terminal:
 
-## 3. Directory of IAM Associations in the Platform
+```bash
+: "${WORKSHOP_ASSOCIATION_ID:?Set an association ID from the list above}"
+aws eks describe-pod-identity-association --cluster-name eks-workload \
+  --association-id "$WORKSHOP_ASSOCIATION_ID"
+```
 
-* **`eks-workload`**:
-  * EBS CSI Driver -> `ebs-csi-controller-sa`
-  * EFS CSI Driver -> `efs-csi-controller-sa`
-  * AWS Load Balancer Controller -> `aws-load-balancer-controller`
-  * Karpenter Controller -> `karpenter`
-* **`eks-observability`**:
-  * EBS CSI Driver -> `ebs-csi-controller-sa`
-  * AWS Load Balancer Controller -> `aws-load-balancer-controller`
-  * Mimir -> `mimir`
-  * Loki -> `loki`
+For cluster 2, use the cluster name owning that association. Do not copy another account's ARN.
+
+## 3. Diagnose AccessDenied
+
+1. Confirm the Pod's `serviceAccountName`.
+2. Check the association's cluster, namespace, and ServiceAccount.
+3. Confirm the agent is Ready on that node, networking works, and the SDK supports the credential chain.
+4. Verify policy actions/resources and bucket region/name.
+5. Inspect explicit denies in SCPs/bucket policies once identity is correct.
+
+Do not add static AWS keys to Helm values to bypass IAM failures. After association changes, check new Pods and actual logs; do not print full environment credentials for debugging.
+
+Reference: [AWS EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html).

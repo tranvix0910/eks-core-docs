@@ -1,85 +1,36 @@
 ---
 slug: /
-title: Guides
-sidebar_class_name: guide_sidebar_index
-description: Guides for the EKS Core platform — architecture, add-ons, Karpenter, observability, the ShopNow app, security and runbooks.
+title: "Workshop learning path"
 ---
 
-{/* Landing page of the docs website. On GitHub, start from README.md instead. */}
+# Build and verify a microservices platform
 
-# Guides
+Create two EKS clusters with Terraform, deploy applications through ArgoCD, run workloads on Spot, mixed, and ARM64 capacity, and verify EFS, replica distribution, PDBs, and centralized observability.
 
-<CardSection
-  id="quickstart"
-  title="Quickstart"
-  description="Learn how the two clusters fit together and how to stand the platform up from scratch."
->
-  <Card
-    title="Workload Cluster"
-    to="/docs/architecture/layer-20-cluster-workload"
-    icon={<ServerIcon />}
-    description="eks-workload runs ShopNow on Karpenter node pools with HPA, KEDA and Argo Rollouts."
-  />
-  <Card
-    title="Observability Cluster"
-    to="/docs/observability/observability-architecture-overview"
-    icon={<ObservabilityIcon />}
-    description="eks-observability stores metrics and logs in Mimir and Loki on S3, viewed in Grafana."
-  />
-  <Card
-    title="GitOps Platform"
-    to="/docs/platform-addons/gitops-bootstrap-order"
-    icon={<GitOpsIcon />}
-    description="ArgoCD reconciles every add-on and application, in sync-wave order."
-  />
+**[Start with the requirements and learning path →](./00-platform-overview-and-deployment.md)**
+
+<CardSection title="1. Prepare and create infrastructure" description="Start with AWS identity and Terraform state, then build the network and two clusters.">
+  <Card title="Prerequisites" to="/docs/architecture/organizational-constraints-and-prerequisites" description="Tools, permissions, quotas, and the state backend." />
+  <Card title="Network" to="/docs/architecture/layer-10-network" description="Plan, review, apply, and verify subnets, NAT, and discovery tags." />
+  <Card title="Workload cluster" to="/docs/architecture/layer-20-cluster-workload" description="Infrastructure nodes, IAM, EFS/ECR, and first-time bootstrap." />
+  <Card title="Observability cluster" to="/docs/architecture/layer-21-cluster-observability" description="Monitoring nodes, S3, and receiver services." />
 </CardSection>
-
-<CardSection
-  id="architecture"
-  title="Architecture"
-  description="The Terraform layers, applied in order, and the account guardrails they work within."
->
-  <Card title="Architecture Overview" to="/docs/architecture/architecture-overview" description="Two EKS clusters in a shared VPC, data flows and ownership boundaries." />
-  <Card title="Constraints & Prerequisites" to="/docs/architecture/organizational-constraints-and-prerequisites" description="SCPs, VPC Flow Logs, quotas and IAM to check before the first apply." />
-  <Card title="Layer 10 · Network" to="/docs/architecture/layer-10-network" description="VPC 10.20.0.0/16, subnets across three AZs, NAT and VPC endpoints." />
-  <Card title="Layer 20 · Workload Cluster" to="/docs/architecture/layer-20-cluster-workload" description="EKS cluster, node group, ECR, EFS and Pod Identity." />
-  <Card title="Layer 21 · Observability Cluster" to="/docs/architecture/layer-21-cluster-observability" description="Cluster, S3 buckets for Mimir and Loki, and the internal ALB." />
-  <Card title="Lab · Custom Networking" to="/docs/architecture/custom-networking-lab-session" description="Give pods CGNAT 100.64.0.0/16 addresses with ENIConfig, on one canary node." />
+<CardSection title="2. Deploy the platform and applications" description="Configure capacity, build images, and synchronize from Git.">
+  <Card title="Bootstrap" to="/docs/platform-addons/gitops-bootstrap-order" description="Install in dependency order and assign one owner to each resource." />
+  <Card title="Three capacity groups" to="/docs/karpenter/ec2nodeclass-and-nodepools-configuration" description="Spot, mixed On-Demand/Spot, and ARM64." />
+  <Card title="Build images" to="/docs/apps-shopnow/docker-build-multi-arch-and-ci" description="Build for the correct architecture, push to ECR, and use explicit tags." />
+  <Card title="ArgoCD" to="/docs/apps-shopnow/shopnow-end-to-end-deployment-guide" description="Deploy the database, backend, and frontend in dependency order." />
 </CardSection>
-
-<CardSection
-  id="platform"
-  title="Platform"
-  description="In-cluster add-ons, node autoscaling and the telemetry pipeline."
->
-  <Card title="GitOps Bootstrap Order" to="/docs/platform-addons/gitops-bootstrap-order" description="Which add-on goes first, sync waves, and Helm versus ArgoCD." />
-  <Card title="Load Balancer Controller" to="/docs/platform-addons/aws-load-balancer-controller" description="IP target type and ingress grouping onto shared ALBs." />
-  <Card title="cert-manager & Internal TLS" to="/docs/platform-addons/cert-manager-and-internal-tls" description="A private CA, ALB certificates and the ACM import." />
-  <Card title="Karpenter" to="/docs/karpenter-autoscaling-nodepools" description="EC2NodeClass, four NodePools and the 1:3 on-demand to spot ratio." />
-  <Card title="Mimir Metrics" to="/docs/observability/mimir-metrics-pipeline" description="Prometheus remote_write into Mimir and the configuration fixes that made it work." />
-  <Card title="Loki Logging" to="/docs/observability/loki-logging-pipeline" description="Grafana Alloy as a DaemonSet shipping pod logs into Loki." />
+<CardSection title="3. Verify the requirements" description="Run tests with observable results.">
+  <Card title="EFS" to="/docs/apps-shopnow/efs-persistent-volumes" description="Share a file between replicas and retain data across Pod replacement." />
+  <Card title="Pod placement" to="/docs/apps-shopnow/pod-placement" description="Select the correct pool and spread replicas across workers and zones." />
+  <Card title="PDB" to="/docs/apps-shopnow/availability-and-pdb" description="Verify that the disruption budget permits or blocks eviction." />
+  <Card title="Metrics and logs" to="/docs/observability/observability-architecture-overview" description="Find fresh cluster 1 telemetry in cluster 2." />
 </CardSection>
-
-<CardSection
-  id="workloads"
-  title="Workloads"
-  description="The ShopNow reference application: how it is built, routed, scaled and released."
->
-  <Card title="End-to-End Deployment" to="/docs/apps-shopnow/shopnow-end-to-end-deployment-guide" description="Build, push to ECR and roll out every service with ArgoCD." />
-  <Card title="Blue-Green Rollouts" to="/docs/apps-shopnow/blue-green-argo-rollouts" description="Preview, promote and roll back the frontend with Argo Rollouts." />
-  <Card title="Workload Autoscaling" to="/docs/workload-autoscaling-hpa-cpa-keda" description="HPA, Cluster Proportional Autoscaler and KEDA, and where each fits." />
-  <Card title="Service Mesh" to="/docs/service-mesh-and-istio" description="Istio sidecar versus ambient, and an adoption roadmap for this platform." />
-</CardSection>
-
-<CardSection
-  id="security-and-operations"
-  title="Security & Operations"
-  description="Identity, secrets, certificates, and the runbooks used when something breaks."
->
-  <Card title="Pod Identity" to="/docs/security/eks-pod-identity" description="EKS Pod Identity versus IRSA, the agent, and IAM associations." />
-  <Card title="Secrets & Rotation" to="/docs/security/secrets-management-and-rotation" description="KMS envelope encryption and External Secrets Operator rotation." />
-  <Card title="Incident Catalogue" to="/docs/operations/master-incident-catalogue" description="32 real incidents with root cause, fix and prevention." />
-  <Card title="Verification & Diagnostics" to="/docs/operations/system-verification-and-diagnostics" description="CLI checks for remote_write, log queries and rollouts." />
+<CardSection title="4. Accept and operate the platform" description="Save evidence, manage changes, and remove resources in dependency order.">
+  <Card title="Acceptance" to="/docs/operations/workshop-acceptance" description="A checklist mapped directly to every workshop requirement." />
+  <Card title="Operations and cleanup" to="/docs/operations/lifecycle-and-cleanup" description="Review updates, rollbacks, pause/resume, and destruction." />
+  <Card title="Incident catalogue" to="/docs/operations/master-incident-catalogue" description="Narrow down failures using symptoms and evidence." />
 </CardSection>
 
 <CardSection
@@ -88,7 +39,7 @@ description: Guides for the EKS Core platform — architecture, add-ons, Karpent
   description="The platform is split into four repositories, one per concern."
 >
   <Card title="eks-core-terraform" to="https://github.com/tranvix0910/eks-core-terraform" description="Network and the two EKS clusters, in three Terraform layers." />
-  <Card title="eks-core-gitops" to="https://github.com/tranvix0910/eks-core-gitops" description="ArgoCD app-of-apps, add-ons, Karpenter node pools and ShopNow Helm charts." />
-  <Card title="eks-core-apps" to="https://github.com/tranvix0910/eks-core-apps" description="ShopNow service source code and the image build script." />
+  <Card title="eks-core-gitops" to="https://github.com/tranvix0910/eks-core-gitops" description="Platform manifests, ShopNow charts and the workshop examples." />
+  <Card title="eks-core-apps" to="https://github.com/tranvix0910/eks-core-apps" description="ShopNow service source code and the image build scripts." />
   <Card title="eks-core-docs" to="https://github.com/tranvix0910/eks-core-docs" description="This documentation site." />
 </CardSection>

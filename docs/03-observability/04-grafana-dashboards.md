@@ -1,26 +1,63 @@
-# Grafana Dashboards, Data Sources & Visualization
-
-Technical documentation on **Grafana v10.5.15**, multi-tenant data source configuration for Mimir and Loki, and essential pre-configured operational dashboards.
-
+---
+title: "Grafana - View and interpret centralized telemetry"
 ---
 
-## 1. Data Sources Configuration
+# Start with operational questions
 
-Grafana is installed on `eks-observability` via Helm ([grafana/values.yaml](https://github.com/tranvix0910/eks-core-gitops/blob/main/platform/observability/grafana/values.yaml)).
+You should be able to identify a service's nodes, resource consumption, restarts/errors, capacity changes, and related logs. A dashboard full of empty panels is not acceptance evidence.
 
-### Configured Data Sources:
-1. **Mimir (Prometheus Compatible)**:
-   * **URL**: `http://mimir-gateway.monitoring.svc.cluster.local:80/prometheus`
-   * **Custom HTTP Headers**: `X-Scope-OrgID: eks-workload`
-2. **Loki (Logs Compatible)**:
-   * **URL**: `http://loki-gateway.monitoring.svc.cluster.local:80`
+## 1. Access cluster 2 Grafana
 
----
+```bash
+kubectl --context eks-observability -n monitoring port-forward svc/grafana 3000:80
+```
 
-## 2. Pinned Operational Dashboards
+Open `http://localhost:3000` and use the Secret for cluster 2's Grafana release. Do not reuse URLs/passwords recorded in older documentation.
 
-The following community-standard dashboards are imported for comprehensive monitoring:
+## 2. Datasources
 
-* **Dashboard `1860` — Node Exporter Full**: CPU, memory, disk I/O, and network bandwidth per EC2 node.
-* **Dashboard `315` — Kubernetes Cluster (Prometheus)**: Cluster-wide CPU/Memory quotas, Pod counts, and namespace utilization.
-* **Dashboard `13639` — Logs / App Overview (Loki)**: Log streaming rate, error parsing, and application log search.
+| Name | URL inside cluster 2 | Required configuration |
+|---|---|---|
+| Mimir | `http://mimir-gateway.monitoring.svc.cluster.local/prometheus` | Header `X-Scope-OrgID=eks-workload` |
+| Loki | `http://loki-gateway.monitoring.svc.cluster.local` | No tenant authentication in this lab |
+| Cluster 2 Prometheus, if added | `http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090` | For cluster 2's own metrics |
+
+Grafana values contain the first two. The dashboard JSON references UID `Mimir`; set `uid: Mimir` on that datasource, and `uid: Loki` if a dashboard uses it, then review/full apply Layer 21. Display names and UIDs are different fields.
+
+Add a third datasource in the values read by Terraform, rather than only in the UI where a subsequent deployment may overwrite it.
+
+## 3. Acceptance queries in Explore
+
+Mimir:
+
+```promql
+sum(rate(container_cpu_usage_seconds_total{cluster="eks-workload",namespace="shopnow",container!="",container!="POD"}[5m])) by (pod)
+```
+
+```promql
+sum(container_memory_working_set_bytes{cluster="eks-workload",namespace="shopnow",container!="",container!="POD"}) by (pod)
+```
+
+```promql
+sum(increase(kube_pod_container_status_restarts_total{cluster="eks-workload",namespace="shopnow"}[15m])) by (pod)
+```
+
+Loki:
+
+```logql
+{cluster="eks-workload",namespace="shopnow"} |= "workshop-proof"
+```
+
+If labels are missing, inspect raw series/labels and scrape configuration. Do not remove the cluster filter merely to display a number whose origin is unclear.
+
+## 4. Use existing dashboards carefully
+
+The `enterprise-workload-dashboard` ConfigMap is created before Grafana full apply. After editing JSON, update the ConfigMap and confirm Grafana loads the new file; the chart/provider may require a controlled Pod restart.
+
+Community dashboards assume specific jobs, labels, and datasource versions. Successful import does not guarantee meaningful panels. The current “Total Request Throughput” panel falls back to CPU; remove that fallback before reporting RPS. Cores and requests/second are different units.
+
+Use HTTP RPS/error rate/latency only when applications expose those metrics and real series reach Mimir. A flat zero from `or vector(0)` may hide missing data rather than prove there are no errors.
+
+## Evidence
+
+Save the query, time range, datasource, result screenshot, and test timestamp. Include a new log marker and cluster 1 metrics. Do not capture credentials/tokens from datasource settings or terminals.

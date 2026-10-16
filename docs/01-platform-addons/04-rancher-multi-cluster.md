@@ -1,67 +1,38 @@
-# Rancher Multi-Cluster Management & NLB Architecture
-
-Technical documentation on installing **Rancher v2.14.3** on `eks-workload`, managing multi-cluster federation with `eks-observability`, and implementing a Network Load Balancer (NLB) TCP Passthrough to resolve WebSocket TLS Checksum validation in `cattle-cluster-agent`.
-
+---
+title: "Extension - Manage both clusters with Rancher"
 ---
 
-## 1. Role of Rancher in the Platform
+# Rancher is an extension lab
 
-Rancher acts as a unified single-pane-of-glass management console for both Kubernetes clusters:
-* **Local Cluster**: `eks-workload` (where Rancher server runs).
-* **Imported Cluster**: `eks-observability` (registered via `cattle-cluster-agent`).
+Rancher provides one UI for both clusters. It is not a dependency for ArgoCD, EFS, Karpenter, or telemetry acceptance; install it after completing the core path.
 
----
+## 1. Install on the infra Managed Node Group
 
-## 2. Why Internal NLB TCP Passthrough is Required Over ALB
-
-### The ALB Failure Mode:
-1. `cattle-cluster-agent` on Cluster 2 maintains a persistent, encrypted WebSocket connection (`wss://`) back to the Rancher server.
-2. The agent strictly validates the cryptographic SHA256 checksum of Rancher's root certificate (`--ca-checksum`).
-3. **ALB TLS Termination**: If routed through an ALB HTTPS listener, the ALB terminates TLS and re-encrypts with the ALB's own certificate, altering the certificate presented to the agent. This causes an instant checksum mismatch, crashing the agent with `certificate verify failed`.
-
-### The Internal NLB Solution:
-File [internal-nlb-service.yaml](https://github.com/tranvix0910/eks-core-gitops/blob/main/platform/addons/rancher/internal-nlb-service.yaml) defines a Layer 4 Network Load Balancer:
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: rancher-internal-nlb
-  namespace: cattle-system
-  annotations:
-    service.beta.kubernetes.io/aws-load-balancer-type: "external"
-    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: "ip"
-    service.beta.kubernetes.io/aws-load-balancer-scheme: "internal"
-spec:
-  type: LoadBalancer
-  ports:
-    - name: https-internal
-      port: 443
-      targetPort: 443
+```bash
+helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
+helm repo update rancher-stable
+helm --kube-context eks-workload upgrade --install rancher rancher-stable/rancher \
+  --version 2.14.3 --namespace cattle-system --create-namespace \
+  --values platform/addons/rancher/values.yaml --wait --timeout 15m
+kubectl --context eks-workload -n cattle-system get pods -o wide
 ```
-* **Mechanism**: NLB passes raw TCP traffic directly to the Rancher Pods without decrypting TLS. The TLS handshake executes directly between Agent and Server, ensuring 100% checksum consistency.
 
----
+Check the support matrix for your Kubernetes version before using this pin. Values use `extraNodeSelectorTerms` and `extraTolerations`; do not assume a chart reads `nodeSelector` unless its templates support that key.
 
-## 3. Why User Access Requires `kubectl port-forward`
+## 2. Access the UI
 
-* Rancher Web UI sets the **`Secure`** flag on session cookies.
-* The `Secure` flag forces the browser to discard cookies unless the browser itself connects via real HTTPS.
-* In lab environments lacking custom public domain names (relying on raw `*.elb.amazonaws.com` hostnames), public ALBs run plain HTTP. The browser drops the session cookies, resulting in authentication loops (`401: must authenticate`).
-* **Standard User Access Command**:
-  ```bash
-  kubectl --context eks-workload port-forward -n cattle-system svc/rancher 8443:443
-  ```
-  Access via: `https://localhost:8443` (Accept the internal self-signed certificate).
+```bash
+kubectl --context eks-workload -n cattle-system port-forward svc/rancher 8443:443
+```
 
----
+Open `https://localhost:8443`. Retrieve the bootstrap password from the Secret using Rancher's procedure and change it; do not write it into documentation. The browser needs HTTPS for `Secure` session cookies.
 
-## 4. Importing `eks-observability` into Rancher
+## 3. Import cluster 2
 
-1. Open Rancher UI -> **Cluster Management** -> **Import Existing** -> **Generic** -> Name: `eks-observability`.
-2. Configure Rancher `server-url` to point to the Internal NLB hostname (`https://<NLB_DNS>`).
-3. Switch context and execute the registration manifest:
-   ```bash
-   kubectl --context eks-observability apply -f <registration-manifest-url>
-   ```
-4. Verify that `cattle-cluster-agent` reaches `Running` status on Cluster 2 and the cluster displays `Active` in Rancher.
+Apply `platform/addons/rancher/internal-nlb-service.yaml` after comparing its SG name with Terraform output. NLB TCP passthrough preserves the Rancher TLS certificate presented to the agent. Cluster 2 nodes need network connectivity to the NLB/Pod on 443.
+
+In Rancher, set the server URL to an endpoint reachable by agents, choose Import Existing Cluster, and use the registration manifest generated by that running version's UI. The manifest contains a registration token; do not commit it. Apply it with `--context eks-observability`, then inspect `cattle-cluster-agent` logs and Rancher's Active status.
+
+## 4. Management and removal
+
+Importing a cluster does not transfer Terraform/GitOps ownership to Rancher. UI edits to an ArgoCD-managed Deployment are not durable desired state. To remove Rancher, remove the imported cluster/agent first, delete its NLB Service, then uninstall Rancher. Wait for load balancer cleanup before destroying the VPC.
