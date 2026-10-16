@@ -1,85 +1,131 @@
 ---
-title: "Step 9 - Manage, maintain, and clean up resources"
+title: "Step 5.2 — Day-2 operations and cleanup"
+sidebar_label: "5.2 Day-2 and cleanup"
 ---
 
-# Manage the environment after initial deployment
+# Step 5.2 — Day-2 operations and cleanup
 
-## 1. Routine change procedure
+:::info Step summary
+**Goal:** change the platform safely through the right owner, roll back, pause, and finally remove everything in the right order.
+:::
 
-| Change | Procedure |
+## Which tool changes what
+
+| You want to change… | Edit | Then |
+|---|---|---|
+| Network, EKS version, node group size, IAM, EFS, ECR, S3 | `eks-core-terraform/<layer>/*.tf` or `terraform.tfvars` | plan → review → apply that layer |
+| A platform chart (Karpenter, ArgoCD, Prometheus, Mimir, Loki, Grafana) | its values file in `eks-core-gitops/platform/…` | plan → apply the layer that installs it (20 or 21) |
+| Node pools | `eks-core-gitops/platform/nodepools/*.yaml` | `kubectl apply` |
+| A ShopNow service (replicas, resources, PDB, spread) | chart or values in `eks-core-gitops/apps/…` | commit + push → ArgoCD syncs |
+| A ShopNow image | code in `eks-core-apps` | new `IMAGE_TAG` → build → render → apply the Application |
+
+## Example 1 — resize the infra node group (Terraform)
+
+```bash
+# eks-core-terraform/20-cluster-workload/terraform.tfvars
+#   eks_nodegroup_desired_size = 4
+#   eks_nodegroup_max_size     = 5
+L=20-cluster-workload
+terraform -chdir="$TF_DIR/$L" plan -out="$PLAN_DIR/$L.tfplan"
+terraform -chdir="$TF_DIR/$L" show "$PLAN_DIR/$L.tfplan" | grep -E '^\s+[~+-] |Plan:'
+terraform -chdir="$TF_DIR/$L" apply "$PLAN_DIR/$L.tfplan"
+kubectl --context eks-workload get nodes -l role=infra
+```
+
+The plan must show an **update in-place** of the node group, not a replacement.
+
+## Example 2 — scale a service (GitOps)
+
+```bash
+cd "$GITOPS_DIR"
+# apps/shopnow-backend-config/shopnow-product-service-config/overlays/production/values.yaml → replicaCount: 3
+git commit -am "product-service: 3 replicas" && git push
+argocd app sync shopnow-product-service && argocd app wait shopnow-product-service --health
+kubectl --context eks-workload -n shopnow get pods -l app=shopnow-product-service -o wide
+```
+
+`workload-values.yaml` is applied last, so a value set there wins over the service overlay. Never `kubectl scale` an ArgoCD-managed Deployment — self-heal puts it back.
+
+## Example 3 — release a new image
+
+```bash
+export IMAGE_TAG=workshop-v2
+(cd "$APPS_DIR" && bash scripts/build-images.sh)
+(cd "$GITOPS_DIR" && bash examples/workshop/prepare-applications.sh)
+kubectl --context eks-workload apply -f "$GITOPS_DIR/.workshop/applications/shopnow-product-service.yaml"
+argocd app wait shopnow-product-service --health
+```
+
+Backends roll one Pod at a time (`maxUnavailable` from the chart), so the PDB and spread rules hold during the rollout.
+
+## Roll back
+
+| What | How |
 |---|---|
-| Network/EKS/IAM/EFS or Terraform-managed charts | Edit → fmt/validate → saved plan → review → apply → verify |
-| ShopNow image/config/PDB/placement | Edit Git → render → commit/push → ArgoCD diff/sync → smoke test |
-| Operator-bootstrapped NodePool | Edit manifest → review NodeClaim/drift impact → apply → verify |
-| CA/certificate | Check expiry → issue/import → trust/reload → query telemetry |
+| GitOps change | `git revert <commit>` and push; auto-sync applies the previous state |
+| Image | apply the Application rendered with the previous `IMAGE_TAG` |
+| Terraform change | revert the `.tf`/tfvars change, plan, review, apply |
+| Node pool | `kubectl apply` the previous manifest from Git |
 
-Do not apply the same state concurrently. S3 locking prevents concurrent writes but does not replace review. Do not `force-unlock` until the process holding the lock has been confirmed stopped.
+## Pause to save cost
 
-## 2. Pause and resume
+Scaling Pods to zero does not stop the bill: control planes, infra and monitoring nodes, NAT, EFS and load balancers keep running. For a real pause, destroy and recreate — the whole platform is code. Before destroying, back up anything you want to keep (database dumps, EFS files).
 
-To stop a service temporarily, change desired replicas through Git or use the managed autoscaler configuration. A plain `kubectl scale` can be immediately undone by selfHeal/KEDA.
+## Clean up — remove everything
 
-Before scaling to zero, record desired settings and inspect PDBs, data writers, Eureka/Keycloak/database dependencies. Stopping writers does not delete EFS data. EKS control planes, Managed Node Groups, NAT, EFS, and volumes can continue charging; zero Pods does not mean a stopped environment.
+Delete in this order. Each step removes what depends on the next.
 
-Resume by restoring previous values/cron/ownership, syncing, and waiting for readiness. Do not promise recovery within a fixed number of seconds.
-
-## 3. Back up before teardown or major maintenance
-
-Back up PostgreSQL and MySQL/Keycloak using database tools, EFS using a configured backup mechanism, and telemetry history according to retention needs. The EFS module currently disables automatic backup policy. A PVC or S3 versioning is not a substitute for a successful restore test.
-
-Record filesystem/bucket/volume IDs, owner, and retention. Deleting a PVC with reclaim policy Delete can remove its Access Point or EBS volume; inspect PVs before deleting the database Application.
-
-## 4. Remove applications before infrastructure
-
-Proceed only after accepting synthetic-data loss or verifying backups. Inspect ArgoCD Applications for the correct cluster/repository. Delete with explicit cascading in this order:
+### 1. Applications and test workloads (cluster 1)
 
 ```bash
-for workshop_app in workshop-proof shopnow-frontend shopnow-api-gateway \
-  shopnow-user-service shopnow-cart-service shopnow-product-service \
-  shopnow-config-server shopnow-discovery-server; do
-  argocd app delete "$workshop_app" --cascade --yes
+for app in workshop-proof shopnow-frontend shopnow-api-gateway shopnow-user-service shopnow-cart-service \
+           shopnow-product-service shopnow-config-server shopnow-discovery-server shopnow-database-services; do
+  argocd app delete "$app" --cascade --yes
 done
-argocd app delete shopnow-database-services --cascade --yes
+for f in spot-proof arm64-proof ratio-proof; do
+  kubectl --context eks-workload delete -f "$GITOPS_DIR/examples/workshop/$f.yaml" --ignore-not-found
+done
+helm --kube-context eks-workload uninstall alloy -n monitoring
+kubectl --context eks-workload delete nodepools --all     # Karpenter terminates its nodes
+kubectl --context eks-workload get nodeclaims -w          # wait until empty
 ```
 
-If an Application does not exist, inspect and skip it; do not delete the namespace to hide remaining resources. Original bootstrap Application YAML lacks finalizers, so use cascading deliberately and verify child resources are removed.
-
-Remove leftover Spot/ARM64/ratio test workloads, manually created ingress/NLB resources, and manually installed releases before deleting clusters. Retain cert-manager until required certificate export/backups are complete. Wait for AWS load balancer/ENI cleanup while controllers still run.
-
-## 5. Break circular dependencies before destroy
-
-Do not destroy clusters in an arbitrary order and assume remote state remains readable. While both still exist:
-
-1. Set Layer 21 `internal_observability_alb_name=null`, then plan/full apply to remove aliases/data lookups for the ALB about to be deleted.
-2. Prepare a Layer 20 decommissioning change: remove the `cluster_observability` data source from `data.tf` and set local `observability_node_security_group_id=null`. The conditional Rancher SG ingress becomes empty. Plan/full apply while Layer 21 exists; verify no unintended cluster/node changes.
-3. Check Layer 20 no longer references Layer 21. Save the decommission commit/diff explaining the change.
-4. Delete cluster 2's manual internal/public ingress and wait for load balancer cleanup.
-
-This is an infrastructure decommissioning change, not an operation for an active application lab. A long-term architecture should remove the circular dependency rather than retain complex teardown procedures.
-
-## 6. Destroy through saved plans
-
-Objects in Mimir/Loki buckets can block destroy. Explicitly decide whether to retain or delete data; inventory versions/delete markers if versioning was ever enabled. Do not enable force-destroy just to bypass data review.
+### 2. Load balancers created by Kubernetes (cluster 2)
 
 ```bash
-terraform -chdir=21-cluster-observability plan -destroy \
-  -out="$REPO_ROOT/.workshop/plans/destroy-observability.tfplan"
-terraform -chdir=21-cluster-observability show "$REPO_ROOT/.workshop/plans/destroy-observability.tfplan"
-terraform -chdir=21-cluster-observability apply "$REPO_ROOT/.workshop/plans/destroy-observability.tfplan"
-terraform -chdir=20-cluster-workload plan -destroy \
-  -out="$REPO_ROOT/.workshop/plans/destroy-workload.tfplan"
-terraform -chdir=20-cluster-workload show "$REPO_ROOT/.workshop/plans/destroy-workload.tfplan"
-terraform -chdir=20-cluster-workload apply "$REPO_ROOT/.workshop/plans/destroy-workload.tfplan"
-terraform -chdir=10-network plan -destroy \
-  -out="$REPO_ROOT/.workshop/plans/destroy-network.tfplan"
-terraform -chdir=10-network show "$REPO_ROOT/.workshop/plans/destroy-network.tfplan"
-terraform -chdir=10-network apply "$REPO_ROOT/.workshop/plans/destroy-network.tfplan"
+kubectl --context eks-observability delete -f "$GITOPS_DIR/.workshop/internal-ingress.yaml"
 ```
 
-Execute each plan/review/apply stage separately; do not run the entire sequence while skipping review or blockers. If Helm/Kubernetes providers cannot reach a cluster, investigate ownership/state with evidence rather than creating a same-name cluster to repair destroy.
+Wait until the internal ALB disappears from the EC2 console; Terraform cannot delete a VPC that still has load balancers.
 
-## 7. Check remaining resources
+### 3. Break the link between layers 20 and 21
 
-Review EKS clusters, Karpenter EC2 instances, ALB/NLB/target groups, EBS snapshots/volumes, EFS, EIPs/NAT, S3 objects, CLI-imported ACM certificates, private DNS, log groups, and the state backend. The three stacks do not delete the backend itself; retain it according to audit/recovery policy.
+Layer 21 holds DNS records for the ALB, and layer 20 reads layer 21's state. Before destroying:
 
-For SCP-protected Flow Logs, record remaining resources and their responsible owner. `terraform state rm` stops management without deleting AWS resources, so it is not proof of complete cleanup.
+1. Set `internal_observability_alb_name = null` in layer 21's tfvars and apply layer 21 (removes the aliases).
+2. In layer 20, remove the `cluster_observability` remote-state data source and set the observability node security group to `null`; plan and apply layer 20.
+
+### 4. Destroy, layer by layer
+
+```bash
+for L in 21-cluster-observability 20-cluster-workload 10-network; do
+  terraform -chdir="$TF_DIR/$L" plan -destroy -out="$PLAN_DIR/destroy-$L.tfplan"
+  terraform -chdir="$TF_DIR/$L" show "$PLAN_DIR/destroy-$L.tfplan" | tail -3
+  read -r -p "Apply destroy of $L? (yes/no) " ok && [ "$ok" = yes ] || break
+  terraform -chdir="$TF_DIR/$L" apply "$PLAN_DIR/destroy-$L.tfplan"
+done
+```
+
+If a destroy stops on non-empty Mimir/Loki buckets, decide whether to keep the data, empty the buckets, and plan again.
+
+### 5. Check for leftovers
+
+```bash
+aws eks list-clusters
+aws ec2 describe-instances --filters Name=tag:karpenter.sh/discovery,Values=eks-workload \
+  --query 'Reservations[].Instances[].InstanceId'
+aws elbv2 describe-load-balancers --query 'LoadBalancers[].LoadBalancerName'
+aws acm list-certificates --query 'CertificateSummaryList[].DomainName'
+```
+
+Delete the imported ACM certificate by hand (it is not managed by Terraform). The state bucket stays; remove it only when you no longer need the history.

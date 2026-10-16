@@ -20,7 +20,7 @@ aws eks describe-addon --cluster-name eks-workload --addon-name vpc-cni \
 jq -r '.addon.configurationValues // "{}"' .workshop/vpc-cni-before.json \
   > .workshop/vpc-cni-config-before.json
 kubectl --context eks-workload get nodes -o json > .workshop/nodes-before-custom-network.json
-terraform -chdir=10-network output -json
+terraform -chdir="$TF_DIR/10-network" output -json
 ```
 
 The checkout file `labs/custom-networking/vpc-cni-configuration-before-custom-networking.json` may be empty. Do not use it for rollback unless it contains the configuration saved for this lab session.
@@ -55,7 +55,7 @@ Preserve existing add-on configurationValues and add these settings:
 Increase node group capacity in a controlled change and identify the new node. Use the existing workload cluster. Label and taint the canary with `lab.eks-core/custom-network=true` and `custom-network-lab=true:NoSchedule` as described in the sample manifest. Applying the taint after the node becomes Ready leaves a scheduling window; record that limitation or configure isolation during node bootstrap.
 
 ```bash
-kubectl --context eks-workload apply -f labs/custom-networking/custom-network-test.yaml
+kubectl --context eks-workload apply -f "$GITOPS_DIR"/labs/custom-networking/custom-network-test.yaml
 kubectl --context eks-workload -n custom-network-lab get pods -o wide
 kubectl --context eks-workload -n kube-system logs -l k8s-app=aws-node -c aws-node --tail=50
 ```

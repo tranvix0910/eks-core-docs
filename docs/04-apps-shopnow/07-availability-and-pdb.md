@@ -1,86 +1,102 @@
 ---
-title: "Step 7c - Test PodDisruptionBudget and availability"
+title: "Step 3.5 — PodDisruptionBudget and availability"
+sidebar_label: "3.5 PodDisruptionBudget"
 ---
 
-# What does a PDB protect?
+# Step 3.5 — PodDisruptionBudget and availability
 
-A PDB limits voluntary evictions through the Eviction API, such as maintenance/drain operations. It does not prevent direct Pod deletion, EC2 reclamation, node failure, or loss of a singleton database. Availability also needs Ready replicas, distributed placement, recovery capacity, and correct application error handling.
+:::info Step summary
+**Goal:** prove the PodDisruptionBudget blocks an eviction that would hurt availability, allows one that would not, and that the API keeps answering during a node-style eviction.
+**Requirement:** 6. **Time:** about 20 minutes. **Run from:** `$GITOPS_DIR`.
+:::
 
-## 1. Inspect backend PDBs
+## What a PDB does
+
+A PodDisruptionBudget limits **voluntary evictions** — `kubectl drain`, node upgrades, Karpenter consolidation. Before evicting a Pod, Kubernetes checks the budget; if the eviction would leave too few healthy Pods, it is refused with HTTP 429.
+
+| Workload | PDB | With 2 Ready replicas |
+|---|---|---|
+| Each backend (except Eureka) | `maxUnavailable: 1` | one Pod may be evicted at a time |
+| `workshop-proof` (3 replicas) | `minAvailable: 2` | one eviction allowed; none if a Pod is already unready |
+
+A PDB does **not** stop a direct `kubectl delete pod`, a node crash, or a Spot reclaim. Availability against those comes from multiple replicas spread over nodes and zones ([step 3.4](pod-placement)).
 
 ```bash
 kubectl --context eks-workload -n shopnow get pdb
-kubectl --context eks-workload -n shopnow describe pdb shopnow-product-service-pdb
 ```
 
-The chart uses `maxUnavailable: 1` when replicaCount>1. Two Ready replicas usually allow one eviction; with only one Ready replica, the budget may be zero. `ALLOWED DISRUPTIONS` is a snapshot, not a constant.
+**Expected:** one PDB per backend (except Eureka) with `ALLOWED DISRUPTIONS 1`, and `workshop-proof` with `MIN AVAILABLE 2`.
 
-## 2. Test eviction blocking with an isolated workload
+## 1. An eviction is refused when the budget is 0
 
-Require three Ready `workshop-proof` Pods and its `minAvailable=2` PDB. Do not deliberately break a real backend's readiness for this test.
+Make one `workshop-proof` Pod unready (its readiness probe checks a file on EFS), so only two of three are healthy and the budget drops to 0:
 
 ```bash
-export WORKSHOP_HOLD_POD=$(kubectl --context eks-workload -n shopnow get pods \
-  -l app=workshop-proof -o jsonpath='{.items[0].metadata.name}')
-kubectl --context eks-workload -n shopnow exec "$WORKSHOP_HOLD_POD" -- \
-  sh -c 'mv "/data/$HOSTNAME" "/data/$HOSTNAME.readiness-hold"'
-kubectl --context eks-workload -n shopnow wait "pod/$WORKSHOP_HOLD_POD" \
-  --for=condition=Ready=false --timeout=1m
-kubectl --context eks-workload -n shopnow get pdb workshop-proof
+P=(kubectl --context eks-workload -n shopnow)
+HOLD=$("${P[@]}" get pods -l app=workshop-proof -o jsonpath='{.items[0].metadata.name}')
+"${P[@]}" exec "$HOLD" -- sh -c 'mv "/data/$HOSTNAME" "/data/$HOSTNAME.hold"'
+"${P[@]}" wait "pod/$HOLD" --for=condition=Ready=false --timeout=2m
+"${P[@]}" get pdb workshop-proof          # ALLOWED DISRUPTIONS 0
 ```
 
-Wait for `ALLOWED DISRUPTIONS=0`. Select a different Pod for eviction:
+Now ask the API to evict a **different**, healthy Pod — exactly what `kubectl drain` does:
 
 ```bash
-export WORKSHOP_EVICT_POD=$(kubectl --context eks-workload -n shopnow get pods \
-  -l app=workshop-proof -o json | jq -r --arg hold "$WORKSHOP_HOLD_POD" \
-  '.items[] | select(.metadata.name != $hold) | .metadata.name' | head -n 1)
-jq -n --arg pod "$WORKSHOP_EVICT_POD" \
-  '{apiVersion:"policy/v1",kind:"Eviction",metadata:{name:$pod,namespace:"shopnow"}}' \
-  > .workshop/eviction.json
-kubectl --context eks-workload create \
-  --raw "/api/v1/namespaces/shopnow/pods/$WORKSHOP_EVICT_POD/eviction" \
-  -f .workshop/eviction.json
+VICTIM=$("${P[@]}" get pods -l app=workshop-proof -o json | jq -r --arg h "$HOLD" '.items[] | select(.metadata.name!=$h) | .metadata.name' | head -1)
+evict() { kubectl --context eks-workload create --raw "/api/v1/namespaces/shopnow/pods/$1/eviction" -f - <<JSON
+{"apiVersion":"policy/v1","kind":"Eviction","metadata":{"name":"$1","namespace":"shopnow"}}
+JSON
+}
+evict "$VICTIM" 2>&1 | tee "$EVIDENCE_DIR/pdb-refused.txt"
 ```
 
-**Expected:** the API rejects the request with 429/PDB violation, and the target Pod remains. For any other response, save it and verify the PDB selector/status/RBAC; an arbitrary error does not prove PDB protection.
+**Expected:** `Cannot evict pod as it would violate the pod's disruption budget` (HTTP 429), and the Pod is still running.
 
-## 3. Restore readiness and test an allowed eviction
+## 2. An eviction is allowed when the budget is 1
 
-Always restore readiness, even if the previous result was unexpected:
+Restore the unready Pod, wait for the budget to return to 1, and repeat:
 
 ```bash
-kubectl --context eks-workload -n shopnow exec "$WORKSHOP_HOLD_POD" -- \
-  sh -c 'mv "/data/$HOSTNAME.readiness-hold" "/data/$HOSTNAME"'
-kubectl --context eks-workload -n shopnow wait "pod/$WORKSHOP_HOLD_POD" \
-  --for=condition=Ready --timeout=1m
-kubectl --context eks-workload -n shopnow get pdb workshop-proof
+"${P[@]}" exec "$HOLD" -- sh -c 'mv "/data/$HOSTNAME.hold" "/data/$HOSTNAME"'
+"${P[@]}" wait "pod/$HOLD" --for=condition=Ready --timeout=2m
+"${P[@]}" get pdb workshop-proof          # ALLOWED DISRUPTIONS 1
+
+evict "$VICTIM" | tee "$EVIDENCE_DIR/pdb-allowed.txt"
+"${P[@]}" rollout status deployment/workshop-proof --timeout=10m
+"${P[@]}" get pods -l app=workshop-proof -o wide
 ```
 
-When the budget returns to 1 and all three Pods are Ready, submit the saved request again. It should succeed; the Deployment replaces the Pod and returns to three Ready replicas:
+**Expected:** the eviction succeeds, the Deployment creates a replacement, and three Pods are Ready again.
+
+## 3. The API stays up during an eviction
+
+Keep the gateway port-forward running (`svc/shopnow-api-gateway-service 5860:5860`). In one terminal, poll the API:
 
 ```bash
-kubectl --context eks-workload create \
-  --raw "/api/v1/namespaces/shopnow/pods/$WORKSHOP_EVICT_POD/eviction" \
-  -f .workshop/eviction.json
-kubectl --context eks-workload -n shopnow rollout status deployment/workshop-proof --timeout=10m
-kubectl --context eks-workload -n shopnow get pods -l app=workshop-proof -o wide
-```
-
-## 4. Test API availability separately
-
-Keep a gateway port-forward in another terminal. Record HTTP status codes while performing **one valid product Pod eviction**, with at least two product replicas Ready and its PDB permitting disruption:
-
-```bash
-for request in $(seq 1 120); do
-  date -u +%FT%TZ
-  curl --max-time 3 -s -o /dev/null -w '%{http_code}\n' http://localhost:5860/product
+for i in $(seq 1 90); do
+  printf '%s %s\n' "$(date -u +%T)" "$(curl -s -o /dev/null -m 3 -w '%{http_code}' http://localhost:5860/product)"
   sleep 1
-done | tee .workshop/evidence/product-availability.txt
+done | tee "$EVIDENCE_DIR/availability.txt"
 ```
 
-Select the correct product Pod and create an Eviction body using its name/namespace, following the earlier example. Proceed only when the budget allows and dependencies are healthy. Port-forward binds to a Pod and can disconnect if that gateway Pod is replaced; this test evicts product, not gateway. Record failures and recovery time rather than concluding that a PDB guarantees zero downtime.
+In another terminal, evict one product Pod through the budget:
 
-Only attempt node drain after reviewing every Pod on the node and database/EBS impact. The basic lab does not include a cluster-wide drain command.
+```bash
+evict "$("${P[@]}" get pods -l app=shopnow-product-service -o jsonpath='{.items[0].metadata.name}')"
+```
 
-Reference: [Kubernetes disruptions and PDBs](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/).
+**Expected:** the eviction is accepted (budget 1), and the poll shows `200` throughout, or at most a brief gap while the gateway refreshes its Eureka view. Count the non-200 lines and report them.
+
+## 4. A real drain (optional)
+
+`kubectl drain` evicts every Pod on a node through the same budgets. Try it on a pool 2 node that holds no database:
+
+```bash
+kubectl --context eks-workload get pods -n shopnow -o wide | grep <node-name>
+kubectl --context eks-workload drain <node-name> --ignore-daemonsets --delete-emptydir-data
+kubectl --context eks-workload uncordon <node-name>
+```
+
+Drain waits whenever an eviction would break a budget, then continues as replacements become Ready.
+
+**Next:** [4.1 Private TLS and DNS](../platform-addons/cert-manager-and-internal-tls)

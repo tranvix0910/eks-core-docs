@@ -1,63 +1,70 @@
 ---
-title: "Grafana - View and interpret centralized telemetry"
+title: "Step 4.4 — Observe cluster 1 from Grafana"
+sidebar_label: "4.4 Grafana"
 ---
 
-# Start with operational questions
+# Step 4.4 — Observe cluster 1 from Grafana
 
-You should be able to identify a service's nodes, resource consumption, restarts/errors, capacity changes, and related logs. A dashboard full of empty panels is not acceptance evidence.
+:::info Step summary
+**Goal:** query cluster 1 metrics and logs from the central Grafana in cluster 2.
+**Requirements:** 8, 9. **Time:** about 10 minutes.
+:::
 
-## 1. Access cluster 2 Grafana
+## 1. Open Grafana
 
 ```bash
 kubectl --context eks-observability -n monitoring port-forward svc/grafana 3000:80
+kubectl --context eks-observability -n monitoring get secret grafana \
+  -o jsonpath='{.data.admin-password}' | base64 --decode; echo
 ```
 
-Open `http://localhost:3000` and use the Secret for cluster 2's Grafana release. Do not reuse URLs/passwords recorded in older documentation.
+Open http://localhost:3000 and log in as `admin`.
 
 ## 2. Datasources
 
-| Name | URL inside cluster 2 | Required configuration |
+Terraform provisions them from `platform/observability/grafana/values.yaml`:
+
+| Datasource | URL (inside cluster 2) | Notes |
 |---|---|---|
-| Mimir | `http://mimir-gateway.monitoring.svc.cluster.local/prometheus` | Header `X-Scope-OrgID=eks-workload` |
-| Loki | `http://loki-gateway.monitoring.svc.cluster.local` | No tenant authentication in this lab |
-| Cluster 2 Prometheus, if added | `http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090` | For cluster 2's own metrics |
+| Mimir | `http://mimir-gateway.monitoring.svc.cluster.local/prometheus` | header `X-Scope-OrgID: eks-workload` |
+| Loki | `http://loki-gateway.monitoring.svc.cluster.local` | — |
 
-Grafana values contain the first two. The dashboard JSON references UID `Mimir`; set `uid: Mimir` on that datasource, and `uid: Loki` if a dashboard uses it, then review/full apply Layer 21. Display names and UIDs are different fields.
+To add or change a datasource, edit that values file and re-apply layer 21; changes made only in the UI are lost on the next deploy.
 
-Add a third datasource in the values read by Terraform, rather than only in the UI where a subsequent deployment may overwrite it.
+## 3. Queries that prove the requirement
 
-## 3. Acceptance queries in Explore
-
-Mimir:
+In **Explore**, choose **Mimir**:
 
 ```promql
-sum(rate(container_cpu_usage_seconds_total{cluster="eks-workload",namespace="shopnow",container!="",container!="POD"}[5m])) by (pod)
+# CPU per ShopNow Pod (cores)
+sum by (pod) (rate(container_cpu_usage_seconds_total{cluster="eks-workload", namespace="shopnow", container!=""}[5m]))
 ```
 
 ```promql
-sum(container_memory_working_set_bytes{cluster="eks-workload",namespace="shopnow",container!="",container!="POD"}) by (pod)
+# Memory per ShopNow Pod
+sum by (pod) (container_memory_working_set_bytes{cluster="eks-workload", namespace="shopnow", container!=""})
 ```
 
 ```promql
-sum(increase(kube_pod_container_status_restarts_total{cluster="eks-workload",namespace="shopnow"}[15m])) by (pod)
+# Cluster 1 nodes (infra + every Karpenter pool)
+count(kube_node_info{cluster="eks-workload"})
 ```
 
-Loki:
+Choose **Loki**:
 
 ```logql
-{cluster="eks-workload",namespace="shopnow"} |= "workshop-proof"
+{cluster="eks-workload", namespace="shopnow"} |= "workshop-proof"
 ```
 
-If labels are missing, inspect raw series/labels and scrape configuration. Do not remove the cluster filter merely to display a number whose origin is unclear.
+**Expected:** data for the last 15 minutes in all four. Save a screenshot of each with the time range visible as evidence.
 
-## 4. Use existing dashboards carefully
+## 4. Dashboard
 
-The `enterprise-workload-dashboard` ConfigMap is created before Grafana full apply. After editing JSON, update the ConfigMap and confirm Grafana loads the new file; the chart/provider may require a controlled Pod restart.
+The **Enterprise Workload 360** dashboard (loaded in step 1.3) shows Pods, nodes, CPU, memory and restarts for cluster 1. Panels need the datasource UID `Mimir`; if a panel says *datasource not found*, set `uid: Mimir` on the Mimir datasource in the values file and re-apply layer 21.
 
-Community dashboards assume specific jobs, labels, and datasource versions. Successful import does not guarantee meaningful panels. The current “Total Request Throughput” panel falls back to CPU; remove that fallback before reporting RPS. Cores and requests/second are different units.
+## Ideas for more
 
-Use HTTP RPS/error rate/latency only when applications expose those metrics and real series reach Mimir. A flat zero from `or vector(0)` may hide missing data rather than prove there are no errors.
+- HTTP request rate and latency need the services to expose `/actuator/prometheus` and a ServiceMonitor; the five Spring MVC services already include Micrometer.
+- Alert rules can be added to Mimir's ruler and routed through Alertmanager.
 
-## Evidence
-
-Save the query, time range, datasource, result screenshot, and test timestamp. Include a new log marker and cluster 1 metrics. Do not capture credentials/tokens from datasource settings or terminals.
+**Next:** [5.1 Acceptance](../operations/workshop-acceptance)

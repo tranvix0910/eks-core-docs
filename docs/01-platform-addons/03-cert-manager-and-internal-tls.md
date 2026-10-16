@@ -1,100 +1,142 @@
 ---
-title: "Step 8a - Connect both clusters with TLS and private DNS"
+title: "Step 4.1 — Connect the clusters: private TLS and DNS"
+sidebar_label: "4.1 Private TLS and DNS"
 ---
 
-# Prepare a telemetry path with certificate verification
+# Step 4.1 — Connect the clusters: private TLS and DNS
 
-**Input:** both clusters and receiver Pods exist; cert-manager runs in cluster 1. **Output:** cluster 1 clients trust the CA and reach Mimir/Loki through private DNS.
+:::info Step summary
+**Goal:** a private, certificate-verified endpoint in cluster 2 — `mimir.observability.internal:9009` and `loki.observability.internal:3100` — that cluster 1 can send to.
+**Requirement:** 9 (ship telemetry to cluster 2). **Time:** about 20 minutes. **Run from:** `$GITOPS_DIR`.
+:::
 
-## 1. Create the CA and certificate
+## The path you are building
 
-```bash
-kubectl --context eks-workload apply -f platform/observability/tls/ca-issuer.yaml
-kubectl --context eks-workload -n cert-manager wait certificate/observability-ca \
-  --for=condition=Ready --timeout=3m
-kubectl --context eks-workload apply -f platform/observability/tls/alb-cert.yaml
-kubectl --context eks-workload -n cert-manager wait certificate/observability-alb-tls \
-  --for=condition=Ready --timeout=3m
+```mermaid
+flowchart LR
+  subgraph C1[eks-workload]
+    Prom[Prometheus] 
+    Alloy[Alloy]
+    CA[("Secret observability-alb-tls<br/>ca.crt only")]
+  end
+  subgraph VPC[Private Route 53 zone observability.internal]
+    DNS["mimir. / loki.observability.internal<br/>→ alias to ALB"]
+  end
+  subgraph C2[eks-observability]
+    ALB["Internal ALB<br/>HTTPS 9009, 3100<br/>ACM certificate"]
+    MG[mimir-gateway]
+    LG[loki-gateway]
+  end
+  Prom -- "HTTPS, verifies CA" --> DNS --> ALB
+  Alloy -- "HTTPS, verifies CA" --> DNS
+  ALB -- ":9009" --> MG
+  ALB -- ":3100" --> LG
 ```
 
-SANs must match `mimir.observability.internal` and `loki.observability.internal`, or hostnames consistently substituted throughout your values. The root CA Secret is `observability-ca-secret`; the leaf Secret is `observability-alb-tls`.
+1. cert-manager on cluster 1 creates a private CA and a certificate for both hostnames.
+2. The certificate is imported into **ACM**, because an ALB can only use ACM certificates.
+3. An **internal** ALB in cluster 2 terminates TLS and forwards to the Mimir and Loki gateways.
+4. Route 53 aliases the two hostnames to the ALB inside the VPC.
+5. Prometheus and Alloy get only the CA certificate, so they can verify the ALB.
 
-## 2. Export securely and import into ACM
+## 1. Issue the CA and certificate
 
-Keep the private key outside Git. The files below are local data; `acm.tf` is commented out and does not manage this certificate. This procedure uses AWS CLI as the certificate owner.
+```bash
+kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/observability/tls/ca-issuer.yaml"
+kubectl --context eks-workload -n cert-manager wait certificate/observability-ca --for=condition=Ready --timeout=3m
+kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/observability/tls/alb-cert.yaml"
+kubectl --context eks-workload -n cert-manager wait certificate/observability-alb-tls --for=condition=Ready --timeout=3m
+```
+
+## 2. Import the certificate into ACM
+
+The private key is written to a temporary directory that only you can read. Never copy it into a repository.
 
 ```bash
 umask 077
-export WORKSHOP_CERT_DIR=$(mktemp -d "${TMPDIR:-/tmp}/eks-workshop-certs.XXXXXX")
-kubectl --context eks-workload -n cert-manager get secret observability-alb-tls \
-  -o jsonpath='{.data.tls\.crt}' | base64 --decode > "$WORKSHOP_CERT_DIR/cert.pem"
-kubectl --context eks-workload -n cert-manager get secret observability-alb-tls \
-  -o jsonpath='{.data.tls\.key}' | base64 --decode > "$WORKSHOP_CERT_DIR/key.pem"
-kubectl --context eks-workload -n cert-manager get secret observability-alb-tls \
-  -o jsonpath='{.data.ca\.crt}' | base64 --decode > "$WORKSHOP_CERT_DIR/chain.pem"
-openssl x509 -in "$WORKSHOP_CERT_DIR/cert.pem" -noout -dates -ext subjectAltName
-export WORKSHOP_CERT_ARN=$(aws acm import-certificate --region "$AWS_REGION" \
-  --certificate "fileb://$WORKSHOP_CERT_DIR/cert.pem" \
-  --private-key "fileb://$WORKSHOP_CERT_DIR/key.pem" \
-  --certificate-chain "fileb://$WORKSHOP_CERT_DIR/chain.pem" \
-  --query CertificateArn --output text)
+export CERT_DIR=$(mktemp -d)
+S=(kubectl --context eks-workload -n cert-manager get secret observability-alb-tls -o)
+"${S[@]}" jsonpath='{.data.tls\.crt}' | base64 --decode > "$CERT_DIR/cert.pem"
+"${S[@]}" jsonpath='{.data.tls\.key}' | base64 --decode > "$CERT_DIR/key.pem"
+"${S[@]}" jsonpath='{.data.ca\.crt}'  | base64 --decode > "$CERT_DIR/chain.pem"
+openssl x509 -in "$CERT_DIR/cert.pem" -noout -ext subjectAltName
+
+export CERT_ARN=$(aws acm import-certificate --region "$AWS_REGION" \
+  --certificate "fileb://$CERT_DIR/cert.pem" --private-key "fileb://$CERT_DIR/key.pem" \
+  --certificate-chain "fileb://$CERT_DIR/chain.pem" --query CertificateArn --output text)
+echo "$CERT_ARN"
 ```
 
-For renewal, use `--certificate-arn` to re-import into the existing ARN instead of creating a new ARN every time. To move ownership to Terraform, import the resource into state first; do not manage the same certificate through both paths.
+**Expected:** the SAN list shows both `observability.internal` hostnames, and you get an ACM ARN.
 
-## 3. Create internal ingress with the correct ARN and SG
+## 3. Create the internal ALB
+
+The ingress manifest has a placeholder for the certificate ARN. Fill it in and apply to cluster 2:
 
 ```bash
-export WORKSHOP_INGEST_SG=$(terraform -chdir=21-cluster-observability output -raw internal_alb_security_group_id)
-python3 - <<'PATCH'
-import os,re
-from pathlib import Path
-src=Path('platform/observability/ingress/internal-ingress.yaml').read_text()
-src=re.sub(r'(alb.ingress.kubernetes.io/certificate-arn:).*',r'\1 '+os.environ['WORKSHOP_CERT_ARN'],src)
-src=re.sub(r'(alb.ingress.kubernetes.io/security-groups:).*',r'\1 '+os.environ['WORKSHOP_INGEST_SG'],src)
-Path('.workshop/internal-ingress.yaml').write_text(src)
-PATCH
-kubectl --context eks-observability apply -f .workshop/internal-ingress.yaml
-kubectl --context eks-observability -n monitoring get ingress mimir loki -w
+mkdir -p "$GITOPS_DIR/.workshop"
+sed "s|certificate-arn: .*|certificate-arn: $CERT_ARN|" \
+  "$GITOPS_DIR/platform/observability/ingress/internal-ingress.yaml" > "$GITOPS_DIR/.workshop/internal-ingress.yaml"
+kubectl --context eks-observability apply -f "$GITOPS_DIR/.workshop/internal-ingress.yaml"
+kubectl --context eks-observability -n monitoring get ingress mimir loki -w    # wait for ADDRESS, then Ctrl+C
 ```
 
-Wait for `ADDRESS`, then stop watching with Ctrl+C. Persist the ARN/SG mapping in your managed environment configuration if you need to recreate it later; `.workshop` output is not the application's GitOps source.
+The Load Balancer Controller creates one internal ALB (both Ingresses share the group `eks-observability-internal`) with the security group `eks-observability-internal-alb` that Terraform made.
 
-## 4. Create private DNS aliases
+## 4. Point the private DNS names at the ALB
 
 ```bash
-export WORKSHOP_INGEST_DNS=$(kubectl --context eks-observability -n monitoring get ingress mimir \
-  -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-export WORKSHOP_INGEST_ALB=$(aws elbv2 describe-load-balancers --region "$AWS_REGION" \
-  --query "LoadBalancers[?DNSName=='${WORKSHOP_INGEST_DNS}'].LoadBalancerName | [0]" --output text)
-printf '%s\n' "$WORKSHOP_INGEST_ALB"
+ALB_DNS=$(kubectl --context eks-observability -n monitoring get ingress mimir -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+aws elbv2 describe-load-balancers --query "LoadBalancers[?DNSName=='$ALB_DNS'].LoadBalancerName" --output text
 ```
 
-Set Layer 21's `internal_observability_alb_name` tfvar to the discovered name, then plan/review/full apply Layer 21. Terraform creates two A aliases in the private hosted zone. Use the ALB name, not its DNS string. The ALB scheme must be `internal`.
+Put that **name** into `$TF_DIR/21-cluster-observability/terraform.tfvars`:
 
-## 5. Provide trust to Prometheus and Alloy
+```hcl
+internal_observability_alb_name = "k8s-eksobservabilityin-…"
+```
 
-Secrets do not propagate automatically from `cert-manager` to `monitoring`. Clients need only the public CA; do not copy the leaf private key into monitoring:
+Then apply layer 21, which creates the two alias records:
+
+```bash
+L=21-cluster-observability
+terraform -chdir="$TF_DIR/$L" plan -out="$PLAN_DIR/$L-dns.tfplan"
+terraform -chdir="$TF_DIR/$L" apply "$PLAN_DIR/$L-dns.tfplan"
+```
+
+## 5. Give the senders the CA
+
+Prometheus and Alloy read the CA from the Secret `observability-alb-tls` in `monitoring` on cluster 1. They need only the public CA — not the private key:
 
 ```bash
 kubectl --context eks-workload -n monitoring create secret generic observability-alb-tls \
-  --from-file=ca.crt="$WORKSHOP_CERT_DIR/chain.pem" \
-  --dry-run=client -o yaml | kubectl --context eks-workload apply -f -
-kubectl --context eks-workload -n monitoring get pods
+  --from-file=ca.crt="$CERT_DIR/chain.pem" --dry-run=client -o yaml \
+  | kubectl --context eks-workload apply -f -
+kubectl --context eks-workload -n monitoring rollout restart statefulset prometheus-prometheus-kube-prometheus-prometheus
 ```
 
-Prometheus mounts `ca.crt` at `/etc/prometheus/secrets/observability-alb-tls/ca.crt`; Alloy uses `/etc/alloy/ca/ca.crt`. A Secret volume update does not guarantee the client has reloaded its CA; verify and perform a controlled restart when needed.
+## Verify
 
-## 6. Verify from cluster 1
+Call both endpoints from a Pod on cluster 1, verifying the certificate with the CA:
 
 ```bash
-kubectl --context eks-workload -n monitoring run telemetry-dns-check \
-  --image=public.ecr.aws/docker/library/busybox:1.37.0 --restart=Never \
-  --command -- sh -c 'nslookup mimir.observability.internal; nslookup loki.observability.internal'
-kubectl --context eks-workload -n monitoring logs telemetry-dns-check
-kubectl --context eks-workload -n monitoring delete pod telemetry-dns-check
+kubectl --context eks-workload -n monitoring run tls-check --rm -i --restart=Never \
+  --image=curlimages/curl:8.11.1 --env="CA=$(cat "$CERT_DIR/chain.pem")" \
+  --overrides='{"spec":{"nodeSelector":{"role":"infra"}}}' -- sh -c '
+    printf "%s\n" "$CA" > /tmp/ca.crt
+    for u in https://mimir.observability.internal:9009/ready https://loki.observability.internal:3100/; do
+      curl -sS --cacert /tmp/ca.crt -o /dev/null -w "%{remote_ip} %{http_code} $u\n" "$u"
+    done'
 ```
 
-If taints prevent the temporary Pod from scheduling, run the check on infra capacity or use a test manifest with an appropriate toleration. Verify actual HTTPS traffic through Prometheus remote_write and Alloy logs in subsequent labs. Successful DNS resolution alone does not prove TLS or ingestion works.
+**Expected:** two lines with a private `10.20.x.x` address and HTTP `200`. A certificate error here means the SANs or the CA do not match. Then check the real senders:
 
-**Completion gate:** DNS resolves to the private endpoint, SANs match, clients trust the CA, and receivers no longer report 401/403/5xx errors. `insecure_skip_verify` is not an acceptance criterion.
+```bash
+kubectl --context eks-workload -n monitoring logs prometheus-prometheus-kube-prometheus-prometheus-0 -c prometheus --since=5m | grep -i remote
+```
+
+No `x509`, `401`, `403` or `connection refused` errors means the TLS path works. Metrics are verified end to end in [step 4.2](../observability/mimir-metrics-pipeline).
+
+Delete the local key material when you are done: `rm -rf "$CERT_DIR"`.
+
+**Next:** [4.2 Metrics → Mimir](../observability/mimir-metrics-pipeline)

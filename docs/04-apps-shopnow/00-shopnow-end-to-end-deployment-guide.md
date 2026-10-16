@@ -1,103 +1,155 @@
 ---
-title: "Step 6 - Deploy microservices through ArgoCD"
+title: "Step 3.2 — Deploy the microservices with ArgoCD"
+sidebar_label: "3.2 Deploy with ArgoCD"
 ---
 
-# Deploy ShopNow on the mixed node pool
+# Step 3.2 — Deploy the microservices with ArgoCD
 
-**Input:** both clusters; ArgoCD; Ready NodePools; `efs-sc`; seven ECR images with a common tag; code/values pushed to the revision ArgoCD reads. TLS/telemetry can be completed after application deployment, but workshop acceptance remains incomplete until that path works.
+:::info Step summary
+**Goal:** ShopNow running on pool 2, every service deployed and kept in sync by ArgoCD.
+**Requirements:** 3 (microservices on pool 2), 7 (ArgoCD). **Time:** about 30 minutes. **Run from:** `$GITOPS_DIR`.
+:::
 
-## 1. Prepare configuration sources
+## How a service gets deployed
 
-Read the [image build lab](04-docker-build-multi-arch-and-ci.md) if images are missing. This repository has six backend charts and one frontend chart; do not deploy application Deployments outside ArgoCD with `kubectl apply`.
+```mermaid
+flowchart LR
+  subgraph Git["eks-core-gitops"]
+    Chart["apps/…-chart<br/>Helm chart"]
+    Over["apps/…-config/overlays/production<br/>service values"]
+    WS["examples/workshop/workload-values.yaml<br/>workshop values"]
+  end
+  Render["prepare-applications.sh<br/>(image repo + tag)"] --> AppYaml["ArgoCD Application"]
+  AppYaml --> Argo[ArgoCD]
+  Chart --> Argo
+  Over --> Argo
+  WS --> Argo
+  Argo -- "helm template + apply,<br/>auto-sync, self-heal" --> K8s["namespace shopnow<br/>on pool 2"]
+```
 
-`examples/workshop/workload-values.yaml` enables EFS for every backend, selects the mixed pool, and configures two replicas and a PDB. `discovery-values.yaml` keeps Eureka at one replica because peer replication is not configured; report this exception rather than treating two independent registries as HA.
+Each service is one ArgoCD **Application** that renders its Helm chart with three value files, in order. The last one, `workload-values.yaml`, carries the workshop requirements for all six backends:
 
-Review your changes, then commit/push the required configuration files. Do not use `git add .` in a checkout containing certificates/state/plans. ArgoCD reads remote content only; the Application renderer does not push automatically.
+```yaml
+replicaCount: 2
+persistence:            # requirement 4 — EFS volume at /data
+  enabled: true
+  storageClass: efs-sc
+  size: 5Gi
+  mountPath: /data
+nodeSelector:           # requirement 3 — run on pool 2
+  workload: microservices
+tolerations:
+  - key: workload
+    operator: Equal
+    value: microservices
+    effect: NoSchedule
+podDisruptionBudget:    # requirement 6
+  enabled: true
+  maxUnavailable: 1
+```
 
-## 2. Render environment-specific Applications
+Eureka (discovery) additionally uses `discovery-values.yaml`: one replica and no PDB, because this Eureka setup has no peer replication.
+
+Applications use automated sync with `prune` and `selfHeal`: ArgoCD reverts manual `kubectl` edits to anything it manages. Change Git instead.
+
+## 1. Create the AppProject
 
 ```bash
+kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/addons/argocd/appproject-shopnow.yaml"
+```
+
+The `shopnow` project allows deploying into the `shopnow` namespace only.
+
+## 2. Render the Applications
+
+The script fills in your Git URL, revision, ECR image repository and tag. It writes files only; it does not apply or push anything.
+
+```bash
+cd "$GITOPS_DIR"
 bash examples/workshop/prepare-applications.sh
+ls .workshop/applications
 ```
 
-The script writes only `.workshop/applications` and does not apply anything. It uses `WORKSHOP_REPO_URL`, `WORKSHOP_REVISION`, `AWS_ACCOUNT_ID`, `AWS_REGION`, and `IMAGE_TAG`; preserves monorepo paths; and adds workshop values. Private repositories need credentials configured through your team's ArgoCD mechanism, never a token embedded in repoURL.
+**Expected:** nine files — `shopnow-database-services`, `discovery-server`, `config-server`, `product-service`, `cart-service`, `user-service`, `api-gateway`, `frontend`, and `workshop-proof.json`.
 
-Review rendered files, especially `repoURL`, `targetRevision`, `valueFiles`, `image.repository`, `image.tag`, project, and destination. Do not let legacy CI update a separate configuration repository while Applications read this monorepo.
+## 3. Log in to ArgoCD
 
-## 3. Create the AppProject and sign in
+In a separate terminal: `kubectl --context eks-workload -n argocd port-forward svc/argocd-server 8080:80`
 
 ```bash
-kubectl --context eks-workload apply -f platform/addons/argocd/appproject-shopnow.yaml
-kubectl --context eks-workload -n argocd port-forward svc/argocd-server 8080:80
+argocd login localhost:8080 --plaintext --username admin \
+  --password "$(kubectl --context eks-workload -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 --decode)"
 ```
 
-In another terminal:
+## 4. Deploy in dependency order
+
+Each group must be Healthy before the next one starts — the services need their databases, then Eureka and the config server.
 
 ```bash
-argocd login localhost:8080 --plaintext
+A=.workshop/applications
+deploy() { for app in "$@"; do kubectl --context eks-workload apply -f "$A/$app.yaml"; done
+           for app in "$@"; do argocd app wait "$app" --sync --health --timeout 900; done; }
+
+deploy shopnow-database-services                         # PostgreSQL, MySQL, Keycloak
+deploy shopnow-discovery-server shopnow-config-server    # Eureka, Spring Cloud Config
+deploy shopnow-product-service shopnow-cart-service shopnow-user-service shopnow-api-gateway
+deploy shopnow-frontend
 ```
 
-Use your own credentials. The current AppProject permits `sourceRepos: '*'`; narrow that to the workshop repository before sharing the environment. It permits namespace `shopnow` and selected resource groups. A fork must be included in allowed source repositories.
-
-## 4. Deploy databases first
+While the backends start, watch Karpenter create pool 2 nodes:
 
 ```bash
-kubectl --context eks-workload apply -f .workshop/applications/shopnow-database-services.yaml
-argocd app wait shopnow-database-services --sync --health --timeout 900
-kubectl --context eks-workload -n shopnow get deployment,pods,pvc
+kubectl --context eks-workload get nodeclaims -w
 ```
 
-PostgreSQL, MySQL, and Keycloak must be Ready, with database gp3 PVCs Bound. Single-replica databases use On-Demand/EBS; EFS serves microservice directories. Sample credentials are for synthetic data only; replace them with Secrets before using a shared environment with real data.
+The frontend is a blue-green Argo Rollout with manual promotion; on first deployment it becomes Healthy directly. Later updates wait for promotion ([blue-green](blue-green-argo-rollouts)).
 
-## 5. Config and discovery
+## Verify — ArgoCD (requirement 7)
 
 ```bash
-kubectl --context eks-workload apply -f .workshop/applications/shopnow-discovery-server.yaml
-kubectl --context eks-workload apply -f .workshop/applications/shopnow-config-server.yaml
-argocd app wait shopnow-discovery-server --sync --health --timeout 900
-argocd app wait shopnow-config-server --sync --health --timeout 900
+argocd app list -p shopnow | tee "$EVIDENCE_DIR/argocd-apps.txt"
 ```
 
-Wait for foundational backends to become Healthy before API deployment. Sync-wave annotations on independent Applications do not replace these gates.
+**Expected:** every Application `Synced` and `Healthy`, pointing at your repository and revision.
 
-## 6. Four API backends
+## Verify — microservices on pool 2 (requirement 3)
 
 ```bash
-kubectl --context eks-workload apply -f .workshop/applications/shopnow-product-service.yaml
-kubectl --context eks-workload apply -f .workshop/applications/shopnow-cart-service.yaml
-kubectl --context eks-workload apply -f .workshop/applications/shopnow-user-service.yaml
-kubectl --context eks-workload apply -f .workshop/applications/shopnow-api-gateway.yaml
-argocd app wait shopnow-product-service --sync --health --timeout 900
-argocd app wait shopnow-cart-service --sync --health --timeout 900
-argocd app wait shopnow-user-service --sync --health --timeout 900
-argocd app wait shopnow-api-gateway --sync --health --timeout 900
+kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
+  | select(.metadata.labels.app // "" | test("service|gateway|server"))
+  | [.metadata.name, .spec.nodeName] | @tsv' \
+| while IFS=$'\t' read -r pod node; do
+    printf '%-60s %s\n' "$pod" "$(kubectl --context eks-workload get node "$node" \
+      -o jsonpath='{.metadata.labels.karpenter\.sh/nodepool}/{.metadata.labels.karpenter\.sh/capacity-type}')"
+  done | tee "$EVIDENCE_DIR/pool2-placement.txt"
 ```
 
-The cart Application name differs from its Deployment's `global.appName`: `shopnow-cart-service` creates `shopnow-shopping-cart-service-deployment`. Use the correct name for rollout/HPA inspection.
+**Expected:** every backend Pod shows `ms-od/on-demand` or `ms-spot/spot`. None is on an `infra`, `batch-spot` or `arm64` node.
 
-## 7. Frontend
+## Verify — the application works
 
 ```bash
-kubectl --context eks-workload apply -f .workshop/applications/shopnow-frontend.yaml
-argocd app get shopnow-frontend
-kubectl --context eks-workload -n shopnow get rollouts
+kubectl --context eks-workload -n shopnow port-forward svc/shopnow-api-gateway-service 5860:5860   # terminal 1
+curl -fsS http://localhost:5860/product                                                           # terminal 2
+kubectl --context eks-workload -n shopnow port-forward svc/shopnow-frontend-service 8082:80          # terminal 3
 ```
 
-The frontend uses blue-green Rollout with `autoPromotionEnabled=false`. A valid update may be paused awaiting promotion; follow the [blue-green lab](03-blue-green-argo-rollouts.md) instead of manually changing replicas to force a green status.
+`/product` returns JSON (an empty list `[]` is fine on a fresh database). Open http://localhost:8082 for the shop.
 
-## 8. Verify functionality and placement
+| Symptom | Check |
+|---|---|
+| `ImagePullBackOff` | Image tag in the Application (`argocd app manifests <app> \| grep image:`); the tag exists in ECR |
+| Pod `Pending`, no NodeClaim | Pod selector/toleration vs pool 2 labels; Karpenter logs |
+| Backend `CrashLoopBackOff` at start | Database or Eureka not ready yet; `kubectl -n shopnow logs <pod>` |
+| Application `OutOfSync` forever | `argocd app diff <app>`; a resource kind not allowed by the AppProject |
+| PVC `Pending` | [Step 3.3](efs-persistent-volumes) troubleshooting |
 
-```bash
-kubectl --context eks-workload -n shopnow get pods -o wide
-kubectl --context eks-workload get nodes -L workload,capacity,role,karpenter.sh/capacity-type
-kubectl --context eks-workload -n shopnow get pvc,pdb
-kubectl --context eks-workload -n shopnow port-forward svc/shopnow-api-gateway-service 5860:5860
-```
+## Changing a service later
 
-In another terminal, run `curl -f http://localhost:5860/product`. An empty array `[]` is valid if no products have been seeded. Access the frontend with `svc/shopnow-frontend-service 8082:80` port-forward; the browser must reach the API URL baked into its image.
+1. Edit the chart or values in your fork of `eks-core-gitops`, commit and push.
+2. ArgoCD detects the commit and syncs (or run `argocd app sync <app>`).
+3. For a new image: rebuild with a new `IMAGE_TAG`, rerun `prepare-applications.sh`, and apply the changed Application file.
 
-**Pass:** Applications sync the intended commit, backend Pods are Ready on the mixed pool, every backend has an EFS PVC, and the frontend calls the API. Continue with EFS/placement/PDB tests to prove the requirements rather than relying on Pod status.
+To roll back, `git revert` the commit and push; auto-sync applies the previous state. (`argocd app rollback` is refused while auto-sync is enabled.) `argocd app history <app>` shows which revision is deployed.
 
-## 9. Managing changes
-
-Edit the chart/values in the repository the Application actually reads → render → commit/push → ArgoCD diff/sync → verify behavior. `selfHeal` can revert kubectl changes to managed resources. When updating image settings in rendered Applications, render again and apply the relevant Application. In this bootstrap procedure, the operator owns Application specs; editing a local file does not automatically update them.
+**Next:** [3.3 EFS persistent volumes](efs-persistent-volumes)

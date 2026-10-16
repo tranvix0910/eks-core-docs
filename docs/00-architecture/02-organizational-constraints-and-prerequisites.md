@@ -1,96 +1,146 @@
 ---
-title: "Step 0 - Prepare tools, permissions, and Terraform state"
+title: "Step 0.1 — Prerequisites and setup"
+sidebar_label: "0.1 Prerequisites and setup"
 ---
 
-# Prepare before provisioning infrastructure
+# Step 0.1 — Prerequisites and setup
 
-You need an AWS account allowed to create VPC, EC2, EKS, IAM, EFS, ECR, S3, ELB, and Route53 resources. The workshop creates billable resources; review quotas and account policies before the lab.
+:::info Step summary
+**Goal:** a workstation that can run Terraform, kubectl and Docker against your AWS account, and an S3 bucket for Terraform state.
+**Time:** about 20 minutes. **Run from:** any directory.
+:::
 
-## 1. Tools and checkout
+## 1. AWS account
 
-Install AWS CLI v2, Terraform 1.10 or later but below 2.0, kubectl compatible with the cluster, Helm, Docker with buildx, Git, jq, Python 3, Bash, and curl. Use an ArgoCD CLI version compatible with the server for sync/wait. Node/npm are only needed to build or view the documentation website.
+You need an AWS account (or a role in one) that can create VPC, EC2, EKS, IAM, EFS, ECR, S3, ELB, Route 53 and SQS resources.
 
-```bash
-bash
-aws --version
-terraform version
-kubectl version --client
-helm version
-DockerVersion=$(docker version --format '{{.Client.Version}}')
-printf '%s\n' "$DockerVersion"
-docker buildx version
-git --version
-jq --version
-python3 --version
-```
+Check these quotas in the region you will use (the default is `ap-northeast-1`):
 
-Use a fork/branch you control when changing configuration. ArgoCD only reads pushed content; local edits that have not been pushed will not deploy.
-
-## 2. Variables used throughout the labs
-
-Run at the repository root:
-
-```bash
-export REPO_ROOT="$PWD"
-export AWS_PROFILE=eks-core
-export AWS_REGION=ap-northeast-1
-export AWS_DEFAULT_REGION="$AWS_REGION"
-export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-export STATE_REGION=ap-southeast-1
-export STATE_BUCKET="eks-tfstate-${AWS_ACCOUNT_ID}"
-export WORKSHOP_REPO_URL="https://github.com/tranvix0910/eks-core-gitops.git"
-export WORKSHOP_REVISION=main
-export IMAGE_TAG=workshop-v1
-mkdir -p .workshop/plans .workshop/evidence
-aws sts get-caller-identity
-```
-
-Change the profile, account, URL, and revision for your environment. If credentials expire, sign in through your organization's authentication method and verify your identity again; do not put access keys in the repository. Do not store evidence containing tokens or passwords under `.workshop`.
-
-## 3. Check environment configuration
-
-Edit all three `terraform.tfvars` files to align `region`, `aws_profile`, `account_id`, tags, and Kubernetes version. Layer 10 also defines CIDRs/AZs; Layer 20 defines ECR/EFS settings; Layer 21 defines retention and private DNS.
-
-Backends are hardcoded in each layer's `main.tf` and remote-state readers in `data.tf`. For a new account, update **both backend and remote-state configuration**, not just tfvars. Keep distinct keys:
-
-| Layer | State key |
+| Quota | Why |
 |---|---|
-| `10-network` | `network/terraform.tfstate` |
-| `20-cluster-workload` | `cluster-workload/terraform.tfstate` |
-| `21-cluster-observability` | `cluster-observability/terraform.tfstate` |
-
-Do not reuse the state of an existing environment whose resources you have not reviewed. `.terraform/modules/modules.json` is a cache, not the authoritative list of configured modules; run `init` after refactoring.
-
-## 4. Bootstrap the backend
-
-The existing script creates the S3 backend and a legacy DynamoDB table. Current backends use `use_lockfile=true`, so S3 lock files provide locking; the table created by the script has no effect unless the backend references it.
+| Running On-Demand Standard instances (vCPU) | Infra nodes, monitoring nodes, the On-Demand part of pool 2 |
+| All Standard Spot Instance Requests (vCPU) | Pools 1 and 2 |
+| EC2-VPC Elastic IPs | One NAT gateway |
+| VPCs per region | One new VPC |
 
 ```bash
-AWS_REGION="$STATE_REGION" bash scripts/bootstrap-backend.sh
-aws s3api get-bucket-versioning --bucket "$STATE_BUCKET" --region "$STATE_REGION"
-aws s3api get-public-access-block --bucket "$STATE_BUCKET" --region "$STATE_REGION"
-```
-
-Expect versioning `Enabled` and public access blocked. Restrict state readers because state can contain secrets even when outputs are marked `sensitive`. Do not commit `.tfplan`, `.tfstate`, `.terraform/`, `certs/key.pem`, or `.env`.
-
-## 5. Quotas and organization policies
-
-```bash
-aws eks list-clusters --region "$AWS_REGION"
-aws ec2 describe-availability-zones --region "$AWS_REGION" \
-  --query 'AvailabilityZones[?State==`available`].ZoneName' --output table
-aws service-quotas get-service-quota --service-code vpc --quota-code L-F678F1CE
-aws ec2 describe-addresses --query 'length(Addresses)' --output text
 aws service-quotas list-service-quotas --service-code ec2 \
   --query 'Quotas[?contains(QuotaName, `vCPU`)].{Name:QuotaName,Value:Value}' --output table
 ```
 
-Compare the tfvars AZ list with your account. Both On-Demand and Spot vCPU quotas matter. Old instance prices or Spot availability figures are not guarantees.
+If your organization applies Service Control Policies (SCPs), confirm they allow EKS and EFS in the target region. An explicit SCP deny overrides any IAM permission.
 
-The original account recorded an SCP restricting EKS/EFS regions and prohibiting Flow Log deletion. These are account-specific restrictions, not general AWS rules. `AdministratorAccess` does not override an SCP explicit deny. If destroy is blocked, work with the policy owner; do not default to `terraform state rm` to hide the failure.
+## 2. Tools
 
-`scripts/check-prereqs.sh` allocates and releases a test EIP; run it only when that operation is acceptable. Set `AWS_REGION` explicitly because the script's default still refers to the earlier environment.
+| Tool | Version | Used for |
+|---|---|---|
+| AWS CLI | v2 | Credentials, ECR login, checks |
+| Terraform | ≥ 1.10, < 2.0 | Infrastructure |
+| kubectl | within one minor version of EKS 1.34 | Cluster access |
+| Helm | v3 | cert-manager, Alloy |
+| Docker with buildx | recent | Building images |
+| argocd CLI | matching the server | `argocd app wait` |
+| git, jq, python3, curl, openssl | any recent | Scripts and checks |
 
-## Step 0 completion gate
+```bash
+aws --version && terraform version && kubectl version --client && helm version
+docker buildx version && argocd version --client && jq --version && python3 --version
+```
 
-Your identity targets the correct account; quotas are sufficient; the backend is accessible; all layers agree on configuration; you can push Git changes; and you have a location for evidence. Next: [the network](03-layer-10-network.md).
+## 3. AWS profile
+
+All repositories use an AWS CLI profile named **`eks-core`**. Create it with the sign-in method your account uses (IAM Identity Center shown here):
+
+```bash
+aws configure sso --profile eks-core
+aws sts get-caller-identity --profile eks-core
+```
+
+Never put access keys into any repository.
+
+## 4. Clone the four repositories side by side
+
+The Terraform layers read Helm values from `../eks-core-gitops`, so keep the repositories in one parent directory.
+
+```bash
+mkdir -p ~/eks-core && cd ~/eks-core
+git clone https://github.com/tranvix0910/eks-core-terraform.git
+git clone https://github.com/tranvix0910/eks-core-gitops.git
+git clone https://github.com/tranvix0910/eks-core-apps.git
+git clone https://github.com/tranvix0910/eks-core-docs.git
+```
+
+ArgoCD deploys from a Git URL. If you will change charts or values (for example in [step 3.4](../apps-shopnow/pod-placement)), **fork `eks-core-gitops`** and use your fork's URL below.
+
+## 5. Variables used in every step
+
+Put these in a file such as `~/eks-core/workshop.env` and `source` it in every new terminal.
+
+```bash
+# Where the repos live
+export WORKSHOP_HOME=~/eks-core
+export TF_DIR=$WORKSHOP_HOME/eks-core-terraform
+export GITOPS_DIR=$WORKSHOP_HOME/eks-core-gitops
+export APPS_DIR=$WORKSHOP_HOME/eks-core-apps
+export PLAN_DIR=$WORKSHOP_HOME/plans          # saved Terraform plans
+export EVIDENCE_DIR=$WORKSHOP_HOME/evidence   # outputs you keep as proof
+
+# AWS
+export AWS_PROFILE=eks-core
+export AWS_REGION=ap-northeast-1              # where the clusters run
+export AWS_DEFAULT_REGION=$AWS_REGION
+export STATE_REGION=ap-southeast-1            # where the Terraform state bucket lives
+export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+
+# GitOps and images
+export WORKSHOP_REPO_URL=https://github.com/tranvix0910/eks-core-gitops.git   # or your fork
+export WORKSHOP_REVISION=main
+export IMAGE_TAG=workshop-v1
+
+mkdir -p "$PLAN_DIR" "$EVIDENCE_DIR"
+```
+
+```bash
+source ~/eks-core/workshop.env
+echo "$AWS_ACCOUNT_ID $AWS_REGION"
+```
+
+## 6. Create the Terraform state bucket
+
+Each layer stores its state in one S3 bucket named `eks-tfstate-<account-id>`. Create it once:
+
+```bash
+AWS_REGION=$STATE_REGION bash "$TF_DIR/scripts/bootstrap-backend.sh"
+aws s3api get-bucket-versioning --bucket "eks-tfstate-$AWS_ACCOUNT_ID" --region "$STATE_REGION"
+```
+
+**Expected:** `"Status": "Enabled"`. The bucket blocks public access and is encrypted. Locking uses S3 lock files (`use_lockfile = true`), so no DynamoDB table is needed by the backends.
+
+## 7. Give each layer your account values
+
+Nothing account-specific is committed to Git. Each Terraform layer reads two local, gitignored files:
+
+| File | Contains |
+|---|---|
+| `backend.hcl` | State bucket name and AWS profile for the S3 backend |
+| `account.auto.tfvars` | `account_id` — the provider refuses to run against any other account |
+
+```bash
+for layer in 10-network 20-cluster-workload 21-cluster-observability; do
+  printf 'bucket  = "eks-tfstate-%s"\nprofile = "eks-core"\n' "$AWS_ACCOUNT_ID" > "$TF_DIR/$layer/backend.hcl"
+  printf 'account_id = "%s"\n' "$AWS_ACCOUNT_ID" > "$TF_DIR/$layer/account.auto.tfvars"
+done
+git -C "$TF_DIR" status --short   # must not list backend.hcl or account.auto.tfvars
+```
+
+Region, CIDRs, node sizes and Kubernetes version live in each layer's `terraform.tfvars`. Change them there if you use a different region.
+
+## Verify
+
+```bash
+aws sts get-caller-identity --query Account --output text   # your account
+aws s3 ls "s3://eks-tfstate-$AWS_ACCOUNT_ID" --region "$STATE_REGION"  # no error
+ls "$TF_DIR"/*/backend.hcl "$TF_DIR"/*/account.auto.tfvars              # six files
+```
+
+**Next:** [0.2 Architecture](01-architecture-overview.md)

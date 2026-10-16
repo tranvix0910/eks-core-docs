@@ -1,74 +1,93 @@
 ---
-title: "Step 7a - EFS, PV/PVC, and data across Pod replacement"
+title: "Step 3.3 — Persistent volumes on EFS"
+sidebar_label: "3.3 EFS persistent volumes"
 ---
 
-# Prove microservices use shared storage
+# Step 3.3 — Persistent volumes on EFS
 
-## 1. Verify EFS infrastructure
+:::info Step summary
+**Goal:** prove the microservices use EFS volumes that are shared between replicas and survive Pod replacement.
+**Requirement:** 4. **Time:** about 15 minutes. **Run from:** `$GITOPS_DIR`.
+:::
 
-```bash
-export WORKSHOP_EFS_ID=$(terraform -chdir=20-cluster-workload output -raw efs_file_system_id)
-aws efs describe-mount-targets --file-system-id "$WORKSHOP_EFS_ID" --output table
-kubectl --context eks-workload -n kube-system get pods -l app=efs-csi-controller
-kubectl --context eks-workload get storageclass efs-sc -o yaml
+## How storage is wired
+
+```mermaid
+flowchart LR
+  PodA["product Pod 1<br/>/data"] --> PVC["PVC shopnow-product-service-efs<br/>ReadWriteMany · efs-sc"]
+  PodB["product Pod 2<br/>/data"] --> PVC
+  PVC --> AP["EFS access point<br/>/dynamic/shopnow/…  uid/gid 10001"]
+  AP --> FS[("EFS file system<br/>mount target in each AZ")]
 ```
 
-If the controller label differs, list `kube-system` Pods and locate EFS CSI. The StorageClass must use provisioner `efs.csi.aws.com`, `efs-ap`, and the correct filesystem ID. IAM must associate `kube-system/efs-csi-controller-sa`. TCP 2049 must reach mount targets from worker SGs.
+| Piece | Owner | Details |
+|---|---|---|
+| EFS file system + mount targets | Terraform layer 20 | One mount target per workload subnet; NFS 2049 open from the nodes |
+| EFS CSI driver | EKS add-on, Pod Identity for `efs-csi-controller-sa` | Creates an access point per PVC |
+| StorageClass `efs-sc` | Terraform | `provisioningMode: efs-ap`, `uid/gid 10001`, `basePath /dynamic` |
+| PVC `<service>-efs` | Each backend chart (`pvc-efs.yaml`) | `ReadWriteMany`, mounted at `/data` |
 
-## 2. Inspect microservice PVCs
+`ReadWriteMany` lets every replica of a service, on any node and in any AZ, mount the same directory. Databases keep their own `gp3` (EBS) volumes.
+
+## 1. Check the storage layer
 
 ```bash
+kubectl --context eks-workload get storageclass efs-sc
 kubectl --context eks-workload -n shopnow get pvc
-kubectl --context eks-workload get pv
-kubectl --context eks-workload -n shopnow get deployment shopnow-product-service-deployment -o yaml
+aws efs describe-mount-targets \
+  --file-system-id "$(terraform -chdir="$TF_DIR/20-cluster-workload" output -raw efs_file_system_id)" \
+  --query 'MountTargets[].[AvailabilityZoneName,LifeCycleState]' --output table
 ```
 
-Backend PVCs are named `<appName>-efs`, use RWX, and mount `/data` through workshop values. Replicas of the same service share a claim. `requests.storage=5Gi` is not an EFS capacity quota. Database gp3 PVCs are intentionally separate.
+**Expected:** six `*-efs` PVCs `Bound` with access mode `RWX` and class `efs-sc`; one `available` mount target per AZ.
 
-Backend images run as UID/GID 10001; the StorageClass creates matching Access Points and Pods use `fsGroup=10001`. If mounting works but writes fail, check POSIX ownership/permissions before changing IAM.
+## 2. Shared between replicas
 
-## 3. Read one file from two product replicas
+Write a file from one product Pod and read it from the other:
 
 ```bash
-export WORKSHOP_PRODUCT_PODS=$(kubectl --context eks-workload -n shopnow get pods \
-  -l app=shopnow-product-service -o json | jq -r '.items[] | select(.status.phase=="Running") | .metadata.name')
-export WORKSHOP_WRITER=$(printf '%s\n' "$WORKSHOP_PRODUCT_PODS" | head -n 1)
-export WORKSHOP_READER=$(printf '%s\n' "$WORKSHOP_PRODUCT_PODS" | tail -n 1)
-test "$WORKSHOP_WRITER" != "$WORKSHOP_READER"
-kubectl --context eks-workload -n shopnow exec "$WORKSHOP_WRITER" -- \
-  sh -c 'printf "efs-workshop-marker\n" > /data/workshop-marker.txt; sync'
-kubectl --context eks-workload -n shopnow exec "$WORKSHOP_READER" -- cat /data/workshop-marker.txt
+read -r WRITER READER < <(kubectl --context eks-workload -n shopnow get pods -l app=shopnow-product-service \
+  --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name} {.items[1].metadata.name}')
+
+kubectl --context eks-workload -n shopnow exec "$WRITER" -- sh -c 'echo "efs-test $(date -u +%FT%TZ)" > /data/efs-test.txt'
+kubectl --context eks-workload -n shopnow exec "$READER" -- cat /data/efs-test.txt
 ```
 
-Require two distinct Ready Pods, preferably on different nodes as verified in the placement lab. Pass when the reader returns the correct marker. Do not test against real business files.
+**Expected:** the reader prints the line the writer wrote. The two Pods are on different nodes (see [step 3.4](pod-placement)), so this proves the volume is shared across nodes.
 
-## 4. Verify data survives Pod replacement
+## 3. Survives Pod replacement
 
 ```bash
-kubectl --context eks-workload -n shopnow delete pod "$WORKSHOP_WRITER"
+kubectl --context eks-workload -n shopnow delete pod "$WRITER"
 kubectl --context eks-workload -n shopnow rollout status deployment/shopnow-product-service-deployment --timeout=10m
-export WORKSHOP_NEW_READER=$(kubectl --context eks-workload -n shopnow get pods \
-  -l app=shopnow-product-service -o jsonpath='{.items[0].metadata.name}')
-kubectl --context eks-workload -n shopnow exec "$WORKSHOP_NEW_READER" -- cat /data/workshop-marker.txt
+NEW=$(kubectl --context eks-workload -n shopnow get pods -l app=shopnow-product-service -o jsonpath='{.items[0].metadata.name}')
+kubectl --context eks-workload -n shopnow exec "$NEW" -- cat /data/efs-test.txt | tee "$EVIDENCE_DIR/efs-persistence.txt"
 ```
 
-Deleting the Pod is an intentional persistence test. It **does not test the PDB**, because direct deletion bypasses eviction. Remove only your own marker file after completing the test.
+**Expected:** the same line, read from a Pod that did not exist when it was written.
 
-## 5. Independent proof workload
+Clean up the test file:
 
 ```bash
-kubectl --context eks-workload apply -f .workshop/applications/workshop-proof.json
+kubectl --context eks-workload -n shopnow exec "$NEW" -- rm /data/efs-test.txt
+```
+
+## 4. Deploy the proof workload
+
+The next two steps use `workshop-proof`: three replicas sharing one EFS claim, with a 2-of-3 PDB. It lets you test placement and evictions without disturbing ShopNow.
+
+```bash
+kubectl --context eks-workload apply -f "$GITOPS_DIR/.workshop/applications/workshop-proof.json"
 argocd app wait workshop-proof --sync --health --timeout 900
 kubectl --context eks-workload -n shopnow get pods -l app=workshop-proof -o wide
 ```
 
-This Application uses EFS, mandatory hostname spread, and a 2-of-3 PDB so availability tests do not alter business-service readiness. Each Pod writes its own file to one shared claim and emits markers for the Loki lab.
+## Troubleshooting
 
-| Failure | Check |
+| Symptom | Check |
 |---|---|
-| PVC Pending | `describe pvc`, CSI events, Pod Identity, correct StorageClass |
-| Mount timeout | NFS 2049 SG rules, mount target/AZ, EFS DNS |
-| Permission denied | uid/gid, Access Point, directoryPerms |
-| File missing after recreate | Actual write path `/data`, correct claim/Access Point |
+| PVC `Pending` | `kubectl -n shopnow describe pvc <name>`; EFS CSI controller logs; StorageClass `fileSystemId` |
+| Pod stuck `ContainerCreating`, mount timeout | Security group allows TCP 2049 from the node SG; a mount target exists in the Pod's AZ |
+| `Permission denied` writing `/data` | Container user must be 10001 (matches the access point uid/gid) |
 
-Reference: [Amazon EFS CSI on EKS](https://docs.aws.amazon.com/eks/latest/userguide/efs-csi.html).
+**Next:** [3.4 Even distribution](pod-placement)

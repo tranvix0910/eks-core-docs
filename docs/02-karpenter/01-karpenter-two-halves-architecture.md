@@ -13,8 +13,8 @@ title: "Karpenter: AWS foundation and in-cluster controller"
 `helm_releases.tf` installs the `karpenter` release in `kube-system`, reads `platform/addons/karpenter/values.yaml`, and overrides cluster/queue settings from outputs. Terraform owns this release.
 
 ```bash
-terraform -chdir=20-cluster-workload output -raw karpenter_node_iam_role_name
-terraform -chdir=20-cluster-workload output -raw karpenter_queue_name
+terraform -chdir="$TF_DIR/20-cluster-workload" output -raw karpenter_node_iam_role_name
+terraform -chdir="$TF_DIR/20-cluster-workload" output -raw karpenter_queue_name
 kubectl --context eks-workload get crd nodepools.karpenter.sh ec2nodeclasses.karpenter.k8s.aws
 kubectl --context eks-workload -n kube-system get pods -l app.kubernetes.io/name=karpenter -o wide
 kubectl --context eks-workload -n kube-system logs deployment/karpenter --tail=100

@@ -1,75 +1,97 @@
 ---
-title: "Design the system around the workshop requirements"
+title: "Step 0.2 — Architecture"
+sidebar_label: "0.2 Architecture"
 ---
 
-# Architecture and component responsibilities
+# Step 0.2 — Architecture
 
-The design separates the application environment from the system storing its operational evidence. When a ShopNow worker node is replaced, metrics and logs already shipped to cluster 2 remain queryable.
+:::info Step summary
+**Goal:** understand what you will build and which tool owns each piece, before running any command.
+**Time:** about 10 minutes of reading.
+:::
+
+## The big picture
 
 ```mermaid
-flowchart TB
-  Git[Git: charts and values] --> Argo
-  User[Users] --> ALB[Application Load Balancer]
-  subgraph C1[Cluster 1 - Workload]
-    subgraph Infra[Managed Node Group infra]
+flowchart LR
+  Git[(eks-core-gitops)] --> Argo
+  subgraph C1["Cluster 1 · eks-workload"]
+    direction TB
+    subgraph MNG["Managed Node Group: infra (role=infra)"]
       Argo[ArgoCD]
-      K[Karpenter controller]
+      K[Karpenter]
       P[Prometheus]
-      J[JavaMelody collector]
+      J[JavaMelody]
     end
-    B[Group 1: batch-spot]
-    M[Group 2: ms-od and ms-spot]
-    A[Group 3: arm64]
-    App[ShopNow microservices] --> M
-    Argo --> App
-    K --> B
-    K --> M
-    K --> A
-    Alloy[Alloy on worker nodes]
+    subgraph Pools["Karpenter node pools"]
+      B["Pool 1 · batch-spot<br/>Spot"]
+      M["Pool 2 · ms-od + ms-spot<br/>On-Demand : Spot = 1 : 3"]
+      A["Pool 3 · arm64<br/>Graviton"]
+    end
+    App["ShopNow microservices"]
+    Alloy["Alloy (DaemonSet, every node)"]
+    Argo -- deploys --> App
+    App -- runs on --> M
+    K -- provisions --> Pools
   end
-  ALB --> App
-  App --> EFS[EFS: PV/PVC ReadWriteMany]
-  P -->|remote_write HTTPS| ILB[Internal ALB]
-  Alloy -->|logs HTTPS| ILB
-  subgraph C2[Cluster 2 - Observability]
-    R[Prometheus: cluster 2 metrics]
-    MM[Mimir: centralized metrics]
-    LL[Loki: centralized logs]
-    G[Grafana]
-    G --> MM
-    G --> LL
+  App --> EFS[("Amazon EFS<br/>ReadWriteMany PVs")]
+  P -- "metrics · remote_write" --> ALB
+  Alloy -- "logs · push" --> ALB
+  subgraph C2["Cluster 2 · eks-observability"]
+    ALB["Internal ALB<br/>mimir / loki .observability.internal"]
+    Mimir --> S3[(S3)]
+    Loki --> S3
+    G[Grafana] --> Mimir
+    G --> Loki
   end
-  ILB --> MM
-  ILB --> LL
-  MM --> S3[S3]
-  LL --> S3
+  ALB --> Mimir
+  ALB --> Loki
 ```
 
-## Design decisions to understand
+Both clusters live in **one VPC** with separate subnets and security groups. Telemetry crosses an **internal** ALB over HTTPS; nothing is exposed to the Internet.
 
-- The Managed Node Group provides baseline capacity so Karpenter and ArgoCD do not depend on nodes provisioned by Karpenter itself.
-- Both clusters share a VPC but use separate subnets and security groups. Telemetry crosses private endpoints; sharing a VPC does not grant unrestricted connectivity.
-- Mimir stores centralized metrics. Prometheus in cluster 1 scrapes and forwards them. Prometheus in cluster 2 currently scrapes that cluster; installing the same software there does not automatically deliver cluster 1 metrics to it.
-- EFS provides shared directories for microservices. PostgreSQL/MySQL and monitoring WALs use EBS; do not move databases onto EFS just to demonstrate a PV.
-- Replicas of **the same service** need distribution. Equal total container counts across every cluster node are not a realistic scheduler objective.
+## Cluster 1 — `eks-workload`
 
-## Resource ownership
-
-| Resource | Declaration/owner in this checkout | Update procedure |
+| Component | Runs on | Purpose |
 |---|---|---|
-| VPC, EKS, IAM, ECR, EFS, S3, SGs, DNS | Terraform | Edit `.tf`/tfvars → plan → review → apply |
-| LBC, Karpenter controller, ArgoCD, Prometheus, Metrics Server; cluster 2 Mimir/Loki/Grafana | `helm_releases.tf` | Edit Terraform or the values it reads → apply |
-| `gp3` and `efs-sc` StorageClasses | Terraform Kubernetes provider | Terraform apply; do not apply duplicate GitOps definitions |
-| NodePools and EC2NodeClass | `platform/nodepools` manifests | Controlled apply in the lab; optionally move to a dedicated Application later |
-| ShopNow Deployments, PVCs, PDBs, Services | ArgoCD and Helm charts | Commit changes → ArgoCD reconciliation |
-| cert-manager, Alloy, JavaMelody, Rollouts | Additional bootstrap steps | Helm CLI/manifests described in the labs; record ownership |
+| Managed Node Group `infra` (3 × t3.large, On-Demand) | — | Stable capacity for the platform tools, independent of Karpenter |
+| ArgoCD, Karpenter, Prometheus, JavaMelody, AWS Load Balancer Controller, Metrics Server | `infra` nodes | Platform tools (requirement 1) |
+| NodePool `batch-spot` | Spot EC2 | Pool 1 — Spot workloads |
+| NodePools `ms-od` + `ms-spot` | On-Demand + Spot EC2 | Pool 2 — microservices, 1:3 |
+| NodePool `arm64` | Graviton EC2 | Pool 3 — ARM64 workloads |
+| ShopNow (6 backends + frontend) | Pool 2 | The microservices under test |
+| EFS + EFS CSI driver + StorageClass `efs-sc` | — | Shared persistent volumes |
+| Alloy | every node | Collects Pod logs |
 
-`gitops/` contains both **Helm values** and **Kubernetes manifests**. Do not run `kubectl apply -R -f gitops/`: values lack `apiVersion/kind`, configurations target two different clusters, and duplicate StorageClass definitions have another owner.
+## Cluster 2 — `eks-observability`
 
-The repository also creates Grafana/Kite in cluster 1 through Terraform. These are auxiliary tools and do not replace centralized Grafana in cluster 2 for acceptance. Removing them requires a separate change plan after the workshop.
+| Component | Purpose |
+|---|---|
+| Managed Node Group `monitoring` (2 × t3.medium) | Capacity for the observability stack |
+| Mimir (distributed) | Stores metrics received from cluster 1 |
+| Loki (single binary) | Stores logs received from cluster 1 |
+| Grafana | One UI for both |
+| S3 buckets `eks-observability-mimir-<account>`, `-loki-<account>` | Long-term storage |
+| Internal ALB + private Route 53 zone `observability.internal` | The private entry point for cluster 1 senders |
 
-## Evaluation principles
+## Who owns what
 
-Two monitoring nodes do not make single-replica Mimir/Loki highly available. A PDB cannot prevent EC2 Spot reclamation. A mounted PV does not prove the application writes business data to it. Every conclusion in the report should refer to its corresponding test.
+Every resource has exactly one owner. Change it only through that owner, otherwise the next apply or sync reverts your change.
 
-Next: [prepare tools and the environment](02-organizational-constraints-and-prerequisites.md).
+| Resource | Owner | How you change it |
+|---|---|---|
+| VPC, EKS, node groups, IAM, EFS, ECR, S3, DNS | Terraform (`eks-core-terraform`) | edit → `plan` → review → `apply` |
+| LBC, Karpenter, ArgoCD, Prometheus, Metrics Server (cluster 1); Mimir, Loki, Grafana (cluster 2) | Terraform `helm_releases.tf`, values from `eks-core-gitops` | edit values → `plan` → `apply` |
+| StorageClasses `gp3`, `efs-sc` | Terraform | `apply` |
+| EC2NodeClass and NodePools | Manifests in `eks-core-gitops/platform/nodepools` | `kubectl apply` |
+| ShopNow Deployments, PVCs, PDBs, Services | ArgoCD, from `eks-core-gitops/apps` | commit → ArgoCD sync |
+| cert-manager, Alloy, JavaMelody | Helm / manifests applied in the steps | `helm upgrade` / `kubectl apply` |
+
+## Design decisions
+
+- **The Managed Node Group exists so the platform does not depend on itself.** Karpenter and ArgoCD must keep running even when every Karpenter pool is empty.
+- **Pool 2 is two NodePools.** Karpenter has no ratio setting inside one pool, so On-Demand and Spot are separate pools sharing a label and taint. Their CPU limits (24 and 72) set the 1:3 budget. See [step 2.3](../karpenter/on-demand-spot-ratio-and-limits).
+- **EFS is for the microservices; databases use EBS.** PostgreSQL and MySQL stay on `gp3` volumes, which suit single-writer databases.
+- **Telemetry goes to a separate cluster** so metrics and logs survive the loss of any workload node or of cluster 1 itself.
+
+**Next:** [1.0 Terraform workflow](00-terraform-workflow.md)

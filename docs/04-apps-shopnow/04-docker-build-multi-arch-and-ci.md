@@ -1,48 +1,70 @@
 ---
-title: "Build images, push to ECR, and update GitOps"
+title: "Step 3.1 — Build the ShopNow images and push them to ECR"
+sidebar_label: "3.1 Build images"
 ---
 
-# Build all images before creating Applications
+# Step 3.1 — Build the ShopNow images and push them to ECR
 
-## 1. Choose a browser-reachable API URL
+:::info Step summary
+**Goal:** seven images in ECR, all tagged `$IMAGE_TAG`.
+**Time:** about 20 minutes (Maven and npm builds). **Run from:** `$APPS_DIR` (`eks-core-apps`).
+:::
 
-For port-forward access in the workshop:
+## What gets built
+
+| Image (`shopnow/…`) | Source directory | Stack |
+|---|---|---|
+| `shopnow-frontend` | `shopnow-frontend` | React, served by Nginx |
+| `shopnow-api-gateway` | `shopnow-backend/api-gateway` | Spring Cloud Gateway |
+| `shopnow-config-server` | `shopnow-config-server` | Spring Cloud Config |
+| `shopnow-discovery-server` | `shopnow-discovery-server` | Eureka |
+| `shopnow-product-service` | `shopnow-product-service` | Spring Boot + PostgreSQL |
+| `shopnow-shopping-cart-service` | `shopnow-shopping-cart-service` | Spring Boot + PostgreSQL |
+| `shopnow-user-service` | `shopnow-user-service` | Spring Boot + Keycloak |
+
+## 1. Set the build variables
 
 ```bash
 export IMAGE_TAG=workshop-v1
-export REACT_APP_BASE_API_URL=http://localhost:5860
-export WORKSHOP_PLATFORMS=linux/amd64
+export REACT_APP_BASE_API_URL=http://localhost:5860   # API URL the browser will call
+export WORKSHOP_PLATFORMS=linux/amd64                 # pool 2 runs amd64 nodes
 ```
 
-Create React App substitutes `REACT_APP_*` values **at build time**. Setting them in a Deployment or Nginx runtime environment does not modify built JavaScript. For ALB/custom-domain access, use that API endpoint and rebuild. On someone else's machine, `localhost` refers to their machine; they also need port-forward or a shared endpoint.
+`REACT_APP_BASE_API_URL` is compiled into the frontend JavaScript at build time. `http://localhost:5860` works with the port-forward used in [step 3.2](shopnow-end-to-end-deployment-guide). If you later expose the API through a load balancer or domain, rebuild the frontend with that URL.
 
-## 2. Build/push seven images
+On an Apple Silicon Mac, keep `linux/amd64`: building without a platform produces ARM64 images that will not start on pool 2.
 
-ECR repositories must already exist from Layer 20. Verify account/profile, then run:
+## 2. Build and push
 
 ```bash
-aws sts get-caller-identity
-terraform -chdir=20-cluster-workload output -json ecr_repository_urls
+cd "$APPS_DIR"
 bash scripts/build-images.sh
 ```
 
-The script uses the correct contexts for six backends and the frontend, tags from environment variables, and ECR password-stdin login. It performs real builds/pushes; do not run it merely to inspect configuration.
+The script logs in to ECR, then runs `docker buildx build --push` for each image with the tag `$IMAGE_TAG`.
 
-## 3. Verify images and architectures
+## Verify
 
 ```bash
-aws ecr describe-images --repository-name shopnow/shopnow-product-service \
-  --image-ids "imageTag=$IMAGE_TAG" --query 'imageDetails[].{Digest:imageDigest,Tags:imageTags}'
+for repo in frontend api-gateway config-server discovery-server product-service shopping-cart-service user-service; do
+  aws ecr describe-images --repository-name "shopnow/shopnow-$repo" --image-ids imageTag="$IMAGE_TAG" \
+    --query 'imageDetails[0].[repositoryName,imageTags[0],imagePushedAt]' --output text
+done | tee "$EVIDENCE_DIR/images.txt"
+
 docker buildx imagetools inspect \
   "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/shopnow/shopnow-product-service:$IMAGE_TAG"
 ```
 
-Mixed nodes currently require amd64. On Apple Silicon, `--platform linux/amd64` avoids producing an ARM64-only image. For multi-architecture builds, set `WORKSHOP_PLATFORMS=linux/amd64,linux/arm64` and verify **both** platforms in the manifest list. Building a single platform is not a multi-architecture build.
+**Expected:** seven lines, one per repository, and the manifest shows `linux/amd64`.
 
-## 4. Keep CI/CD consistent
+| Symptom | Fix |
+|---|---|
+| `no basic auth credentials` | ECR login expired — rerun the script |
+| `RepositoryNotFoundException` | ECR repositories come from layer 20; check `ecr_repository_names` in its tfvars and apply |
+| Pods later fail with `exec format error` | Image built for the wrong architecture; rebuild with `WORKSHOP_PLATFORMS=linux/amd64` |
 
-Source commit → build/test → image tag/digest → ECR push → GitOps commit → ArgoCD sync → smoke test. Legacy `buildspec.yml` files still clone separate configuration repositories, skip tests, and omit the frontend build argument. Update them before using them as the current monorepo's pipeline.
+## Releasing a new version later
 
-A health-check command ending with `|| echo "Health check failed"` is not a quality gate: it can still let the pipeline succeed. Health/test gates must return a failure exit code and block GitOps updates.
+Use a new tag for every release, for example `export IMAGE_TAG=workshop-v2`, rebuild, then render and apply the Applications again ([step 3.2](shopnow-end-to-end-deployment-guide), section 2). Never reuse a tag for different code; ArgoCD and Kubernetes cannot tell the images apart.
 
-After building, run the Application preparation script in the [deployment lab](00-shopnow-end-to-end-deployment-guide.md). Do not update tags in a repository ArgoCD does not read.
+**Next:** [3.2 Deploy with ArgoCD](shopnow-end-to-end-deployment-guide)

@@ -4,7 +4,7 @@ title: "Manage secrets and rotate credentials"
 
 # Keep documentation out of the credential storage path
 
-This checkout contains sample values in ConfigMaps, database manifests, and the realm export. They are for synthetic-data environments only. This documentation does not repeat real Grafana passwords or tokens.
+The repositories contain sample values in ConfigMaps, database manifests, and the realm export. They are for synthetic-data environments only. This documentation does not repeat real Grafana passwords or tokens.
 
 ## 1. Inventory before sharing the workshop
 

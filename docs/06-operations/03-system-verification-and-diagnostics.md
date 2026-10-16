@@ -4,7 +4,7 @@ title: "Verify the system and collect evidence"
 
 # Check infrastructure through application behavior
 
-Run at the repository root after setting variables. These commands inspect state; they do not replace the load/eviction tests used for acceptance.
+Run after sourcing the variables from step 0.1. These commands inspect state; they do not replace the load/eviction tests used for acceptance.
 
 ## 1. Account, clusters, nodes
 
@@ -56,11 +56,11 @@ Use the end-to-end queries in the [Mimir](../03-observability/02-mimir-metrics-p
 
 ```bash
 mkdir -p .workshop/evidence
-kubectl --context eks-workload -n shopnow get pods -o json > .workshop/evidence/shopnow-pods.json
-kubectl --context eks-workload get nodes -o json > .workshop/evidence/workload-nodes.json
-kubectl --context eks-workload -n shopnow get pdb -o json > .workshop/evidence/pdb.json
-kubectl --context eks-observability -n monitoring get pods -o json > .workshop/evidence/receiver-pods.json
-date -u +%FT%TZ > .workshop/evidence/checked-at.txt
+kubectl --context eks-workload -n shopnow get pods -o json > $EVIDENCE_DIR/shopnow-pods.json
+kubectl --context eks-workload get nodes -o json > $EVIDENCE_DIR/workload-nodes.json
+kubectl --context eks-workload -n shopnow get pdb -o json > $EVIDENCE_DIR/pdb.json
+kubectl --context eks-observability -n monitoring get pods -o json > $EVIDENCE_DIR/receiver-pods.json
+date -u +%FT%TZ > $EVIDENCE_DIR/checked-at.txt
 ```
 
 Review before sharing: Pod specs/logs can contain environment values or application data. Do not save `kubectl get secrets -A -o yaml`, full Terraform state, or cloud credentials in evidence.

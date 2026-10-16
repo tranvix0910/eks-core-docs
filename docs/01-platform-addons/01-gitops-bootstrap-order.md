@@ -1,80 +1,102 @@
 ---
-title: "Step 4 - Bootstrap the platform and establish ownership"
+title: "Step 2.1 — Platform tools on the Managed Node Group"
+sidebar_label: "2.1 Platform add-ons"
 ---
 
-# Install the platform in dependency order
+# Step 2.1 — Platform tools on the Managed Node Group
 
-Complete full apply for Layers 20/21 first. Every release has one owner: do not reinstall a Terraform-managed release through Helm CLI or ArgoCD.
+:::info Step summary
+**Goal:** every infrastructure tool — Prometheus, JavaMelody, Karpenter, ArgoCD — running on the `infra` Managed Node Group, plus cert-manager and Argo Rollouts, which later steps need.
+**Requirement:** 1. **Time:** about 15 minutes. **Run from:** `$GITOPS_DIR`.
+:::
 
-## 1. Verify what Terraform installed
+## How the tools are pinned to the infra nodes
 
-```bash
-helm --kube-context eks-workload list -A
-helm --kube-context eks-observability list -A
-kubectl --context eks-workload -n kube-system rollout status deployment/aws-load-balancer-controller --timeout=5m
-kubectl --context eks-workload -n kube-system rollout status deployment/karpenter --timeout=5m
-kubectl --context eks-workload -n argocd get pods -o wide
-kubectl --context eks-workload get storageclass gp3 efs-sc
+The `infra` node group carries the label `role=infra`. Every platform chart sets the same selector in its values:
+
+```yaml
+nodeSelector:
+  role: infra
 ```
 
-Expect LBC, Karpenter, ArgoCD, Prometheus, and Metrics Server in cluster 1, and the receiver stack in cluster 2. Install NodePools after CRDs/controllers. Prometheus needs its CA Secret; follow the TLS lab if it is not Ready.
+| Tool | Installed by | Values / manifest |
+|---|---|---|
+| Karpenter | Terraform (step 1.3) | `platform/addons/karpenter/values.yaml` |
+| ArgoCD | Terraform (step 1.3) | `platform/addons/argocd/values.yaml` |
+| Prometheus (kube-prometheus-stack) | Terraform (step 1.3) | `platform/addons/prometheus/values.yaml` |
+| Metrics Server, Load Balancer Controller | Terraform (step 1.3) | `platform/addons/metrics-server/values.yaml` |
+| cert-manager | Helm, this step | `platform/addons/cert-manager/values.yaml` |
+| Argo Rollouts | Helm, this step | `--set nodeSelector.role=infra` |
+| JavaMelody collector | kubectl, this step | `platform/addons/javamelody/javamelody-collector.yaml` |
 
-## 2. cert-manager
+Do not reinstall a Terraform-managed chart with `helm install`; change its values file and re-apply Terraform instead.
+
+## 1. Install cert-manager
+
+cert-manager issues the certificate for the private telemetry endpoint in [step 4.1](cert-manager-and-internal-tls).
 
 ```bash
-helm repo add jetstack https://charts.jetstack.io
-helm repo update jetstack
+helm repo add jetstack https://charts.jetstack.io && helm repo update jetstack
 helm --kube-context eks-workload upgrade --install cert-manager jetstack/cert-manager \
   --version v1.21.1 --namespace cert-manager --create-namespace \
-  --values platform/addons/cert-manager/values.yaml --wait --timeout 10m
-kubectl --context eks-workload -n cert-manager get pods -o wide
+  --values "$GITOPS_DIR/platform/addons/cert-manager/values.yaml" --wait --timeout 10m
 ```
 
-This version is the repository pin, not a claim that it is the latest release. Check chart availability and Kubernetes compatibility before the workshop. cert-manager provides cross-cluster TLS; it is not a prerequisite for creating EC2 NodePools.
+## 2. Install Argo Rollouts
 
-## 3. Argo Rollouts for the frontend
-
-```bash
-helm repo add argo https://argoproj.github.io/argo-helm
-helm repo update argo
-helm search repo argo/argo-rollouts --versions | head -n 8
-```
-
-Select a listed chart version with a suitable app version, record it in a variable, and render before installation:
+The ShopNow frontend is an Argo `Rollout` (blue-green), so the Rollouts CRD and controller must exist before the frontend is deployed.
 
 ```bash
-: "${ROLLOUTS_CHART_VERSION:?Set the chart version selected above}"
-helm template argo-rollouts argo/argo-rollouts --version "$ROLLOUTS_CHART_VERSION" \
-  --namespace argo-rollouts --set nodeSelector.role=infra > .workshop/rollouts-rendered.yaml
+helm repo add argo https://argoproj.github.io/argo-helm && helm repo update argo
+helm search repo argo/argo-rollouts --versions | head -5     # pick a version
+export ROLLOUTS_CHART_VERSION=<version from the list>
 helm --kube-context eks-workload upgrade --install argo-rollouts argo/argo-rollouts \
   --version "$ROLLOUTS_CHART_VERSION" --namespace argo-rollouts --create-namespace \
-  --set nodeSelector.role=infra --wait --timeout 10m
+  --set controller.nodeSelector.role=infra --wait --timeout 10m
 kubectl --context eks-workload get crd rollouts.argoproj.io
 ```
 
-Chart version and app version are different values. If a controller already exists, check its owner/version and reuse it; do not add a second controller.
+## 3. Install the JavaMelody collector
 
-## 4. JavaMelody on infra nodes
+JavaMelody collects JVM, HTTP and JDBC statistics from the Spring services. It runs as a StatefulSet with its own `gp3` volume.
 
 ```bash
-kubectl --context eks-workload apply -f platform/addons/javamelody/javamelody-collector.yaml
+kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/addons/javamelody/javamelody-collector.yaml"
 kubectl --context eks-workload -n javamelody rollout status statefulset/javamelody-collector --timeout=10m
-kubectl --context eks-workload -n javamelody get pods -o wide
 ```
 
-The Pod must run on a node labeled `role=infra`. A newly installed collector has no application URLs, so its UI may be empty. The [JavaMelody lab](06-javamelody.md) connects backends after application deployment.
+The collector starts empty. You connect it to the services after they are deployed ([JavaMelody](javamelody)).
 
-## 5. NodePools, AppProject, and applications
+## Verify — every tool is on an infra node
 
-1. [Configure EC2NodeClass/NodePools](../02-karpenter/02-ec2nodeclass-and-nodepools-configuration.md).
-2. Build and push images using the build lab.
-3. Create the AppProject, then create Applications in dependency order using the [ShopNow deployment lab](../04-apps-shopnow/00-shopnow-end-to-end-deployment-guide.md).
-4. Install Alloy once TLS trust and the Loki endpoint are ready.
+```bash
+for ns in kube-system argocd monitoring cert-manager argo-rollouts javamelody; do
+  kubectl --context eks-workload -n "$ns" get pods \
+    -o custom-columns=NAMESPACE:.metadata.namespace,POD:.metadata.name,NODE:.spec.nodeName --no-headers
+done | while read -r ns pod node; do
+  printf '%-14s %-60s role=%s\n' "$ns" "$pod" \
+    "$(kubectl --context eks-workload get node "$node" -o jsonpath='{.metadata.labels.role}')"
+done | grep -Ev 'aws-node|kube-proxy|ebs-csi-node|efs-csi-node|pod-identity|node-exporter' \
+  | tee "$EVIDENCE_DIR/infra-placement.txt"
+```
 
-Do not apply `platform/bootstrap/app-of-apps.yaml` as an “install everything” button. It still references the old repository, requires a `platform` project absent from this procedure, and recursively scans a directory containing Helm values for two clusters. For a real app-of-apps setup, use a directory containing **only child Applications** and configure child health assessment first.
+**Expected:** every line ends with `role=infra`. DaemonSets (VPC CNI, kube-proxy, CSI node drivers, node-exporter) run on every node by design and are filtered out.
 
-`sync-wave` annotations on independent Applications created together do not automatically ensure database health before backend deployment. This workshop creates and waits for each group explicitly. See [ArgoCD sync waves](https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/) and [Application health](https://argo-cd.readthedocs.io/en/stable/operator-manual/health/) for their scope.
+## Open the tools
 
-## Completion gate
+Use port-forwarding; nothing is exposed publicly. Run each in its own terminal.
 
-Controllers run on infra nodes, CRDs exist, gp3/efs-sc are available, and each component has a known owner. Record release → version → owner in the report so future updates use the correct tool.
+| Tool | Command | URL |
+|---|---|---|
+| ArgoCD | `kubectl --context eks-workload -n argocd port-forward svc/argocd-server 8080:80` | http://localhost:8080 |
+| Prometheus | `kubectl --context eks-workload -n monitoring port-forward svc/prometheus-kube-prometheus-prometheus 9090:9090` | http://localhost:9090 |
+| JavaMelody | `kubectl --context eks-workload -n javamelody port-forward svc/javamelody-collector 8081:8080` | http://localhost:8081 |
+
+ArgoCD admin password:
+
+```bash
+kubectl --context eks-workload -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 --decode; echo
+```
+
+**Next:** [2.2 Three node pools](../karpenter/ec2nodeclass-and-nodepools-configuration)

@@ -1,28 +1,62 @@
 ---
-title: "Verify a container runs on ARM64"
+title: "Step 2.4 — Run a workload on the ARM64 pool"
+sidebar_label: "2.4 ARM64 pool"
 ---
 
-# Run a real ARM64 workload
+# Step 2.4 — Run a workload on the ARM64 pool
 
-A NodePool object does not prove image compatibility. This lab uses a small multi-architecture image without moving all ShopNow services to ARM64.
+:::info Step summary
+**Goal:** prove pool 3 launches Graviton (ARM64) nodes and runs containers on them.
+**Requirement:** 2 (ARM64 pool). **Time:** about 10 minutes. **Run from:** `$GITOPS_DIR`.
+:::
+
+## How a Pod reaches pool 3
+
+`examples/workshop/arm64-proof.yaml` runs `busybox`, which is published for both amd64 and arm64. Its Pod spec:
+
+```yaml
+nodeSelector:
+  arch: arm64                     # label set by NodePool arm64
+  kubernetes.io/arch: arm64
+tolerations:
+  - key: arch
+    operator: Equal
+    value: arm64
+    effect: NoSchedule            # taint set by NodePool arm64
+```
+
+An image must contain an `linux/arm64` variant to run here. A selector cannot turn an amd64-only image into an ARM64 one — you would get `exec format error`.
+
+## 1. Check the image supports ARM64
 
 ```bash
-docker buildx imagetools inspect public.ecr.aws/docker/library/busybox:1.37.0
-kubectl --context eks-workload apply -f examples/workshop/arm64-proof.yaml
+docker buildx imagetools inspect public.ecr.aws/docker/library/busybox:1.37.0 | grep -E 'Platform: +linux/(amd64|arm64)'
+```
+
+## 2. Run the test workload
+
+```bash
+kubectl --context eks-workload apply -f "$GITOPS_DIR/examples/workshop/arm64-proof.yaml"
 kubectl --context eks-workload rollout status deployment/workshop-arm64 --timeout=10m
-kubectl --context eks-workload get pods -l app=workshop-arm64 -o wide
-kubectl --context eks-workload get nodes -l arch=arm64 -L kubernetes.io/arch,karpenter.sh/nodepool
-kubectl --context eks-workload logs deployment/workshop-arm64
 ```
 
-**Pass:** the image manifest includes Linux ARM64, the Pod runs on NodePool `arm64`, the node architecture is `arm64`, and `uname -m` inside the container returns `aarch64`.
-
-For `exec format error`, inspect the image manifest; a selector cannot convert an amd64 image into ARM64. For Pending Pods, check tolerations, requirements, and Spot/On-Demand capacity. If `EC2NodeClass` is NotReady, resolve AMI selection first.
-
-Save Pod/node/log output as evidence. Remove the test Deployment afterward:
+## Verify
 
 ```bash
-kubectl --context eks-workload delete -f examples/workshop/arm64-proof.yaml
+kubectl --context eks-workload get pods -l app=workshop-arm64 -o wide
+kubectl --context eks-workload get nodes -l karpenter.sh/nodepool=arm64 \
+  -L kubernetes.io/arch,karpenter.sh/capacity-type,node.kubernetes.io/instance-type
+kubectl --context eks-workload logs deployment/workshop-arm64 | tee "$EVIDENCE_DIR/pool3-arm64.txt"
 ```
 
-To test a real backend, build with `WORKSHOP_PLATFORMS=linux/amd64,linux/arm64`, inspect the manifest list, and create a separate test Application with ARM64 selectors/tolerations and a namespace allowed by its AppProject. Keep core ShopNow on the mixed group as required by the assignment.
+**Expected:** the Pod runs on a node from NodePool `arm64` with `kubernetes.io/arch=arm64` (a Graviton type such as `m7g` or `c7g`), and the log shows `aarch64`.
+
+## 3. Clean up
+
+```bash
+kubectl --context eks-workload delete -f "$GITOPS_DIR/examples/workshop/arm64-proof.yaml"
+```
+
+To move a real service to ARM64, build it for both platforms (`WORKSHOP_PLATFORMS=linux/amd64,linux/arm64` in [step 3.1](../apps-shopnow/docker-build-multi-arch-and-ci)) and give it the selector and toleration above. ShopNow itself stays on pool 2, as the assignment requires.
+
+**Next:** [3.1 Build images](../apps-shopnow/docker-build-multi-arch-and-ci)

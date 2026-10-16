@@ -1,64 +1,71 @@
 ---
-title: "Collect logs on every worker with Alloy and send them to Loki"
+title: "Step 4.3 — Ship logs to Loki with Alloy"
+sidebar_label: "4.3 Logs → Loki"
 ---
 
-# Collect the correct Pod on the correct node once
+# Step 4.3 — Ship logs to Loki with Alloy
 
-Alloy runs as a DaemonSet in cluster 1. `loki.source.kubernetes` reads logs through the Kubernetes API, **not host files** as `loki.source.file` does. The workshop configuration does not need a `/var/log/pods` mount.
+:::info Step summary
+**Goal:** Pod logs from every cluster 1 node queryable in Loki on cluster 2.
+**Requirement:** 9. **Time:** about 15 minutes. **Run from:** `$GITOPS_DIR`.
+:::
 
-## 1. Why use a separate override?
+## How it is configured
 
-Older values tolerate only `CriticalAddonsOnly`, potentially missing mixed/batch/ARM64 nodes. A `HOSTNAME` selector can also receive the Pod name instead of the node name. The workshop override fixes both: tolerate all node taints for the agent, and inject `spec.nodeName` through Downward API as `NODE_NAME`. Discovery selects only Pods on that node.
+Grafana **Alloy** runs as a DaemonSet — one agent per node, including Karpenter nodes. `examples/workshop/alloy-values.yaml` sets it up to:
 
-Removing the node selector while running an unclustered DaemonSet can make multiple agents tail one stream. That creates duplication rather than reliability.
+- **tolerate every taint**, so it also runs on the Spot, mixed and ARM64 pools;
+- read the node name from the Downward API and collect **only Pods on its own node** (no duplicates);
+- read logs through the Kubernetes API (`loki.source.kubernetes`), so no host paths are mounted;
+- add `cluster="eks-workload"`, `namespace`, `pod` and `container` labels;
+- push to `https://loki.observability.internal:3100/loki/api/v1/push`, verifying the CA from step 4.1.
 
-## 2. Install after the CA Secret and Loki are ready
+## 1. Install Alloy
 
 ```bash
-helm repo add grafana https://grafana.github.io/helm-charts
-helm repo update grafana
-helm template alloy grafana/alloy --version 1.11.1 --namespace monitoring \
-  -f examples/workshop/alloy-values.yaml > .workshop/alloy-rendered.yaml
-helm --kube-context eks-workload upgrade --install alloy grafana/alloy \
-  --version 1.11.1 --namespace monitoring \
-  -f examples/workshop/alloy-values.yaml --wait --timeout 10m
+helm repo add grafana https://grafana.github.io/helm-charts && helm repo update grafana
+helm --kube-context eks-workload upgrade --install alloy grafana/alloy --version 1.11.1 \
+  --namespace monitoring -f "$GITOPS_DIR/examples/workshop/alloy-values.yaml" --wait --timeout 10m
+```
+
+## 2. One agent on every node
+
+```bash
 kubectl --context eks-workload -n monitoring get daemonset alloy
-kubectl --context eks-workload -n monitoring get pods -l app.kubernetes.io/instance=alloy -o wide
+kubectl --context eks-workload get nodes --no-headers | wc -l
 ```
 
-Agents must cover every node whose logs are required, including Karpenter nodes. DaemonSet desired/ready counts are the first gate, not proof of Loki ingestion.
+**Expected:** DaemonSet `READY` equals the number of nodes.
 
-## 3. Generate test logs
+## 3. Generate a log line to look for
 
-`workshop-proof` emits a marker every 15 seconds. Check the source and sender:
+`workshop-proof` (deployed in step 3.3) prints `workshop-proof <pod> <timestamp>` every 15 seconds:
 
 ```bash
-kubectl --context eks-workload -n shopnow logs deployment/workshop-proof --tail=5
-kubectl --context eks-workload -n monitoring logs -l app.kubernetes.io/instance=alloy \
-  --all-containers=true --tail=30 --prefix
+kubectl --context eks-workload -n shopnow logs deployment/workshop-proof --tail=3
 ```
 
-If the source Pod is missing, inspect NODE_NAME, pods/log RBAC, and discovery labels. If the source exists but push fails, inspect DNS/TLS/SGs, Loki limits, and readiness.
-
-## 4. Query the receiver in cluster 2
+## Verify — query Loki directly
 
 ```bash
-kubectl --context eks-observability -n monitoring port-forward svc/loki-gateway 13100:80
-```
+kubectl --context eks-observability -n monitoring port-forward svc/loki-gateway 13100:80   # terminal 1
 
-In another terminal:
-
-```bash
-export WORKSHOP_LOG_START=$(python3 -c 'import time; print(time.time_ns()-15*60*10**9)')
+START=$(( $(date +%s) - 900 ))000000000
 curl -fsSG http://localhost:13100/loki/api/v1/query_range \
-  --data-urlencode 'query={cluster="eks-workload",namespace="shopnow"} |= "workshop-proof"' \
-  --data-urlencode "start=$WORKSHOP_LOG_START" --data-urlencode 'limit=20' | jq .
+  --data-urlencode 'query={cluster="eks-workload", namespace="shopnow"} |= "workshop-proof"' \
+  --data-urlencode "start=$START" --data-urlencode 'limit=5' \
+  | jq -r '.data.result[].values[][1]' | tee "$EVIDENCE_DIR/loki-query.txt"
 ```
 
-Pass when results contain a new marker with the correct Pod and namespace. Loki uses `auth_enabled=false` in this lab, so protect ingestion with private networking/SGs. Do not expose the raw Loki gateway publicly.
+**Expected:** recent `workshop-proof …` lines with timestamps from the last few minutes.
 
-## 5. Storage and availability limits
+| Symptom | Check |
+|---|---|
+| DaemonSet has fewer Ready Pods than nodes | `kubectl -n monitoring describe ds alloy` — tolerations, resources |
+| Alloy logs `x509` | CA Secret `observability-alb-tls` in `monitoring` (step 4.1, section 5) |
+| Alloy logs `no such host` | Private DNS records (step 4.1, section 4) |
+| Query empty, no Alloy errors | Wait a minute; check the `cluster` label value in the query |
 
-SingleBinary uses one replica, replication factor 1, S3 storage, and disabled large caches to fit the lab. A receiver restart may cause an interruption; observe retries/loss rather than claiming HA because there are two worker nodes.
+Loki runs with `auth_enabled: false` in this workshop, so only the private network and security groups protect it. Never expose the Loki gateway publicly.
 
-Reference: [Alloy loki.source.kubernetes](https://grafana.com/docs/alloy/latest/reference/components/loki/loki.source.kubernetes/).
+**Next:** [4.4 Grafana](grafana-dashboards)

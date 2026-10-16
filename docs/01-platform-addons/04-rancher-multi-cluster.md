@@ -13,7 +13,7 @@ helm repo add rancher-stable https://releases.rancher.com/server-charts/stable
 helm repo update rancher-stable
 helm --kube-context eks-workload upgrade --install rancher rancher-stable/rancher \
   --version 2.14.3 --namespace cattle-system --create-namespace \
-  --values platform/addons/rancher/values.yaml --wait --timeout 15m
+  --values "$GITOPS_DIR"/platform/addons/rancher/values.yaml --wait --timeout 15m
 kubectl --context eks-workload -n cattle-system get pods -o wide
 ```
 

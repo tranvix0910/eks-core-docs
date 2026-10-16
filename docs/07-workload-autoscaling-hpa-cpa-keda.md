@@ -15,7 +15,7 @@ Karpenter provisions EC2 capacity. HPA, CPA, and KEDA control replica counts. In
 
 ## Current implementation
 
-- Metrics Server has a Terraform-managed Helm release; the directory is no longer empty as older documentation suggested.
+- Metrics Server is installed by Terraform (layer 20) and pinned to the infra nodes.
 - Backend HPA templates exist and are disabled by default. Fix their target name before enabling them.
 - CPA manifests and KEDA ScaledObjects exist. Files alone do not prove deployment.
 - The current KEDA configuration combines cron with Prometheus CPU usage queries. It does not query HTTP RPS from Mimir as some earlier guides described.

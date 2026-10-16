@@ -19,7 +19,7 @@ Pools define `expireAfter`, `consolidationPolicy`, `consolidateAfter`, and disru
 ## 2. Check the interruption pipeline
 
 ```bash
-export WORKSHOP_QUEUE=$(terraform -chdir=20-cluster-workload output -raw karpenter_queue_name)
+export WORKSHOP_QUEUE=$(terraform -chdir="$TF_DIR/20-cluster-workload" output -raw karpenter_queue_name)
 aws sqs get-queue-url --queue-name "$WORKSHOP_QUEUE"
 aws events list-rules --name-prefix Karpenter --output table
 ```

@@ -1,62 +1,73 @@
 ---
-title: "Step 1 - Create the network with Terraform"
+title: "Step 1.1 — Create the network"
+sidebar_label: "1.1 Network"
 ---
 
-# Create networking for both clusters
+# Step 1.1 — Create the network
 
-**Input:** preparation complete. **Output:** network state with outputs consumed by both cluster layers.
+:::info Step summary
+**Goal:** one VPC with separate subnets for each cluster.
+**Time:** about 5 minutes. **Run from:** `$TF_DIR/10-network`.
+:::
 
-## 1. Review the files you will apply
+## What this layer creates
 
-| File | Purpose |
+| Resource | Value (from `terraform.tfvars`) |
 |---|---|
-| `10-network/main.tf` | AWS provider, S3 backend, provider requirements |
-| `variables.tf`, `terraform.tfvars` | Inputs and environment settings |
-| `vpc.tf` | VPC, subnets, NAT, Flow Logs |
-| `vpce.tf` | S3 Gateway Endpoint |
-| `subnet_tags.tf` | Karpenter and load balancer discovery tags |
-| `output.tf` | Output contract for Layers 20/21 |
+| VPC | `10.20.0.0/16` across `ap-northeast-1a`, `1c`, `1d` |
+| Public subnets | 3 × `/24` — load balancers, NAT |
+| Workload subnets | 3 × `/20` — cluster 1 nodes and Pods |
+| Observability subnets | 3 × `/20` — cluster 2 nodes and Pods |
+| NAT gateway | one (`single_nat_gateway = true`) to keep the lab cheap |
+| S3 gateway endpoint | S3 traffic (state, Mimir, Loki) stays inside the VPC |
+| VPC Flow Logs | enabled |
+| Discovery tags | `karpenter.sh/discovery=eks-workload` on workload subnets, ELB role tags on public/private subnets |
 
-The default example uses `10.20.0.0/16`, three `/24` public subnets, three `/20` workload subnets, and three `/20` observability subnets. The important requirements are nonoverlapping CIDRs and the correct AZ for each subnet group; the region itself is not a learning objective.
+The `/20` subnets are large on purpose: with VPC CNI every Pod takes a VPC IP address.
 
-The lab uses one NAT to reduce baseline resources. If its AZ fails, egress from other AZs can be affected. The S3 Gateway Endpoint keeps S3 traffic within the VPC; it does not remove all NAT requirements for ECR APIs, chart registries, or dependency downloads.
-
-## 2. Initialize and validate before planning
+## 1. Review the inputs
 
 ```bash
-terraform -chdir=10-network init
-terraform -chdir=10-network fmt -check
-terraform -chdir=10-network validate
-terraform -chdir=10-network plan -out="$REPO_ROOT/.workshop/plans/network.tfplan"
-terraform -chdir=10-network show "$REPO_ROOT/.workshop/plans/network.tfplan"
+cat "$TF_DIR/10-network/terraform.tfvars"
 ```
 
-Review CIDRs, AZs, NAT count, Flow Logs, and the provider account. For existing environments, inspect every replacement or destroy action and understand its cause before applying. Do not run `init -upgrade` during the workshop unless you intend to upgrade modules/providers.
+Change `region`, `azs` and the CIDRs only if you deploy somewhere else. Keep the three subnet groups non-overlapping.
 
-## 3. Apply the saved plan
+## 2. Plan
 
 ```bash
-terraform -chdir=10-network apply "$REPO_ROOT/.workshop/plans/network.tfplan"
-terraform -chdir=10-network output -json > .workshop/evidence/network-outputs.json
+L=10-network
+terraform -chdir="$TF_DIR/$L" init -backend-config=backend.hcl
+terraform -chdir="$TF_DIR/$L" validate
+terraform -chdir="$TF_DIR/$L" plan -out="$PLAN_DIR/$L.tfplan"
 ```
 
-A saved plan corresponds to the state and configuration at planning time. Create a new plan if configuration changes or another operator updates the state afterward.
+Read the plan summary. On an empty account you should see only `create` actions and no `destroy`.
 
-## 4. Inspect the actual network
+## 3. Apply
 
 ```bash
-export VPC_ID=$(terraform -chdir=10-network output -raw vpc_id)
+terraform -chdir="$TF_DIR/$L" apply "$PLAN_DIR/$L.tfplan"
+terraform -chdir="$TF_DIR/$L" output
+```
+
+## Verify
+
+```bash
+export VPC_ID=$(terraform -chdir="$TF_DIR/10-network" output -raw vpc_id)
+
 aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VPC_ID" \
-  --query 'Subnets[].{Id:SubnetId,AZ:AvailabilityZone,CIDR:CidrBlock}' --output table
-aws ec2 describe-route-tables --filters "Name=vpc-id,Values=$VPC_ID" --output json
-aws ec2 describe-vpc-endpoints --filters "Name=vpc-id,Values=$VPC_ID" --output table
-aws ec2 describe-flow-logs --filter "Name=resource-id,Values=$VPC_ID" --output table
+  --query 'Subnets[].{AZ:AvailabilityZone,CIDR:CidrBlock,Karpenter:Tags[?Key==`karpenter.sh/discovery`]|[0].Value}' \
+  --output table
 ```
 
-Check tags: workload subnets use `karpenter.sh/discovery=eks-workload`; observability subnets use the second cluster's name. Public subnets have `kubernetes.io/role/elb=1`; private subnets have `kubernetes.io/role/internal-elb=1`. Do not use the same discovery value for both subnet groups.
+**Expected:**
 
-## 5. Managing network changes
+- 9 subnets: three `/24`, three `10.20.16–48.0/20` tagged `eks-workload`, three `10.20.64–96.0/20` tagged `eks-observability`.
+- `terraform output` lists `vpc_id`, `workload_node_subnet_ids` and `observability_node_subnet_ids` — the next two layers read these.
 
-Edit tfvars → plan → review → apply. Do not rename outputs consumed through remote state. CIDR/AZ changes that replace subnets can affect downstream node groups and mount targets; plan those separately rather than continuing the workshop blindly.
+## Managing this layer later
 
-**Completion gate:** VPC/subnets match the design, private subnets have required egress, Flow Logs operate, and outputs are complete. Next: [the workload cluster](04-layer-20-cluster-workload.md).
+Edit `terraform.tfvars` → plan → review → apply. Do not rename outputs; layers 20 and 21 read them. Any change that **replaces** a subnet also replaces the node groups and EFS mount targets in it, so plan that change separately.
+
+**Next:** [1.2 Cluster 1 — Workload](04-layer-20-cluster-workload.md)
