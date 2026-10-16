@@ -24,7 +24,3 @@ Drop a Markdown file into the matching `docs/NN-section/` folder; the sidebar pi
 | [eks-core-terraform](https://github.com/tranvix0910/eks-core-terraform) | Network and EKS clusters |
 | [eks-core-gitops](https://github.com/tranvix0910/eks-core-gitops) | ArgoCD, add-ons, Karpenter node pools, ShopNow Helm charts |
 | [eks-core-apps](https://github.com/tranvix0910/eks-core-apps) | ShopNow service source code and image build script |
-
-## License
-
-Site design adapted from [dyte-io/docs](https://github.com/dyte-io/docs) under the Apache License 2.0 — see [NOTICE](NOTICE) and [LICENSE-dyte-docs](LICENSE-dyte-docs).
