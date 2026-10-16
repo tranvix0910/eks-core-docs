@@ -6,7 +6,8 @@ const doc = (id, label) => (label ? { type: 'doc', id, label } : { type: 'doc', 
 const section = (label, items, extra = {}) => ({
   type: 'category',
   label,
-  collapsed: false,
+  // Docusaurus opens the active category automatically; keep the rest closed.
+  collapsed: true,
   items,
   ...extra,
 });
