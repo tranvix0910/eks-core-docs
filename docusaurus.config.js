@@ -95,15 +95,15 @@ const config = {
           {
             label: 'Platform',
             type: 'dropdown',
-            className: 'dyte-dropdown',
-            items: [{ type: 'html', value: platformHTML, className: 'dyte-dropdown' }],
+            className: 'ec-dropdown',
+            items: [{ type: 'html', value: platformHTML, className: 'ec-dropdown' }],
           },
           { label: 'Security', to: '/docs/eks-security' },
           {
             label: 'Runbooks',
             type: 'dropdown',
-            className: 'dyte-dropdown resources-dropdown',
-            items: [{ type: 'html', value: runbooksHTML, className: 'dyte-dropdown' }],
+            className: 'ec-dropdown resources-dropdown',
+            items: [{ type: 'html', value: runbooksHTML, className: 'ec-dropdown' }],
           },
           { type: 'search', position: 'right' },
           {

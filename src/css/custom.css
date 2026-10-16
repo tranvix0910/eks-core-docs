@@ -59,7 +59,7 @@
   @apply mb-0;
 }
 
-.dyte-accordion img {
+.ec-accordion img {
   @apply rounded-lg;
 }
 
@@ -77,7 +77,7 @@
     background-image: url('./img/grid-dark.svg');
   }
 
-  .dyte-badge {
+  .ec-badge {
     @apply mb-2 inline-block rounded-sm text-text-400;
     @apply tracking-wider;
   }
@@ -92,7 +92,7 @@ code {
 
 /* UI Kit tokens */
 body {
-  --dyte-colors-video-bg: 50 50 50;
+  --ec-colors-video-bg: 50 50 50;
 }
 
 /* Dyte Docs Tokens */
@@ -531,13 +531,13 @@ html[data-theme='dark']
   justify-content: center;
 }
 
-.loading-container dyte-spinner {
+.loading-container ec-spinner {
   width: 48px;
   height: 48px;
   color: theme('colors.primary.100');
 }
 
-.dyte-video-showcase {
+.ec-video-showcase {
   margin: 3rem auto;
   display: block;
   width: 100%;
@@ -545,7 +545,7 @@ html[data-theme='dark']
   border-radius: 8px;
 }
 
-.dyte-video-showcase.mobile {
+.ec-video-showcase.mobile {
   max-width: 240px;
   border-radius: 1.5rem;
 }
@@ -679,36 +679,36 @@ html[data-theme='dark'] .dropdown > .navbar__link:after {
   background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' fill='none' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4.293 8.293a1 1 0 0 1 1.414 0L12 14.586l6.293-6.293a1 1 0 1 1 1.414 1.414l-7 7a1 1 0 0 1-1.414 0l-7-7a1 1 0 0 1 0-1.414Z' fill='%231a90ff'/%3E%3C/svg%3E") !important;
 }
 
-.dyte-dropdown + ul.dropdown__menu {
+.ec-dropdown + ul.dropdown__menu {
   @apply bg-secondary-900 p-0;
 }
 
-.dyte-dropdown .sdk-link {
+.ec-dropdown .sdk-link {
   @apply -ml-1 flex items-center gap-1.5 rounded-md p-2 text-inherit hover:bg-secondary-700;
   @apply text-xs;
 }
 
-.dyte-dropdown .sdk-ul > li {
+.ec-dropdown .sdk-ul > li {
   flex-basis: 48%;
 }
 
-.dyte-dropdown .sdk-ul {
+.ec-dropdown .sdk-ul {
   @apply mt-2 flex list-none flex-wrap gap-1 pl-0;
 }
 
-.dyte-dropdown .sdk-link > img {
+.ec-dropdown .sdk-link > img {
   @apply h-6 w-6;
 }
 
-.dyte-dropdown a {
+.ec-dropdown a {
   @apply no-underline;
 }
 
-.dyte-dropdown :is(h1, h2, h3, h4, h5) {
+.ec-dropdown :is(h1, h2, h3, h4, h5) {
   @apply font-medium;
 }
 
-.dyte-dropdown h3 {
+.ec-dropdown h3 {
   @apply !font-bold;
 }
 

@@ -87,11 +87,6 @@ export default function HomeFooter() {
           <span className="dark:text-[#999]">
             &copy; {new Date().getFullYear()} EKS Core Platform
           </span>
-          <span className="dark:text-[#999]">
-            Docs design adapted from{' '}
-            <Link href="https://github.com/dyte-io/docs">dyte-io/docs</Link>{' '}
-            (Apache-2.0)
-          </span>
         </div>
       </div>
     </footer>
