@@ -1,0 +1,45 @@
+.rail {
+  display: none;
+}
+
+@media (min-width: 997px) {
+  /* Zero-width flex item next to the sidebar; stretches to its height. */
+  .rail {
+    display: block;
+    position: relative;
+    width: 0;
+    flex-shrink: 0;
+    z-index: 5;
+  }
+
+  .handle {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    width: 9px;
+    margin-left: -5px;
+    cursor: col-resize;
+    touch-action: none;
+  }
+
+  .handle::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 4px;
+    width: 2px;
+    background: transparent;
+    transition: background-color 120ms ease;
+  }
+
+  .handle:hover::after,
+  .handle:focus-visible::after,
+  :global(html.sidebar-resizing) .handle::after {
+    background: var(--ifm-color-primary);
+  }
+
+  .handle:focus-visible {
+    outline: none;
+  }
+}
