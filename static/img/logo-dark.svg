@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="150" height="40" viewBox="0 0 150 40" fill="none">
+  <path d="M20 3 34.7 11.5v17L20 37 5.3 28.5v-17L20 3Z" fill="#2160FD"/>
+  <path d="M20 10.5 28.2 15.2v9.6L20 29.5l-8.2-4.7v-9.6L20 10.5Z" fill="#fff" fill-opacity=".9"/>
+  <path d="M20 15.8 23.6 17.9v4.2L20 24.2l-3.6-2.1v-4.2L20 15.8Z" fill="#2160FD"/>
+  <text x="44" y="26.5" fill="#ffffff" font-family="'Plus Jakarta Sans','Inter',-apple-system,'Segoe UI',Helvetica,Arial,sans-serif" font-size="19" font-weight="700" letter-spacing="-.3">EKS Core</text>
+</svg>

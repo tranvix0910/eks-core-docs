@@ -1,0 +1,7 @@
+EKS Core Docs
+
+The site layout and styling (src/css/custom.css, src/components/CardComponents.jsx,
+the homepage sections, the navbar dropdown structure and tailwind.config.cjs) are
+adapted from dyte-io/docs (https://github.com/dyte-io/docs), Copyright Dyte,
+licensed under the Apache License 2.0. A copy of that license is in
+LICENSE-dyte-docs. Files derived from it say so in a header comment.
