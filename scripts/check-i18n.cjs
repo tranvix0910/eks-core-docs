@@ -38,13 +38,9 @@ for (const relative of sourceFiles) {
   examples += codeBlocks(english).length;
 }
 
-const messages = JSON.parse(fs.readFileSync(path.join(root, 'i18n/vi/code.json'), 'utf8'));
-let labels = 0;
-for (const file of walk(path.join(root, 'src')).filter((file) => /\.jsx?$/.test(file))) {
-  const content = fs.readFileSync(file, 'utf8');
-  for (const match of content.matchAll(/translate\(\{\s*id:\s*["']([^"']+)["']/g)) {
-    assert(messages[match[1]]?.message?.trim(), `${match[1]}: missing Vietnamese UI message`);
-    labels += 1;
-  }
+// Only workshop content is translated; the shared website interface stays English.
+for (const relative of ['code.json', 'docusaurus-theme-classic/navbar.json']) {
+  const read = (locale) => JSON.parse(fs.readFileSync(path.join(root, 'i18n', locale, relative), 'utf8'));
+  assert.deepEqual(read('vi'), read('en'), `${relative}: shared UI must stay English in both locales`);
 }
-console.log(`i18n OK: ${sourceFiles.length} translated files, ${examples} unchanged code blocks, ${labels} UI messages.`);
+console.log(`i18n OK: ${sourceFiles.length} translated workshop files, ${examples} unchanged code blocks, shared UI in English.`);

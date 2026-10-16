@@ -1,22 +1,22 @@
 {
   "logo.alt": {
-    "message": "Tài liệu EKS Core",
+    "message": "EKS Core Docs",
     "description": "The alt text of navbar logo"
   },
   "item.label.Get started": {
-    "message": "Bắt đầu",
+    "message": "Get started",
     "description": "Navbar item with label Get started"
   },
   "item.label.Labs": {
-    "message": "Bài thực hành",
+    "message": "Labs",
     "description": "Navbar item with label Labs"
   },
   "item.label.Access & secrets": {
-    "message": "Quyền truy cập và secrets",
+    "message": "Access & secrets",
     "description": "Navbar item with label Access & secrets"
   },
   "item.label.Operations": {
-    "message": "Vận hành",
+    "message": "Operations",
     "description": "Navbar item with label Operations"
   },
   "item.label.GitHub": {

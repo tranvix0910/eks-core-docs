@@ -1,4 +1,3 @@
-import {translate} from '@docusaurus/Translate';
 import React, { useCallback, useEffect } from 'react';
 import styles from './styles.module.css';
 
@@ -80,8 +79,8 @@ export default function SidebarResizer() {
       <div
         role="separator"
         aria-orientation="vertical"
-        aria-label={translate({id: "site.sidebarResizer.01", message: "Resize sidebar"})}
-        title={translate({id: "site.sidebarResizer.02", message: "Drag to resize, double-click to reset"})}
+        aria-label="Resize sidebar"
+        title="Drag to resize, double-click to reset"
         tabIndex={0}
         className={styles.handle}
         onPointerDown={onPointerDown}

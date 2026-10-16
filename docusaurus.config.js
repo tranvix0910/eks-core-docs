@@ -5,16 +5,18 @@ const fs = require('fs');
 
 const REPO = 'https://github.com/tranvix0910/eks-core-docs';
 const currentLocale = process.env.DOCUSAURUS_CURRENT_LOCALE || 'en';
-const snippetsDirectory = currentLocale === 'vi' ? './i18n/vi/snippets' : './src/snippets';
-const platformHTML = fs.readFileSync(`${snippetsDirectory}/platform.html`, 'utf-8');
-const runbooksHTML = fs.readFileSync(`${snippetsDirectory}/runbooks.html`, 'utf-8');
+// Navigation stays English, while its links follow the selected workshop locale.
+const workshopLinks = (html) => currentLocale === 'vi'
+  ? html.replaceAll('href="/eks-core-docs/docs/', 'href="/eks-core-docs/vi/docs/')
+  : html;
+const platformHTML = workshopLinks(fs.readFileSync('./src/snippets/platform.html', 'utf-8'));
+const runbooksHTML = workshopLinks(fs.readFileSync('./src/snippets/runbooks.html', 'utf-8'));
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
   title: 'EKS Workshop',
-  tagline: currentLocale === 'vi'
-    ? 'Triển khai và vận hành microservices với Terraform, Karpenter, ArgoCD, EFS và observability tập trung.'
-    : 'Deploy and operate microservices with Terraform, Karpenter, ArgoCD, EFS, and centralized observability.',
+  tagline:
+    'Deploy and operate microservices with Terraform, Karpenter, ArgoCD, EFS, and centralized observability.',
   url: 'https://tranvix0910.github.io',
   baseUrl: '/eks-core-docs/',
   favicon: '/img/favicon.svg',

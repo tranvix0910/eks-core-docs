@@ -1,4 +1,3 @@
-import {translate} from '@docusaurus/Translate';
 // Layout adapted from dyte-io/docs (Apache-2.0)
 import React from 'react';
 import Link from '@docusaurus/Link';
@@ -12,24 +11,24 @@ import {
 const CARDS = [
   {
     icon: BookOpenRegular,
-    title: translate({id: "site.HelpSection.01", message: "New to the workshop?"}),
-    text: translate({id: "site.HelpSection.02", message: "Read the requirements, prepare your tools, and follow the steps from infrastructure to verification."}),
+    title: 'New to the workshop?',
+    text: 'Read the requirements, prepare your tools, and follow the steps from infrastructure to verification.',
     link: '/docs/platform-overview-and-deployment',
-    cta: translate({id: "site.HelpSection.03", message: "View the steps"}),
+    cta: 'View the steps',
   },
   {
     icon: WarningRegular,
-    title: translate({id: "site.HelpSection.04", message: "Troubleshooting a failure?"}),
-    text: translate({id: "site.HelpSection.05", message: "Look up symptoms, collect evidence, and identify the failing component before making changes."}),
+    title: 'Troubleshooting a failure?',
+    text: 'Look up symptoms, collect evidence, and identify the failing component before making changes.',
     link: '/docs/operations/master-incident-catalogue',
-    cta: translate({id: "site.HelpSection.06", message: "Incident catalogue"}),
+    cta: 'Incident catalogue',
   },
   {
     icon: CodeRegular,
-    title: translate({id: "site.HelpSection.07", message: "Source code and lab examples"}),
-    text: translate({id: "site.HelpSection.08", message: "Terraform, charts, values, and verification workloads live in four repositories so you can repeat the exercises."}),
+    title: 'Source code and lab examples',
+    text: 'Terraform, charts, values, and verification workloads live in four repositories so you can repeat the exercises.',
     link: 'https://github.com/tranvix0910?tab=repositories&q=eks-core',
-    cta: translate({id: "site.HelpSection.09", message: "Browse the repositories"}),
+    cta: 'Browse the repositories',
   },
 ];
 
@@ -42,7 +41,7 @@ export default function HelpSection({ className = '' }) {
           className,
         )}
       >
-        <h2 className="mb-12 text-center lg:text-3xl">{translate({id: "site.HelpSection.10", message: "Where to go next"})}</h2>
+        <h2 className="mb-12 text-center lg:text-3xl">Where to go next</h2>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {CARDS.map(({ icon: Icon, title, text, link, cta }) => (
             <div key={title} className="rounded-lg bg-zinc-100 p-6 dark:bg-zinc-900">

@@ -1,4 +1,3 @@
-import {translate} from '@docusaurus/Translate';
 // Layout adapted from dyte-io/docs (Apache-2.0)
 import React from 'react';
 import Link from '@docusaurus/Link';
@@ -15,15 +14,15 @@ import {
 import { ChevronRight } from 'react-feather';
 
 const guides = [
-  {title: translate({id: "site.GuidesAndRunbooks.01", message: "Plan and apply infrastructure"}), icon: CloudFlowRegular, text: translate({id: "site.GuidesAndRunbooks.02", message: "Create the network, clusters, and states in dependency order."}), link: '/docs/architecture/layer-10-network'},
-  {title: translate({id: "site.GuidesAndRunbooks.03", message: "Deploy microservices through ArgoCD"}), icon: ArrowSyncRegular, text: translate({id: "site.GuidesAndRunbooks.04", message: "Build images and deploy application layers from Git."}), link: '/docs/apps-shopnow/shopnow-end-to-end-deployment-guide'},
-  {title: translate({id: "site.GuidesAndRunbooks.05", message: "EFS, placement, and PDBs"}), icon: GlobeRegular, text: translate({id: "site.GuidesAndRunbooks.06", message: "Verify storage, replica distribution, and eviction."}), link: '/docs/apps-shopnow/efs-persistent-volumes'},
+  {title: 'Plan and apply infrastructure', icon: CloudFlowRegular, text: 'Create the network, clusters, and states in dependency order.', link: '/docs/architecture/layer-10-network'},
+  {title: 'Deploy microservices through ArgoCD', icon: ArrowSyncRegular, text: 'Build images and deploy application layers from Git.', link: '/docs/apps-shopnow/shopnow-end-to-end-deployment-guide'},
+  {title: 'EFS, placement, and PDBs', icon: GlobeRegular, text: 'Verify storage, replica distribution, and eviction.', link: '/docs/apps-shopnow/efs-persistent-volumes'},
 ];
 const runbooks = [
-  {title: translate({id: "site.GuidesAndRunbooks.07", message: "Verify every requirement"}), icon: StethoscopeRegular, link: '/docs/operations/workshop-acceptance'},
-  {title: translate({id: "site.GuidesAndRunbooks.08", message: "Diagnose and resolve failures"}), icon: WarningRegular, link: '/docs/operations/master-incident-catalogue'},
-  {title: translate({id: "site.GuidesAndRunbooks.09", message: "Updates, rollback, and cleanup"}), icon: FlashRegular, link: '/docs/operations/lifecycle-and-cleanup'},
-  {title: translate({id: "site.GuidesAndRunbooks.10", message: "Centralized metrics and logs"}), icon: GlobeRegular, link: '/docs/observability/observability-architecture-overview'},
+  {title: 'Verify every requirement', icon: StethoscopeRegular, link: '/docs/operations/workshop-acceptance'},
+  {title: 'Diagnose and resolve failures', icon: WarningRegular, link: '/docs/operations/master-incident-catalogue'},
+  {title: 'Updates, rollback, and cleanup', icon: FlashRegular, link: '/docs/operations/lifecycle-and-cleanup'},
+  {title: 'Centralized metrics and logs', icon: GlobeRegular, link: '/docs/observability/observability-architecture-overview'},
 ];
 
 function Guide({ title, text, icon: Icon, link }) {
@@ -54,7 +53,9 @@ function Runbook({ title, icon: Icon, link }) {
           {title}
         </h4>
       </div>
-      <span className="rounded-lg py-1 px-3 text-sm font-semibold text-text-400 transition-colors group-hover:bg-primary group-hover:text-white">{translate({id: "site.GuidesAndRunbooks.11", message: "Open"})}</span>
+      <span className="rounded-lg py-1 px-3 text-sm font-semibold text-text-400 transition-colors group-hover:bg-primary group-hover:text-white">
+        Open
+      </span>
     </Link>
   );
 }
@@ -64,8 +65,9 @@ export default function GuidesAndRunbooks() {
     <section className="no-underline-links my-32 mx-auto flex w-full max-w-5xl flex-col gap-10 p-4 py-0 md:flex-row md:gap-0">
       <div className="flex-1">
         <div className="mb-8 flex items-center justify-between">
-          <h3 className="m-0">{translate({id: "site.GuidesAndRunbooks.12", message: "Step-by-step labs"})}</h3>
-          <Link to="/docs" className="font-jakarta text-sm font-semibold">{translate({id: "site.GuidesAndRunbooks.13", message: "View the learning path "})}<ArrowRightFilled className="ml-1" />
+          <h3 className="m-0">Step-by-step labs</h3>
+          <Link to="/docs" className="font-jakarta text-sm font-semibold">
+            View the learning path <ArrowRightFilled className="ml-1" />
           </Link>
         </div>
         <div className="flex flex-col gap-4">
@@ -84,11 +86,12 @@ export default function GuidesAndRunbooks() {
 
       <div className="w-full md:max-w-sm">
         <div className="mb-8 flex items-center justify-between">
-          <h3 className="m-0">{translate({id: "site.GuidesAndRunbooks.14", message: "Operations"})}</h3>
+          <h3 className="m-0">Operations</h3>
           <Link
             to="/docs/operations/tokyo-region-migration-runbook"
             className="font-jakarta text-sm font-semibold"
-          >{translate({id: "site.GuidesAndRunbooks.15", message: "All runbooks "})}<ArrowRightFilled className="ml-1" />
+          >
+            All runbooks <ArrowRightFilled className="ml-1" />
           </Link>
         </div>
         <div className="flex flex-col gap-4">
