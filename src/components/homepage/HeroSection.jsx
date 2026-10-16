@@ -64,12 +64,12 @@ export default function HeroSection() {
       <section className="no-underline-links px-4 pt-16 lg:py-0">
         <div className="flex flex-col items-center justify-between py-14">
           <h1 className="mb-4 max-w-4xl text-center font-jakarta text-5xl font-bold">
-            Deploy and operate microservices on EKS
+            AWS EKS Core - Workshop
           </h1>
           <p className="max-w-xl text-center text-text-400">
-            From Terraform and ArgoCD to EFS, capacity groups, metrics, and logs.
-            Follow each step, verify every requirement, and learn to manage
-            the environment after deployment.
+            Build and operate a microservices platform on Amazon EKS.
+            Deploy applications through GitOps, test scaling and availability,
+            and centralize metrics and logs across two clusters.
           </p>
           <div className="mt-4 flex gap-3">
             <Link
