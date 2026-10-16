@@ -55,9 +55,6 @@ export default function HomeFooter() {
             className="h-9 w-fit lg:h-12"
             sources={{ light: logoLight, dark: logoDark }}
           />
-          <p className="mb-0 max-w-md text-sm text-gray-500 dark:text-[#999]">
-            Amazon EKS reference platform · ap-northeast-1 · Terraform + ArgoCD
-          </p>
         </div>
 
         <div className="grid grid-cols-2 gap-6 gap-y-12 md:justify-between lg:flex lg:flex-wrap">

@@ -1527,3 +1527,42 @@ html {
   background-color: var(--docs-color-primary-tint);
   border-color: var(--docs-color-primary-tint-light);
 }
+
+/* Heading scale for doc pages. Infima/Docusaurus default the page title to
+   3rem and section headings to 2rem, which overwhelms long runbooks. */
+.markdown h1:first-child {
+  --ifm-h1-font-size: 2.125rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  margin-bottom: 1.25rem;
+}
+.markdown > h2 {
+  --ifm-h2-font-size: 1.5rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+.markdown > h3 {
+  --ifm-h3-font-size: 1.1875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+.markdown > h4 {
+  --ifm-h4-font-size: 1rem;
+  font-weight: 600;
+  margin-top: 1.5rem;
+}
+@media (max-width: 996px) {
+  .markdown h1:first-child {
+    --ifm-h1-font-size: 1.75rem;
+  }
+  .markdown > h2 {
+    --ifm-h2-font-size: 1.3125rem;
+  }
+}
