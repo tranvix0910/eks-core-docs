@@ -14,8 +14,10 @@
 
   .handle {
     position: sticky;
-    top: 0;
-    height: 100vh;
+    top: var(--ifm-navbar-height);
+    /* Runs from under the navbar and stops short of the bottom, so it never
+       sits over the round collapse button on the same edge. */
+    height: calc(100vh - var(--ifm-navbar-height) - 56px);
     width: 9px;
     margin-left: -5px;
     cursor: col-resize;

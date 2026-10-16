@@ -364,7 +364,8 @@ nav.menu {
   margin-top: 1rem;
 }
 
-/* Custom design for sidebar hide and expand buttons */
+/* Sidebar collapse / expand: a small round button sitting on the sidebar's
+   right border, like the toggles on Linear or Vercel docs. */
 
 aside.theme-doc-sidebar-container {
   position: relative;
@@ -373,42 +374,63 @@ aside.theme-doc-sidebar-container {
 
 .theme-doc-sidebar-container button[title='Collapse sidebar'],
 .theme-doc-sidebar-container div[title='Expand sidebar'] {
+  --toggle-size: 24px;
+  --toggle-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 3.5 5.5 8l4.5 4.5'/%3E%3C/svg%3E");
+
   position: absolute;
-  top: 95vh;
-  right: -14px;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border-radius: 4px;
+  right: calc(var(--toggle-size) / -2);
   z-index: 10;
-  background-size: 16px;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-color: var(--docs-color-border);
-
-  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' fill='none' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15.707 4.293a1 1 0 0 1 0 1.414L9.414 12l6.293 6.293a1 1 0 0 1-1.414 1.414l-7-7a1 1 0 0 1 0-1.414l7-7a1 1 0 0 1 1.414 0Z' fill='%23181818'/%3E%3C/svg%3E");
-}
-
-.theme-doc-sidebar-container div[title='Expand sidebar'] {
-  /* Pinned just under the navbar inside the sticky sidebar viewport, so it
-     stays on screen however far the page is scrolled. */
-  top: calc(var(--ifm-navbar-height) + 12px);
-  right: auto;
-  left: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--toggle-size);
+  height: var(--toggle-size);
+  padding: 0;
+  border: 1px solid var(--docs-color-border);
+  border-radius: 999px;
+  background: var(--docs-color-background);
+  color: var(--docs-color-text-100) !important;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 1px 6px rgb(0 0 0 / 0.04);
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' fill='none' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8.293 4.293a1 1 0 0 0 0 1.414L14.586 12l-6.293 6.293a1 1 0 1 0 1.414 1.414l7-7a1 1 0 0 0 0-1.414l-7-7a1 1 0 0 0-1.414 0Z' fill='%23181818'/%3E%3C/svg%3E");
+  transition: color 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
-html[data-theme='dark']
-  .theme-doc-sidebar-container
-  button[title='Collapse sidebar'] {
-  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' fill='none' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M15.707 4.293a1 1 0 0 1 0 1.414L9.414 12l6.293 6.293a1 1 0 0 1-1.414 1.414l-7-7a1 1 0 0 1 0-1.414l7-7a1 1 0 0 1 1.414 0Z' fill='%23ffffff'/%3E%3C/svg%3E");
+.theme-doc-sidebar-container button[title='Collapse sidebar']::before,
+.theme-doc-sidebar-container div[title='Expand sidebar']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 14px;
+  height: 14px;
+  background-color: currentColor;
+  -webkit-mask: var(--toggle-chevron) center / contain no-repeat;
+  mask: var(--toggle-chevron) center / contain no-repeat;
 }
 
-html[data-theme='dark']
-  .theme-doc-sidebar-container
-  div[title='Expand sidebar'] {
-  background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' fill='none' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8.293 4.293a1 1 0 0 0 0 1.414L14.586 12l-6.293 6.293a1 1 0 1 0 1.414 1.414l7-7a1 1 0 0 0 0-1.414l-7-7a1 1 0 0 0-1.414 0Z' fill='%23ffffff'/%3E%3C/svg%3E");
+.theme-doc-sidebar-container button[title='Collapse sidebar']:hover,
+.theme-doc-sidebar-container div[title='Expand sidebar']:hover,
+.theme-doc-sidebar-container button[title='Collapse sidebar']:focus-visible,
+.theme-doc-sidebar-container div[title='Expand sidebar']:focus-visible {
+  color: var(--ifm-color-primary) !important;
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 0 0 3px var(--docs-color-primary-tint);
+  outline: none;
+}
+
+/* Collapse: near the bottom of the sticky sidebar. */
+.theme-doc-sidebar-container button[title='Collapse sidebar'] {
+  top: auto;
+  bottom: 20px;
+}
+
+/* Expand: pinned under the navbar in the collapsed strip, so it stays on
+   screen however far the page is scrolled. The chevron points right. */
+.theme-doc-sidebar-container div[title='Expand sidebar'] {
+  top: calc(var(--ifm-navbar-height) + 16px);
+}
+.theme-doc-sidebar-container div[title='Expand sidebar']::before {
+  transform: rotate(180deg);
 }
 
 .theme-doc-sidebar-container
@@ -1218,9 +1240,6 @@ img {
   @apply rounded-xl;
 }
 
-h2.anchor > code {
-  @apply mx-2;
-}
 .cta_button {
   padding: 16px 32px;
   background-color: #2160fd;
@@ -1375,12 +1394,15 @@ h2.anchor > code {
 
 h2.anchor,
 h3.anchor {
-  text-wrap: nowrap;
+  /* Long headings wrap onto evenly sized lines instead of running into the
+     table of contents. */
+  text-wrap: balance;
+  overflow-wrap: anywhere;
 }
 
 h2.anchor > code,
 h3.anchor > code {
-  @apply mx-2;
+  margin: 0 0.1em;
 }
 
 .pre-call-docs {
