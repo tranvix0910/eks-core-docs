@@ -63,7 +63,7 @@ File `.drawio` được sinh bởi `diagrams/build.py` trong repository này, n�
 
 ```bash
 cd diagrams
-python3 build.py                     # ghi eks-core-architecture.drawio và chép sang static/diagrams/
+python3 build.py                     # writes eks-core-architecture.drawio and copies it to static/diagrams/
 drawio -x -f png -s 1.5 -b 16 --page-index 1 -o ../static/img/architecture/01-overview.png eks-core-architecture.drawio
 ```
 
