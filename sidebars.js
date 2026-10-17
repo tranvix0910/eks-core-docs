@@ -21,6 +21,7 @@ module.exports = {
     section('0 · Before you start', [
       doc('architecture/organizational-constraints-and-prerequisites'),
       doc('architecture/architecture-overview'),
+      doc('architecture/architecture-diagrams'),
     ], { className: 'sb-icon sb-icon-book' }),
 
     section('1 · Infrastructure with Terraform', [

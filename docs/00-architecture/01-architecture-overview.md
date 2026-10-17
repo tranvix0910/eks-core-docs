@@ -12,6 +12,10 @@ sidebar_label: "0.2 Architecture"
 
 ## The big picture
 
+[![Architecture overview](/img/architecture/01-overview.png)](/img/architecture/01-overview.png)
+
+Nine detailed views — network, each cluster, Karpenter, telemetry, ShopNow, delivery, Terraform — are on [Architecture diagrams](07-architecture-diagrams.md). The logical view:
+
 ```mermaid
 flowchart LR
   Git[(eks-core-gitops)] --> Argo
@@ -94,4 +98,4 @@ Every resource has exactly one owner. Change it only through that owner, otherwi
 - **EFS is for the microservices; databases use EBS.** PostgreSQL and MySQL stay on `gp3` volumes, which suit single-writer databases.
 - **Telemetry goes to a separate cluster** so metrics and logs survive the loss of any workload node or of cluster 1 itself.
 
-**Next:** [1.0 Terraform workflow](00-terraform-workflow.md)
+**Next:** [0.3 Architecture diagrams](07-architecture-diagrams.md), then [1.0 Terraform workflow](00-terraform-workflow.md)

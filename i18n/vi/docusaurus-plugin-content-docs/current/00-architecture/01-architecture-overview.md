@@ -12,6 +12,10 @@ sidebar_label: "0.2 Kiến trúc"
 
 ## Bức tranh tổng thể {#the-big-picture}
 
+[![Tổng quan kiến trúc](/img/architecture/01-overview.png)](/img/architecture/01-overview.png)
+
+Chín sơ đồ chi tiết — mạng, từng cluster, Karpenter, telemetry, ShopNow, quy trình triển khai, Terraform — nằm ở trang [Sơ đồ kiến trúc](07-architecture-diagrams.md). Sơ đồ logic:
+
 ```mermaid
 flowchart LR
   Git[(eks-core-gitops)] --> Argo
@@ -94,4 +98,4 @@ Mỗi tài nguyên chỉ có một công cụ quản lý. Thực hiện thay đ�
 - **EFS dành cho microservices; database dùng EBS.** PostgreSQL và MySQL dùng volume `gp3`, phù hợp với database có một writer.
 - **Telemetry chuyển sang cluster riêng** để metrics và logs còn tồn tại khi mất bất kỳ workload node nào hoặc toàn bộ cluster 1.
 
-**Tiếp theo:** [1.0 Quy trình Terraform](00-terraform-workflow.md)
+**Tiếp theo:** [0.3 Sơ đồ kiến trúc](07-architecture-diagrams.md), sau đó [1.0 Quy trình Terraform](00-terraform-workflow.md)
