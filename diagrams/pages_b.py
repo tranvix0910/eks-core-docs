@@ -330,7 +330,7 @@ def gitops():
     app = p.box('<b>kubectl apply</b><br>ArgoCD Applications<br>(in order: DB → Eureka/Config → APIs → frontend)', 760, 360, 340, 90, 'green', font=11)
     argo = p.box('<b>ArgoCD</b> (cluster 1)<br>auto-sync · prune · self-heal', 1160, 360, 260, 90, 'green', font=11)
     k8s = p.box('<b>namespace shopnow</b><br>Deployments · Rollout · PVCs · PDBs · Services', 1480, 360, 380, 90, 'green', font=11)
-    np_ = p.box('<b>kubectl apply</b> NodePools, cert-manager / Alloy / Kite (Helm), JavaMelody, Ingress', 760, 470, 600, 50, 'white', font=11)
+    np_ = p.box('<b>kubectl apply</b> NodePools, cert-manager / Alloy (Helm), JavaMelody, internal Ingress', 760, 470, 600, 50, 'white', font=11)
     # apps lane
     bld = p.box('<b>build-images.sh</b><br>docker buildx · linux/amd64<br>7 images · tag IMAGE_TAG', 420, 600, 280, 90, 'blue', font=11)
     ecr = p.icon('ecr', 'ECR shopnow/*', 820, 610, size=56, font=10)
@@ -370,7 +370,7 @@ def terraform():
         ('10-network', 'network/terraform.tfstate', 'purple',
          '<b>reads</b> nothing (applied first)<br><br>module vpc (VPC, 9 subnets, IGW, 1 NAT, route tables, Flow Logs)<br>module vpc_endpoints (S3 gateway)<br>subnet discovery and ELB tags<br><br><b>outputs</b> vpc_id, vpc_cidr, azs,<br>workload_node_subnet_ids,<br>observability_node_subnet_ids'),
         ('20-cluster-workload', 'cluster-workload/terraform.tfstate', 'orange',
-         '<b>reads</b> 10-network (VPC, subnets) · 21 (node SG for the Rancher rule)<br><br>module eks (cluster, infra node group, add-ons)<br>module karpenter (IAM, SQS, EventBridge)<br>module efs · module ecr<br>Pod Identity: EBS CSI, EFS CSI, LBC<br>StorageClasses gp3, efs-sc<br>Helm: LBC, Karpenter, ArgoCD, Prometheus,<br>Metrics Server, Grafana<br><br><b>outputs</b> node_security_group_id, efs_file_system_id,<br>ecr_repository_urls, karpenter_* …'),
+         '<b>reads</b> 10-network (VPC, subnets) · 21 (node SG for the Rancher rule)<br><br>module eks (cluster, infra node group, add-ons)<br>module karpenter (IAM, SQS, EventBridge)<br>module efs · module ecr<br>Pod Identity: EBS CSI, EFS CSI, LBC<br>StorageClasses gp3, efs-sc<br>Helm: LBC, Karpenter, ArgoCD, Prometheus,<br>Metrics Server, Grafana, Kite<br><br><b>outputs</b> node_security_group_id, efs_file_system_id,<br>ecr_repository_urls, karpenter_* …'),
         ('21-cluster-observability', 'cluster-observability/terraform.tfstate', 'blue',
          '<b>reads</b> 10-network (VPC, subnets) · 20 (node SG for the ALB rule)<br><br>module eks (cluster, monitoring node group)<br>module s3 (Mimir + Loki buckets)<br>Pod Identity: S3, EBS CSI, LBC<br>internal ALB security group<br>module route53_zone (observability.internal)<br>Helm: LBC, Prometheus, Mimir, Loki, Grafana<br><br><b>outputs</b> node_security_group_id,<br>internal_alb_security_group_id, mimir/loki bucket'),
     ]

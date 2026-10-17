@@ -1,16 +1,16 @@
 ---
-title: "Bước 2.5 — Cài Kite dashboard bằng Helm"
+title: "Bước 2.5 — Kite dashboard"
 sidebar_label: "2.5 Kite dashboard"
 ---
 
-# Bước 2.5 — Cài Kite dashboard bằng Helm {#step-25--install-the-kite-dashboard-with-helm}
+# Bước 2.5 — Kite dashboard {#step-25--kite-dashboard}
 
 :::info Tóm tắt bước thực hành
-**Mục tiêu:** Kite được cài bằng Helm trên node group infra, truy cập bằng port-forward **hoặc** qua ALB quản trị dùng chung ở port 8088.
-**Thời gian:** khoảng 20 phút. **Chạy từ:** `$GITOPS_DIR`.
+**Mục tiêu:** hiểu Kite đã được cài như thế nào, kiểm tra nó, rồi mở bằng port-forward **hoặc** qua ALB quản trị dùng chung ở port 8088.
+**Thời gian:** khoảng 15 phút. **Chạy từ:** `$GITOPS_DIR` (Ingress). Không cần cài gì thêm: Terraform đã cài rồi.
 :::
 
-[Kite](https://github.com/kite-org/kite) là một dashboard Kubernetes gọn nhẹ: xem mọi resource, đọc log Pod, mở shell vào container và xem CPU, memory lấy từ Prometheus. Không thành phần nào khác trong workshop phụ thuộc vào nó, nên Kite được cài riêng bằng Helm thay vì bằng Terraform.
+[Kite](https://github.com/kite-org/kite) là một dashboard Kubernetes gọn nhẹ: xem mọi resource, đọc log Pod, mở shell vào container và xem CPU, memory lấy từ Prometheus. Không thành phần nào khác trong workshop phụ thuộc vào nó.
 
 ```mermaid
 flowchart LR
@@ -24,77 +24,45 @@ flowchart LR
   end
 ```
 
-## Phần 1 — Cài Kite bằng Helm {#part-1--install-kite-with-helm}
+## Phần 1 — Kite được cài như thế nào {#part-1--how-kite-is-installed}
 
-### 1.1 Điều kiện cần {#11-prerequisites}
+Kite là một `helm_release` trong **Terraform layer 20** (`$TF_DIR/20-cluster-workload/helm_releases.tf`). Nó đã được cài khi bạn apply layer đó ở [bước 1.3](../architecture/layer-21-cluster-observability#6-finish-cluster-1); không có lệnh cài riêng.
 
-```bash
-kubectl config use-context eks-workload
-helm version --short                                   # Helm 3.8+ (OCI charts)
-kubectl get storageclass gp3                           # created by Terraform layer 20
-kubectl get nodes -l role=infra                        # at least one infra node Ready
+```mermaid
+flowchart LR
+  A["terraform apply<br/>layer 20"] --> B["Namespace<br/>kite-system"]
+  B --> C["random_password ×2<br/>→ Secret kite"]
+  C --> D["helm_release kite<br/>chart 0.15.0"]
+  D --> E["Deployment · Service :8080<br/>PVC gp3 5 GiB · RBAC"]
 ```
 
-### 1.2 Đọc file values {#12-read-the-values-file}
+| Thứ tự | Resource Terraform | Kết quả trong cluster |
+|---|---|---|
+| 1 | `kubernetes_namespace_v1.kite` | Namespace `kite-system` |
+| 2 | `random_password.kite_jwt`, `random_password.kite_encryption` | Hai key ngẫu nhiên 64 ký tự (lưu trong Terraform state) |
+| 3 | `kubernetes_secret_v1.kite` | Secret `kite`: `JWT_SECRET`, `KITE_ENCRYPT_KEY`, `DB_TYPE=sqlite` |
+| 4 | `helm_release.kite` | Chart `oci://ghcr.io/kite-org/charts/kite` `0.15.0`: Deployment, Service `kite` (ClusterIP `8080`), PVC, ServiceAccount + ClusterRole |
 
-```bash
-cat "$GITOPS_DIR/platform/addons/kite/values.yaml"
-```
+Các values chính truyền vào chart:
 
 | Value | Thiết lập | Lý do |
 |---|---|---|
-| `replicaCount`, `deploymentStrategy` | `1`, `Recreate` | SQLite chỉ có một tiến trình ghi; `Recreate` dừng Pod cũ trước khi Pod mới gắn ổ đĩa |
-| `secret.create`, `secret.existingSecret` | `false`, `kite` | Dùng Secret bạn tạo ở 1.3 thay cho key mặc định của chart |
+| `replicaCount`, `deploymentStrategy` | `1`, `Recreate` | SQLite chỉ có một tiến trình ghi; Pod cũ dừng trước khi Pod mới gắn ổ đĩa |
+| `secret.existingSecret` | `kite` | Dùng Secret do Terraform tạo thay cho key mặc định của chart |
 | `db.sqlite.persistence.pvc` | `gp3`, `ReadWriteOnce`, `5Gi` | User và cấu hình còn nguyên khi khởi động lại |
-| `nodeSelector`, `tolerations` | `role: infra`, `CriticalAddonsOnly` | Chạy trên Managed Node Group cùng các công cụ nền tảng khác |
-| `resources` | request 250m / 256Mi, limit 512Mi | — |
+| `nodeSelector`, `tolerations` | `role: infra`, `CriticalAddonsOnly` | Chạy trên Managed Node Group infra |
 | `ingress.enabled` | `false` | Truy cập bằng port-forward hoặc Ingress ở Phần 2 |
 
-### 1.3 Tạo namespace và Secret {#13-create-the-namespace-and-the-secret}
+Muốn đổi value, sửa khối `helm_release "kite"` rồi plan và apply layer 20 như bình thường. Helm chờ Pod Ready (`wait`, `atomic`) và tự rollback nếu Pod không lên.
 
-Với `existingSecret`, chart yêu cầu Secret `kite` phải tồn tại trước khi cài. Secret gồm ba key:
-
-| Key | Giá trị |
-|---|---|
-| `JWT_SECRET` | ký token phiên đăng nhập |
-| `KITE_ENCRYPT_KEY` | mã hoá thông tin xác thực cluster lưu trong SQLite |
-| `DB_TYPE` | `sqlite` |
+### Kiểm tra Kite đang chạy {#check-that-kite-is-running}
 
 ```bash
-kubectl create namespace kite-system
-
-kubectl -n kite-system create secret generic kite \
-  --from-literal=JWT_SECRET="$(openssl rand -hex 32)" \
-  --from-literal=KITE_ENCRYPT_KEY="$(openssl rand -hex 32)" \
-  --from-literal=DB_TYPE=sqlite
-
-kubectl -n kite-system get secret kite -o jsonpath='{.data}' | jq 'keys'
-```
-
-**Kết quả mong đợi:** `["DB_TYPE","JWT_SECRET","KITE_ENCRYPT_KEY"]`. Hãy giữ lại các giá trị này: nếu cài lại Kite và muốn dùng lại database cũ, backup Secret trước (`kubectl -n kite-system get secret kite -o yaml > kite-secret-backup.yaml`) rồi apply bản backup đó thay vì sinh key mới.
-
-### 1.4 Cài chart {#14-install-the-chart}
-
-```bash
-cd "$GITOPS_DIR"
-
-helm template kite oci://ghcr.io/kite-org/charts/kite --version 0.15.0 \
-  -n kite-system -f platform/addons/kite/values.yaml | grep -E '^kind:'   # review what will be created
-
-helm upgrade --install kite oci://ghcr.io/kite-org/charts/kite --version 0.15.0 \
-  -n kite-system -f platform/addons/kite/values.yaml --wait --timeout 10m
-```
-
-`helm template` phải liệt kê ServiceAccount, ClusterRole, ClusterRoleBinding, PersistentVolumeClaim, Service và Deployment. `upgrade --install` chạy lại an toàn: lần đầu sẽ cài, các lần sau áp dụng thay đổi values.
-
-### 1.5 Kiểm tra cài đặt {#15-verify-the-installation}
-
-```bash
-helm list -n kite-system
-kubectl -n kite-system get deploy,pods,svc,pvc,secret -o wide
-kubectl -n kite-system get pod -l app.kubernetes.io/name=kite \
-  -o jsonpath='{.items[0].spec.nodeName}' | xargs -I{} kubectl get node {} -L role
-kubectl -n kite-system logs deploy/kite --tail=20
+helm --kube-context eks-workload list -n kite-system
+kubectl --context eks-workload -n kite-system get deploy,pods,svc,pvc,secret -o wide
+kubectl --context eks-workload -n kite-system get pod -l app.kubernetes.io/name=kite \
+  -o jsonpath='{.items[0].spec.nodeName}' | xargs -I{} kubectl --context eks-workload get node {} -L role
+kubectl --context eks-workload -n kite-system logs deploy/kite --tail=20
 ```
 
 **Kết quả mong đợi:**
@@ -240,7 +208,7 @@ curl -s -o /dev/null -w '%{http_code}\n' "http://$ALB_DNS:8088/healthz"
 | Mở từ mạng khác (ví dụ điện thoại dùng 4G) | timeout — bị chặn bởi `inbound-cidrs` |
 | Sau khi đăng nhập, mở trang khác | vẫn giữ phiên |
 
-Đăng nhập trước ([Phần 3](#part-3--first-sign-in)). Nếu đăng nhập thành công nhưng sang trang tiếp theo lại bị đưa về màn hình đăng nhập hoặc nhận `401`, nghĩa là cookie phiên có cờ `Secure` và trình duyệt không gửi nó qua HTTP thường — đúng vấn đề Rancher từng gặp trên ALB này. Hãy xoá Ingress (2B.8) và tiếp tục dùng port-forward.
+Nếu đăng nhập thành công nhưng sang trang tiếp theo lại bị đưa về màn hình đăng nhập hoặc nhận `401`, nghĩa là cookie phiên có cờ `Secure` và trình duyệt không gửi nó qua HTTP thường — đúng vấn đề Rancher từng gặp trên ALB này. Hãy xoá Ingress (2B.8) và tiếp tục dùng port-forward.
 
 #### 2B.7 Khi IP của bạn thay đổi {#2b7-when-your-ip-changes}
 
@@ -286,25 +254,26 @@ Lần đầu mở, Kite chưa có user nào:
 | Chỉ một tài khoản quản trị | Tạo user riêng trong Kite thay vì dùng chung tài khoản đầu tiên |
 | Mất dữ liệu | Snapshot volume EBS của PVC trước khi nâng cấp |
 
-Quyền Kubernetes chỉ đọc cho Kite — thêm vào `$GITOPS_DIR/platform/addons/kite/values.yaml`:
+Quyền Kubernetes chỉ đọc cho Kite — thêm vào values của `helm_release "kite"` trong `$TF_DIR/20-cluster-workload/helm_releases.tf`:
 
-```yaml
-rbac:
-  create: true
-  rules:
-    - apiGroups: ["*"]
-      resources: ["*"]
-      verbs: ["get", "list", "watch"]
+```hcl
+    rbac = {
+      create = true
+      rules = [{
+        apiGroups = ["*"]
+        resources = ["*"]
+        verbs     = ["get", "list", "watch"]
+      }]
+    }
 ```
 
-Sau đó chạy lại lệnh `helm upgrade --install` ở 1.4. Với quyền chỉ đọc, các thao tác terminal, sửa và xoá trong Kite sẽ không hoạt động; đó chính là mục đích.
+Sau đó plan và apply layer 20. Với quyền chỉ đọc, các thao tác terminal, sửa và xoá trong Kite sẽ không hoạt động; đó chính là mục đích.
 
 ## Xử lý sự cố {#troubleshooting}
 
 | Triệu chứng | Kiểm tra |
 |---|---|
-| `helm upgrade --install` bị timeout | `kubectl -n kite-system describe pod`; PVC `Bound`; có StorageClass `gp3`; node infra còn chỗ |
-| Pod `Pending` | PVC đã `Bound` chưa; `kubectl -n kite-system describe pod` xem thông báo về nodeSelector hoặc taint |
+| Helm release thất bại / rollback | `kubectl -n kite-system describe pod`; PVC `Bound`; có StorageClass `gp3`; node infra còn chỗ |
 | Pod khởi động lại liên tục | `kubectl -n kite-system logs deploy/kite --previous`; Secret `kite` có `JWT_SECRET` và `KITE_ENCRYPT_KEY` |
 | Ingress không có ADDRESS | Log controller (2B.4); IngressClass `alb`; public subnet có tag `kubernetes.io/role/elb=1` |
 | Target `unhealthy` | `curl` `/healthz` từ trong cluster; Pod Ready; SG của node cho phép SG của ALB ở 8080 |
@@ -313,12 +282,6 @@ Sau đó chạy lại lệnh `helm upgrade --install` ở 1.4. Với quyền ch�
 
 ## Gỡ Kite {#remove-kite}
 
-```bash
-kubectl --context eks-workload -n kite-system delete ingress kite --ignore-not-found
-helm uninstall kite -n kite-system
-kubectl delete namespace kite-system
-```
-
-Xoá namespace cũng xoá luôn Secret, PVC và dữ liệu của Kite.
+Xoá Ingress (2B.8), rồi bỏ các resource `kite` (`kubernetes_namespace_v1.kite`, `random_password.kite_*`, `kubernetes_secret_v1.kite`, `helm_release.kite`) khỏi layer 20 và apply. Xoá namespace cũng xoá luôn PVC và dữ liệu của Kite.
 
 **Tiếp theo:** [3.1 Build image](../apps-shopnow/docker-build-multi-arch-and-ci)

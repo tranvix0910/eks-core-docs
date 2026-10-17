@@ -28,7 +28,7 @@ nodeSelector:
 | cert-manager | Helm, tại bước này | `platform/addons/cert-manager/values.yaml` |
 | Argo Rollouts | Helm, tại bước này | `--set nodeSelector.role=infra` |
 | JavaMelody collector | kubectl, tại bước này | `platform/addons/javamelody/javamelody-collector.yaml` |
-| Kite dashboard | Helm (bước 2.5) | `platform/addons/kite/values.yaml` — xem [bước 2.5](kite-dashboard) |
+| Kite dashboard | Terraform (bước 1.3) | values trong `20-cluster-workload/helm_releases.tf` — xem [bước 2.5](kite-dashboard) |
 
 Không cài lại chart do Terraform quản lý bằng `helm install`; sửa tệp values rồi apply lại Terraform.
 

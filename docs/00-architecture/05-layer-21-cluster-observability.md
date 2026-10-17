@@ -111,7 +111,7 @@ This adds:
 | kube-prometheus-stack 88.6 | `monitoring` |
 | Metrics Server | `kube-system` |
 | StorageClasses `gp3` and `efs-sc` | cluster-wide |
-| Grafana (local helper on cluster 1) | `monitoring` |
+| Grafana and Kite (local helpers on cluster 1) | `monitoring`, `kite` |
 
 Prometheus waits for the TLS secret created in [step 4.1](../platform-addons/cert-manager-and-internal-tls) before it can ship metrics; it may show errors until then. That is expected.
 

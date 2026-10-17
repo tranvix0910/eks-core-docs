@@ -1,16 +1,16 @@
 ---
-title: "Step 2.5 — Install the Kite dashboard with Helm"
+title: "Step 2.5 — Kite dashboard"
 sidebar_label: "2.5 Kite dashboard"
 ---
 
-# Step 2.5 — Install the Kite dashboard with Helm {#step-25--install-the-kite-dashboard-with-helm}
+# Step 2.5 — Kite dashboard {#step-25--kite-dashboard}
 
 :::info Step summary
-**Goal:** Kite installed with Helm on the infra node group, reached by port-forward **or** through the shared admin ALB on port 8088.
-**Time:** about 20 minutes. **Run from:** `$GITOPS_DIR`.
+**Goal:** understand how Kite was installed, check it, and open it by port-forward **or** through the shared admin ALB on port 8088.
+**Time:** about 15 minutes. **Run from:** `$GITOPS_DIR` (Ingress). Nothing to install: Terraform already did it.
 :::
 
-[Kite](https://github.com/kite-org/kite) is a lightweight Kubernetes dashboard: browse every resource, read Pod logs, open a shell in a container, and see CPU and memory from Prometheus. Nothing else in the workshop depends on it, so it is installed on its own with Helm rather than by Terraform.
+[Kite](https://github.com/kite-org/kite) is a lightweight Kubernetes dashboard: browse every resource, read Pod logs, open a shell in a container, and see CPU and memory from Prometheus. Nothing else in the workshop depends on it.
 
 ```mermaid
 flowchart LR
@@ -24,77 +24,45 @@ flowchart LR
   end
 ```
 
-## Part 1 — Install Kite with Helm {#part-1--install-kite-with-helm}
+## Part 1 — How Kite is installed {#part-1--how-kite-is-installed}
 
-### 1.1 Prerequisites {#11-prerequisites}
+Kite is a `helm_release` in **Terraform layer 20** (`$TF_DIR/20-cluster-workload/helm_releases.tf`). It was installed when you applied that layer in [step 1.3](../architecture/layer-21-cluster-observability#6-finish-cluster-1); there is no separate install command.
 
-```bash
-kubectl config use-context eks-workload
-helm version --short                                   # Helm 3.8+ (OCI charts)
-kubectl get storageclass gp3                           # created by Terraform layer 20
-kubectl get nodes -l role=infra                        # at least one infra node Ready
+```mermaid
+flowchart LR
+  A["terraform apply<br/>layer 20"] --> B["Namespace<br/>kite-system"]
+  B --> C["random_password ×2<br/>→ Secret kite"]
+  C --> D["helm_release kite<br/>chart 0.15.0"]
+  D --> E["Deployment · Service :8080<br/>PVC gp3 5 GiB · RBAC"]
 ```
 
-### 1.2 Read the values file {#12-read-the-values-file}
+| Order | Terraform resource | Result in the cluster |
+|---|---|---|
+| 1 | `kubernetes_namespace_v1.kite` | Namespace `kite-system` |
+| 2 | `random_password.kite_jwt`, `random_password.kite_encryption` | Two random 64-character keys (kept in Terraform state) |
+| 3 | `kubernetes_secret_v1.kite` | Secret `kite`: `JWT_SECRET`, `KITE_ENCRYPT_KEY`, `DB_TYPE=sqlite` |
+| 4 | `helm_release.kite` | Chart `oci://ghcr.io/kite-org/charts/kite` `0.15.0`: Deployment, Service `kite` (ClusterIP `8080`), PVC, ServiceAccount + ClusterRole |
 
-```bash
-cat "$GITOPS_DIR/platform/addons/kite/values.yaml"
-```
+Main values passed to the chart:
 
 | Value | Setting | Why |
 |---|---|---|
-| `replicaCount`, `deploymentStrategy` | `1`, `Recreate` | SQLite has one writer; `Recreate` stops the old Pod before the new one mounts the disk |
-| `secret.create`, `secret.existingSecret` | `false`, `kite` | Use the Secret you create in 1.3 instead of the chart's default keys |
+| `replicaCount`, `deploymentStrategy` | `1`, `Recreate` | SQLite has one writer; the old Pod stops before the new one mounts the disk |
+| `secret.existingSecret` | `kite` | Use the Terraform Secret instead of the chart's default keys |
 | `db.sqlite.persistence.pvc` | `gp3`, `ReadWriteOnce`, `5Gi` | Users and settings survive restarts |
-| `nodeSelector`, `tolerations` | `role: infra`, `CriticalAddonsOnly` | Run on the Managed Node Group with the other platform tools |
-| `resources` | requests 250m / 256Mi, limit 512Mi | — |
+| `nodeSelector`, `tolerations` | `role: infra`, `CriticalAddonsOnly` | Runs on the infra Managed Node Group |
 | `ingress.enabled` | `false` | Access is port-forward or the Ingress in Part 2 |
 
-### 1.3 Create the namespace and the Secret {#13-create-the-namespace-and-the-secret}
+To change a value, edit the `helm_release "kite"` block, then plan and apply layer 20 as usual. Helm waits for the Pod (`wait`, `atomic`) and rolls back if it does not become Ready.
 
-With `existingSecret`, the chart expects Secret `kite` to exist before install. It holds three keys:
-
-| Key | Value |
-|---|---|
-| `JWT_SECRET` | signs session tokens |
-| `KITE_ENCRYPT_KEY` | encrypts cluster credentials stored in SQLite |
-| `DB_TYPE` | `sqlite` |
+### Check that Kite is running {#check-that-kite-is-running}
 
 ```bash
-kubectl create namespace kite-system
-
-kubectl -n kite-system create secret generic kite \
-  --from-literal=JWT_SECRET="$(openssl rand -hex 32)" \
-  --from-literal=KITE_ENCRYPT_KEY="$(openssl rand -hex 32)" \
-  --from-literal=DB_TYPE=sqlite
-
-kubectl -n kite-system get secret kite -o jsonpath='{.data}' | jq 'keys'
-```
-
-**Expected:** `["DB_TYPE","JWT_SECRET","KITE_ENCRYPT_KEY"]`. Keep these values: if you reinstall Kite and want to reuse the old database, back up the Secret first (`kubectl -n kite-system get secret kite -o yaml > kite-secret-backup.yaml`) and apply that backup instead of generating new keys.
-
-### 1.4 Install the chart {#14-install-the-chart}
-
-```bash
-cd "$GITOPS_DIR"
-
-helm template kite oci://ghcr.io/kite-org/charts/kite --version 0.15.0 \
-  -n kite-system -f platform/addons/kite/values.yaml | grep -E '^kind:'   # review what will be created
-
-helm upgrade --install kite oci://ghcr.io/kite-org/charts/kite --version 0.15.0 \
-  -n kite-system -f platform/addons/kite/values.yaml --wait --timeout 10m
-```
-
-`helm template` should list a ServiceAccount, ClusterRole, ClusterRoleBinding, PersistentVolumeClaim, Service and Deployment. `upgrade --install` is safe to rerun: it installs the first time and applies value changes afterwards.
-
-### 1.5 Verify the installation {#15-verify-the-installation}
-
-```bash
-helm list -n kite-system
-kubectl -n kite-system get deploy,pods,svc,pvc,secret -o wide
-kubectl -n kite-system get pod -l app.kubernetes.io/name=kite \
-  -o jsonpath='{.items[0].spec.nodeName}' | xargs -I{} kubectl get node {} -L role
-kubectl -n kite-system logs deploy/kite --tail=20
+helm --kube-context eks-workload list -n kite-system
+kubectl --context eks-workload -n kite-system get deploy,pods,svc,pvc,secret -o wide
+kubectl --context eks-workload -n kite-system get pod -l app.kubernetes.io/name=kite \
+  -o jsonpath='{.items[0].spec.nodeName}' | xargs -I{} kubectl --context eks-workload get node {} -L role
+kubectl --context eks-workload -n kite-system logs deploy/kite --tail=20
 ```
 
 **Expected:**
@@ -123,7 +91,7 @@ Choose one way in. Port-forward exposes nothing and is the default; the ALB give
 kubectl --context eks-workload -n kite-system port-forward svc/kite 8088:8080
 ```
 
-Open http://localhost:8088 and go to [Part 3](#part-3--first-sign-in).
+Open http://localhost:8088, then continue with [Part 3](#part-3--first-sign-in).
 
 ### 2B — Through the admin ALB {#2b--through-the-admin-alb}
 
@@ -240,7 +208,7 @@ curl -s -o /dev/null -w '%{http_code}\n' "http://$ALB_DNS:8088/healthz"
 | Page from any other network (for example a phone on mobile data) | timeout — blocked by `inbound-cidrs` |
 | After sign-in, open another page | still signed in |
 
-Sign in first ([Part 3](#part-3--first-sign-in)). If sign-in succeeds but the next page sends you back to the login screen or answers `401`, the session cookie is marked `Secure` and the browser does not send it over plain HTTP — the same problem Rancher had on this ALB. Remove the Ingress (2B.8) and keep using port-forward.
+If sign-in succeeds but the next page sends you back to the login screen or answers `401`, the session cookie is marked `Secure` and the browser does not send it over plain HTTP — the same problem Rancher had on this ALB. Remove the Ingress (2B.8) and keep using port-forward.
 
 #### 2B.7 When your IP changes {#2b7-when-your-ip-changes}
 
@@ -286,25 +254,26 @@ The first time Kite opens it has no users:
 | Single admin account | Create named users in Kite instead of sharing the first account |
 | Data loss | Snapshot the PVC's EBS volume before upgrades |
 
-Read-only Kubernetes access for Kite — add to `$GITOPS_DIR/platform/addons/kite/values.yaml`:
+Read-only Kubernetes access for Kite — add to the `helm_release "kite"` values in `$TF_DIR/20-cluster-workload/helm_releases.tf`:
 
-```yaml
-rbac:
-  create: true
-  rules:
-    - apiGroups: ["*"]
-      resources: ["*"]
-      verbs: ["get", "list", "watch"]
+```hcl
+    rbac = {
+      create = true
+      rules = [{
+        apiGroups = ["*"]
+        resources = ["*"]
+        verbs     = ["get", "list", "watch"]
+      }]
+    }
 ```
 
-Then rerun the `helm upgrade --install` command from 1.4. With read-only rules the terminal, edit and delete actions in Kite stop working; that is the point.
+Then plan and apply layer 20. With read-only rules the terminal, edit and delete actions in Kite stop working; that is the point.
 
 ## Troubleshooting {#troubleshooting}
 
 | Symptom | Check |
 |---|---|
-| `helm upgrade --install` times out | `kubectl -n kite-system describe pod`; PVC `Bound`; `gp3` StorageClass exists; an infra node has room |
-| Pod `Pending` | PVC `Bound`?; `kubectl -n kite-system describe pod` for nodeSelector or taint messages |
+| Helm release fails / rolls back | `kubectl -n kite-system describe pod`; PVC `Bound`; `gp3` StorageClass exists; an infra node has room |
 | Pod restarting | `kubectl -n kite-system logs deploy/kite --previous`; Secret `kite` has `JWT_SECRET` and `KITE_ENCRYPT_KEY` |
 | Ingress has no ADDRESS | Controller log (2B.4); IngressClass `alb`; public subnets tagged `kubernetes.io/role/elb=1` |
 | Target `unhealthy` | `curl` `/healthz` from inside the cluster; Pod Ready; the cluster node SG allows the ALB SG on 8080 |
@@ -313,12 +282,6 @@ Then rerun the `helm upgrade --install` command from 1.4. With read-only rules t
 
 ## Remove Kite {#remove-kite}
 
-```bash
-kubectl --context eks-workload -n kite-system delete ingress kite --ignore-not-found
-helm uninstall kite -n kite-system
-kubectl delete namespace kite-system
-```
-
-Deleting the namespace also deletes the Secret, the PVC and Kite's data.
+Delete the Ingress (2B.8), then remove the `kite` resources (`kubernetes_namespace_v1.kite`, `random_password.kite_*`, `kubernetes_secret_v1.kite`, `helm_release.kite`) from layer 20 and apply. Deleting the namespace also deletes the PVC and Kite's data.
 
 **Next:** [3.1 Build images](../apps-shopnow/docker-build-multi-arch-and-ci)
