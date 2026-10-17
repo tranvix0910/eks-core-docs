@@ -57,6 +57,7 @@ Trang này liệt kê **đề bài workshop**, **vị trí triển khai từng y
 | **2.2** [Ba nhóm node](karpenter/ec2nodeclass-and-nodepools-configuration) | Apply EC2NodeClass và NodePool, thử Spot | Pool Spot, mixed và ARM64 sẵn sàng |
 | **2.3** [Mixed pool 1:3](karpenter/on-demand-spot-ratio-and-limits) | Đo tỷ lệ On-Demand:Spot | Báo cáo tỷ lệ |
 | **2.4** [ARM64](karpenter/arm64-validation) | Chạy container ARM64 | Bằng chứng capacity ARM64 |
+| **2.5** [Kite dashboard](platform-addons/kite-dashboard) | Mở dashboard của cluster, có thể qua ALB quản trị | Giao diện web cho cluster 1 |
 | **3.1** [Build image](apps-shopnow/docker-build-multi-arch-and-ci) | Build và push bảy image | Image nằm trong ECR |
 | **3.2** [Triển khai qua ArgoCD](apps-shopnow/shopnow-end-to-end-deployment-guide) | Tạo ArgoCD Application | ShopNow chạy trên pool 2 |
 | **3.3** [EFS](apps-shopnow/efs-persistent-volumes) | Ghi và đọc tệp dùng chung | Bằng chứng lưu trữ |

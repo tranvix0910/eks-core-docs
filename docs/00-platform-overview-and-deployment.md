@@ -57,6 +57,7 @@ This page lists **what the workshop asks for**, **where each requirement is impl
 | **2.2** [Three node pools](karpenter/ec2nodeclass-and-nodepools-configuration) | Apply EC2NodeClass and NodePools, test Spot | Spot, mixed and ARM64 pools ready |
 | **2.3** [Mixed pool 1:3](karpenter/on-demand-spot-ratio-and-limits) | Measure the On-Demand:Spot ratio | Ratio report |
 | **2.4** [ARM64](karpenter/arm64-validation) | Run an ARM64 container | Proof of ARM64 capacity |
+| **2.5** [Kite dashboard](platform-addons/kite-dashboard) | Open the cluster dashboard, optionally through the admin ALB | A web UI for cluster 1 |
 | **3.1** [Build images](apps-shopnow/docker-build-multi-arch-and-ci) | Build and push seven images | Images in ECR |
 | **3.2** [Deploy with ArgoCD](apps-shopnow/shopnow-end-to-end-deployment-guide) | Create the ArgoCD Applications | ShopNow running on pool 2 |
 | **3.3** [EFS](apps-shopnow/efs-persistent-volumes) | Write and read a shared file | Storage proof |

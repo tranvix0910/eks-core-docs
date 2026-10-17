@@ -36,6 +36,7 @@ module.exports = {
       doc('karpenter/ec2nodeclass-and-nodepools-configuration'),
       doc('karpenter/on-demand-spot-ratio-and-limits'),
       doc('karpenter/arm64-validation'),
+      doc('platform-addons/kite-dashboard'),
     ], { className: 'sb-icon sb-icon-servers' }),
 
     section('3 · Microservices', [
