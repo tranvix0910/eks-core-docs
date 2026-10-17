@@ -49,14 +49,15 @@ docker buildx version && argocd version --client && jq --version && python3 --ve
 
 ## 3. AWS profile {#3-aws-profile}
 
-Mọi repo sử dụng AWS CLI profile **`eks-core`**. Tạo profile theo phương thức đăng nhập của tài khoản; ví dụ dưới đây dùng IAM Identity Center:
+Chọn AWS CLI profile đã có trên máy. **`eks-core` chỉ là tên ví dụ, không bắt buộc và không tự được tạo.** Dùng cùng một tên đã chọn trong `workshop.env`, cấu hình provider Terraform và backend S3:
 
 ```bash
-aws configure sso --profile eks-core
-aws sts get-caller-identity --profile eks-core
+aws configure list-profiles
+export AWS_PROFILE=eks-core   # example: replace with an existing profile from the list
+aws sts get-caller-identity --profile "$AWS_PROFILE"
 ```
 
-Không đưa access key vào bất kỳ repo nào.
+Nếu chưa có profile, dùng cách đăng nhập của tổ chức. Với IAM Identity Center, cấu hình bằng `aws configure sso --profile "$AWS_PROFILE"`, đăng nhập bằng `aws sso login --profile "$AWS_PROFILE"`, rồi kiểm tra identity lại. Không cần tạo lại profile đang hoạt động. Không đưa access key vào bất kỳ repo nào.
 
 ## 4. Clone bốn repo cạnh nhau {#4-clone-the-four-repositories-side-by-side}
 
@@ -74,7 +75,7 @@ ArgoCD triển khai từ Git URL. Nếu cần sửa chart hoặc values, chẳng
 
 ## 5. Biến dùng trong mọi bước {#5-variables-used-in-every-step}
 
-Lưu các biến vào tệp như `~/eks-core/workshop.env` và `source` tệp đó trong mỗi terminal mới.
+Lưu các biến vào tệp như `~/eks-core/workshop.env` và `source` tệp đó trong mỗi terminal mới. **Thay dòng mẫu `AWS_PROFILE=eks-core` bằng profile đã chọn ở bước 3 trước khi source.** File này chủ động đặt cố định profile đã chọn; export tên khác trước khi source không ghi đè được dòng trong file.
 
 ```bash
 # Where the repos live
@@ -86,11 +87,18 @@ export PLAN_DIR=$WORKSHOP_HOME/plans          # saved Terraform plans
 export EVIDENCE_DIR=$WORKSHOP_HOME/evidence   # outputs you keep as proof
 
 # AWS
-export AWS_PROFILE=eks-core
+export AWS_PROFILE=eks-core                  # replace with the profile selected in step 3
 export AWS_REGION=ap-northeast-1              # where the clusters run
 export AWS_DEFAULT_REGION=$AWS_REGION
 export STATE_REGION=ap-southeast-1            # where the Terraform state bucket lives
-export AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+unset AWS_ACCOUNT_ID
+if ! AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+  --profile "$AWS_PROFILE" --region "$AWS_REGION" --query Account --output text); then
+  unset AWS_ACCOUNT_ID
+  printf 'Cannot load the AWS account. Check profile "%s" and its login.\n' "$AWS_PROFILE" >&2
+  return 1   # this file must be sourced; stop before using an empty account ID
+fi
+export AWS_ACCOUNT_ID
 
 # GitOps and images
 export WORKSHOP_REPO_URL=https://github.com/tranvix0910/eks-core-gitops.git   # or your fork
@@ -101,8 +109,7 @@ mkdir -p "$PLAN_DIR" "$EVIDENCE_DIR"
 ```
 
 ```bash
-source ~/eks-core/workshop.env
-echo "$AWS_ACCOUNT_ID $AWS_REGION"
+source ~/eks-core/workshop.env && printf '%s %s\n' "$AWS_ACCOUNT_ID" "$AWS_REGION"
 ```
 
 ## 6. Tạo bucket lưu Terraform state {#6-create-the-terraform-state-bucket}
@@ -123,15 +130,36 @@ Thông tin riêng của tài khoản không được commit vào Git. Mỗi lớ
 | Tệp | Nội dung |
 |---|---|
 | `backend.hcl` | Tên state bucket và AWS profile cho S3 backend |
-| `account.auto.tfvars` | `account_id` — provider từ chối chạy với tài khoản khác |
+| `account.auto.tfvars` | `account_id` và `aws_profile` — provider kiểm tra account và dùng profile local đã chọn |
 
 ```bash
-for layer in 10-network 20-cluster-workload 21-cluster-observability; do
-  printf 'bucket  = "eks-tfstate-%s"\nprofile = "eks-core"\n' "$AWS_ACCOUNT_ID" > "$TF_DIR/$layer/backend.hcl"
-  printf 'account_id = "%s"\n' "$AWS_ACCOUNT_ID" > "$TF_DIR/$layer/account.auto.tfvars"
-done
+python3 <<'PYCONFIG'
+import json, os, re
+from pathlib import Path
+account = os.environ.get("AWS_ACCOUNT_ID", "")
+profile = os.environ.get("AWS_PROFILE", "")
+if not re.fullmatch(r"[0-9]{12}", account) or not profile:
+    raise SystemExit("Load a valid AWS_ACCOUNT_ID and AWS_PROFILE before creating local files.")
+root = Path(os.environ["TF_DIR"])
+# Preflight all paths before writing anything; preserve existing local files.
+for name in ("10-network", "20-cluster-workload", "21-cluster-observability"):
+    layer = root / name
+    if not (layer / "main.tf").is_file():
+        raise SystemExit("Invalid Terraform layer: " + str(layer))
+    for filename in ("backend.hcl", "account.auto.tfvars"):
+        if (layer / filename).exists():
+            raise SystemExit("Already exists; review/update this file instead of overwriting: " + str(layer / filename))
+for name in ("10-network", "20-cluster-workload", "21-cluster-observability"):
+    layer = root / name
+    (layer / "backend.hcl").write_text(
+        'bucket = ' + json.dumps("eks-tfstate-" + account) + '\nprofile = ' + json.dumps(profile) + '\n')
+    (layer / "account.auto.tfvars").write_text(
+        'account_id = ' + json.dumps(account) + '\naws_profile = ' + json.dumps(profile) + '\n')
+PYCONFIG
 git -C "$TF_DIR" status --short   # must not list backend.hcl or account.auto.tfvars
 ```
+
+Với checkout có sẵn, chỉ sửa `profile` trong từng `backend.hcl` và `aws_profile` trong từng `account.auto.tfvars`, giữ nguyên account ID, bucket và thiết lập khác. File local `*.auto.tfvars` ghi đè profile mẫu trong `terraform.tfvars` đã track. Sau khi đổi profile của backend đã khởi tạo, chạy `terraform -chdir="$TF_DIR/<layer>" init -reconfigure -backend-config=backend.hcl` cho lớp đó; không apply hạ tầng chỉ để sửa CLI profile.
 
 Region, CIDR, kích thước node và phiên bản Kubernetes nằm trong `terraform.tfvars` của từng lớp. Sửa tại đó nếu dùng region khác.
 
