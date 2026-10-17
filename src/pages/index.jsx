@@ -2,6 +2,7 @@ import React from 'react';
 import Layout from '@theme/Layout';
 
 import HeroSection from '../components/homepage/HeroSection';
+import TechStack from '../components/homepage/TechStack';
 import GuidesAndRunbooks from '../components/homepage/GuidesAndRunbooks';
 import Stack from '../components/homepage/Stack';
 import HelpSection from '../components/homepage/HelpSection';
@@ -16,6 +17,7 @@ export default function Homepage() {
       noFooter
     >
       <HeroSection />
+      <TechStack />
       <GuidesAndRunbooks />
       <Stack />
       <div className="z-0 bg-secondary-800 pb-16">
