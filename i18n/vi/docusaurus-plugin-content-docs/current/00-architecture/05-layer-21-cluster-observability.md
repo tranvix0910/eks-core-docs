@@ -111,7 +111,7 @@ Các thành phần được thêm:
 | kube-prometheus-stack 88.6 | `monitoring` |
 | Metrics Server | `kube-system` |
 | StorageClass `gp3` và `efs-sc` | Toàn cluster |
-| Grafana và Kite (công cụ hỗ trợ cục bộ trên cluster 1) | `monitoring`, `kite` |
+| Grafana (công cụ hỗ trợ cục bộ trên cluster 1) | `monitoring` |
 
 Prometheus chờ TLS secret được tạo tại [bước 4.1](../platform-addons/cert-manager-and-internal-tls) để gửi metrics; trước đó có thể xuất hiện lỗi. Đây là trạng thái dự kiến.
 
