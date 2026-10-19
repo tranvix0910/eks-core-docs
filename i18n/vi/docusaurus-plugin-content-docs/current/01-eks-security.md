@@ -1,10 +1,10 @@
 ---
-title: "Truy cập, secrets và TLS trong workshop"
+title: "Access, Secrets và TLS"
 ---
 
-# Quản lý quyền theo luồng vận hành {#manage-access-by-operational-flow}
+# Security trong Workshop {#manage-access-by-operational-flow}
 
-Security đi theo từng đường truy cập trong bài thực hành, thay vì một danh sách công nghệ tách rời.
+Quản lý quyền theo từng luồng: người vận hành truy cập EKS, Pod gọi AWS API, ứng dụng đọc Secret và Telemetry giữa 2 cluster.
 
 | Luồng | Cơ chế | Hướng dẫn |
 |---|---|---|
@@ -15,7 +15,7 @@ Security đi theo từng đường truy cập trong bài thực hành, thay vì 
 | Gia hạn chứng chỉ | cert-manager, import lại ACM, cập nhật CA trên client khi cần | [Vòng đời chứng chỉ](05-security/04-tls-certificate-lifecycle.md) |
 | Trình duyệt → UI quản trị | Port-forward hoặc endpoint có HTTPS/xác thực | [Truy cập công cụ](01-platform-addons/05-admin-ingress-and-hardening.md) |
 
-## Các điểm cần phân biệt {#important-distinctions}
+## Các điểm cần kiểm tra {#important-distinctions}
 
 - `sensitive=true` ẩn giá trị trong một số output Terraform; state vẫn cần bảo vệ.
 - Base64 của Kubernetes Secret không phải mã hóa bảo mật.
@@ -23,4 +23,4 @@ Security đi theo từng đường truy cập trong bài thực hành, thay vì 
 - PDB và topology spread kiểm soát availability, không phải phân quyền.
 - Tài liệu External Secrets không chứng minh operator/SecretStore đã được cài.
 
-Cấu hình mẫu chứa credentials cho dữ liệu giả lập và một số ingress rule mở. Thay thế theo bài liên quan trước khi chia sẻ môi trường. Không đưa mật khẩu, private key hoặc registration token vào báo cáo workshop.
+Cấu hình mẫu dùng credentials demo và có một số Ingress Rule mở. Cập nhật theo các hướng dẫn trên trước khi chia sẻ môi trường. Khi lưu kết quả workshop, loại bỏ mật khẩu, Private Key và Registration Token.

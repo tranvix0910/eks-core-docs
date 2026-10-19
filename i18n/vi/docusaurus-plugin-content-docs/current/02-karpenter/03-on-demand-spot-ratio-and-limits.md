@@ -1,16 +1,16 @@
 ---
-title: "Bước 2.3 — Mixed pool: cấu hình và đo tỷ lệ 1:3"
+title: "Bước 2.3 — Mixed Pool 1:3"
 sidebar_label: "2.3 Mixed pool 1:3"
 ---
 
-# Bước 2.3 — Mixed pool: cấu hình và đo tỷ lệ 1:3 {#step-23--mixed-pool-configure-and-measure-the-13-ratio}
+# Bước 2.3 — Mixed Pool 1:3 {#step-23--mixed-pool-configure-and-measure-the-13-ratio}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** hiểu cách pool 2 triển khai On-Demand : Spot = 1 : 3 và chứng minh bằng bài thử có kiểm soát.
+:::info Nội dung thực hiện
+**Mục tiêu:** kiểm tra cấu hình Mixed Pool và chạy bài test 1 node On-Demand, 3 node Spot.
 **Yêu cầu:** 2 (mixed pool). **Thời gian:** khoảng 20 phút. **Chạy từ:** `$GITOPS_DIR`.
 :::
 
-## Cách xây dựng tỷ lệ {#how-the-ratio-is-built}
+## Cấu hình Capacity 1:3 {#how-the-ratio-is-built}
 
 ```mermaid
 flowchart LR
@@ -24,9 +24,9 @@ flowchart LR
 - Khi `ms-od` đạt **giới hạn CPU 24**, capacity mới đến từ `ms-spot`, tối đa **72 vCPU**.
 - Khi dùng hết ngân sách: 24 vCPU On-Demand : 72 vCPU Spot = **1 : 3**.
 
-Đây là **ngân sách capacity**, không phải số node Karpenter bắt buộc duy trì mọi lúc. Khi ít tải, toàn bộ capacity là On-Demand; tỷ lệ 1:3 xuất hiện khi pool mở rộng. Báo cáo rõ cách đo bằng vCPU hay node.
+Tỷ lệ 1:3 ở đây là **Capacity Budget** theo vCPU. Khi tải thấp, Mixed Pool có thể chỉ dùng On-Demand. Số node thực tế phụ thuộc instance size và nhu cầu workload. Khi báo cáo, ghi cả số node và vCPU của từng loại.
 
-## 1. Đo pool tại thời điểm bất kỳ {#1-measure-the-pool-at-any-time}
+## 1. Kiểm tra Capacity hiện tại {#1-measure-the-pool-at-any-time}
 
 ```bash
 kubectl --context eks-workload get nodes -l workload=microservices \
@@ -38,11 +38,11 @@ kubectl --context eks-workload get nodes -l workload=microservices -o json | jq 
   | tee "$EVIDENCE_DIR/pool2-capacity.txt"
 ```
 
-## 2. Chứng minh 1 : 3 bằng bài thử có kiểm soát {#2-prove-1--3-with-a-controlled-test}
+## 2. Test tỷ lệ 1:3 {#2-prove-1--3-with-a-controlled-test}
 
-Chạy **trước khi** triển khai ShopNow, khi pool 2 chưa có node. Bài thử tạo bốn node 4 vCPU có tính phí.
+Chạy bài test **trước khi Deploy ShopNow**, lúc Mixed Pool chưa có node. Bài test tạo 4 EC2 instance, mỗi instance 4 vCPU, và có phát sinh chi phí.
 
-Tạm giới hạn cả hai pool ở instance 4 vCPU và giảm ngân sách xuống 4 : 12, để trạng thái cuối mong đợi là đúng **1 node On-Demand + 3 node Spot**.
+Tạm giới hạn instance size ở 4 vCPU và CPU limit của 2 pool ở 4:12. Mục tiêu là **1 node On-Demand + 3 node Spot**.
 
 ```bash
 kubectl --context eks-workload get nodes -l workload=microservices    # must be empty
@@ -67,7 +67,7 @@ kubectl --context eks-workload patch deployment workshop-ratio --type=merge \
 kubectl --context eks-workload rollout status deployment/workshop-ratio --timeout=10m
 ```
 
-## Kiểm chứng {#verify}
+## Kiểm tra kết quả {#verify}
 
 ```bash
 kubectl --context eks-workload get nodes -l workload=microservices \
@@ -75,9 +75,9 @@ kubectl --context eks-workload get nodes -l workload=microservices \
   | tee "$EVIDENCE_DIR/pool2-ratio-test.txt"
 ```
 
-**Kết quả mong đợi:** 1 node từ `ms-od` (`on-demand`) và 3 node từ `ms-spot` (`spot`), mỗi node 4 vCPU, bốn Pod `Running`. Nếu không có capacity Spot, số node Spot ít hơn; ghi nhận kết quả thực tế thay vì sửa pool.
+**Kết quả cần có:** 1 node từ `ms-od` (`on-demand`) và 3 node từ `ms-spot` (`spot`), mỗi node 4 vCPU, bốn Pod `Running`. Nếu không có capacity Spot, số node Spot ít hơn; ghi nhận kết quả thực tế thay vì sửa pool.
 
-## 3. Khôi phục pool {#3-restore-the-pools}
+## 3. Khôi phục NodePool {#3-restore-the-pools}
 
 ```bash
 kubectl --context eks-workload delete -f "$GITOPS_DIR/examples/workshop/ratio-proof.yaml"
@@ -86,6 +86,6 @@ kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/nodepools/nodepool
 kubectl --context eks-workload get nodepool ms-od ms-spot -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.limits.cpu}{"\n"}{end}'
 ```
 
-**Kết quả mong đợi:** `ms-od: 24` và `ms-spot: 72`. Bốn node thử nghiệm được hợp nhất và xóa trong vài phút.
+**Kết quả cần có:** `ms-od: 24` và `ms-spot: 72`. Bốn node thử nghiệm được hợp nhất và xóa trong vài phút.
 
 **Tiếp theo:** [2.4 ARM64](arm64-validation)

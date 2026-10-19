@@ -1,14 +1,14 @@
 ---
-title: "Karpenter: hạ tầng AWS và controller trong cluster"
+title: "Karpenter · AWS Resources và Controller"
 ---
 
-# Kiểm chứng cả hai phần trước khi cấp node {#verify-both-halves-before-provisioning-nodes}
+# Cấu trúc Karpenter {#verify-both-halves-before-provisioning-nodes}
 
-## Phần 1: Terraform tạo tài nguyên AWS {#half-1-terraform-creates-aws-resources}
+## Phần 1 · AWS Resources {#half-1-terraform-creates-aws-resources}
 
-`20-cluster-workload/karpenter.tf` dùng module Karpenter để tạo IAM node/controller, interruption queue, EventBridge và quyền EKS cho node role. Pod Identity association liên kết controller với ServiceAccount. Các tài nguyên này không phải tiến trình theo dõi Pod.
+`20-cluster-workload/karpenter.tf` tạo IAM Role cho node và controller, SQS Interruption Queue, EventBridge Rule và EKS Access Entry cho Node Role. Pod Identity Association cấp quyền AWS cho ServiceAccount của controller.
 
-## Phần 2: Helm cài controller và CRD {#half-2-helm-installs-the-controller-and-crds}
+## Phần 2 · Controller và CRD {#half-2-helm-installs-the-controller-and-crds}
 
 `helm_releases.tf` cài release `karpenter` trong `kube-system`, đọc `platform/addons/karpenter/values.yaml` và ghi đè cấu hình cluster/queue từ output. Terraform quản lý release này.
 
@@ -20,7 +20,7 @@ kubectl --context eks-workload -n kube-system get pods -l app.kubernetes.io/name
 kubectl --context eks-workload -n kube-system logs deployment/karpenter --tail=100
 ```
 
-Controller chạy trên `role=infra`; ServiceAccount và namespace phải khớp association. Đặt controller vào pool mà nó có thể xóa tạo ra phụ thuộc không cần thiết.
+Controller chạy trên Managed Node Group có label `role=infra`. Kiểm tra ServiceAccount và Namespace khớp Pod Identity Association. Giữ controller trên node `infra` để nó vẫn chạy khi các NodePool không còn node.
 
 ## Khi Pod Pending {#when-a-pod-is-pending}
 
@@ -29,8 +29,8 @@ Controller chạy trên `role=infra`; ServiceAccount và namespace phải khớp
 3. Tạo NodeClaim, khởi chạy EC2 và đăng ký node với EKS.
 4. CSI/CNI và DaemonSet khởi tạo; sau đó kube-scheduler có thể xếp Pod.
 
-Không có NodeClaim: xem ràng buộc scheduling. Có EC2 nhưng node không join: xem IAM/access entry, bootstrap và network. Node Ready nhưng Pod chưa khả dụng: xem Pod/PVC thay vì tiếp tục sửa IAM controller.
+Kiểm tra theo trạng thái: chưa có NodeClaim thì xem Scheduling Constraints; EC2 đã tạo nhưng chưa join EKS thì xem IAM, Access Entry, Bootstrap và Network; node đã Ready nhưng Pod chưa chạy thì xem Pod Events và PVC.
 
 ## Điều kiện hoàn thành {#completion-gate}
 
-Controller Available, có CRD, Pod Identity và node role đúng. Tiếp theo: [apply các nhóm node](02-ec2nodeclass-and-nodepools-configuration.md).
+Controller `Available`, CRD đã cài, Pod Identity và Node Role khớp cấu hình. Tiếp theo: [apply các nhóm node](02-ec2nodeclass-and-nodepools-configuration.md).

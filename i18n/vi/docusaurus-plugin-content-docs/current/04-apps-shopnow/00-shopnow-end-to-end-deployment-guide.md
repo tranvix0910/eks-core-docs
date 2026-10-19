@@ -1,16 +1,16 @@
 ---
-title: "Bước 3.2 — Triển khai microservices bằng ArgoCD"
-sidebar_label: "3.2 Triển khai bằng ArgoCD"
+title: "Bước 3.2 — Deploy ShopNow với ArgoCD"
+sidebar_label: "3.2 Deploy với ArgoCD"
 ---
 
-# Bước 3.2 — Triển khai microservices bằng ArgoCD {#step-32--deploy-the-microservices-with-argocd}
+# Bước 3.2 — Deploy ShopNow với ArgoCD {#step-32--deploy-the-microservices-with-argocd}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** ShopNow chạy trên pool 2; mọi service được ArgoCD triển khai và duy trì đồng bộ.
+:::info Nội dung thực hiện
+**Mục tiêu:** Deploy ShopNow lên Mixed Pool và quản lý các service qua ArgoCD.
 **Yêu cầu:** 3 (microservices trên pool 2), 7 (ArgoCD). **Thời gian:** khoảng 30 phút. **Chạy từ:** `$GITOPS_DIR`.
 :::
 
-## Cách triển khai một service {#how-a-service-gets-deployed}
+## Cấu trúc ArgoCD Application {#how-a-service-gets-deployed}
 
 ```mermaid
 flowchart LR
@@ -27,7 +27,7 @@ flowchart LR
   Argo -- "helm template + apply,<br/>auto-sync, self-heal" --> K8s["namespace shopnow<br/>on pool 2"]
 ```
 
-Mỗi service là một ArgoCD **Application**, render Helm chart với ba tệp values theo thứ tự. Tệp cuối `workload-values.yaml` chứa yêu cầu workshop cho cả sáu backend:
+Mỗi service dùng một ArgoCD **Application**. Application render Helm Chart với 3 file values theo thứ tự; file cuối `workload-values.yaml` cấu hình Mixed Pool, EFS, Pod Placement và PDB cho 6 backend:
 
 ```yaml
 replicaCount: 2
@@ -48,9 +48,9 @@ podDisruptionBudget:    # requirement 6
   maxUnavailable: 1
 ```
 
-Eureka (discovery) dùng thêm `discovery-values.yaml`: một replica và không có PDB vì cấu hình Eureka này không có peer replication.
+Discovery Server dùng thêm `discovery-values.yaml` với 1 replica và không có PDB. Eureka trong workshop chưa cấu hình Peer Replication.
 
-Application dùng automated sync với `prune` và `selfHeal`: ArgoCD hoàn tác chỉnh sửa `kubectl` thủ công trên tài nguyên nó quản lý. Hãy thay đổi trong Git.
+Application bật Auto Sync, `prune` và `selfHeal`. Để cập nhật service, sửa cấu hình trong Git rồi Sync; thay đổi trực tiếp bằng `kubectl` có thể bị ArgoCD ghi đè.
 
 ## 1. Tạo AppProject {#1-create-the-appproject}
 
@@ -58,11 +58,11 @@ Application dùng automated sync với `prune` và `selfHeal`: ArgoCD hoàn tác
 kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/addons/argocd/appproject-shopnow.yaml"
 ```
 
-Project `shopnow` chỉ cho phép triển khai vào namespace `shopnow`.
+AppProject `shopnow` giới hạn Application Deploy vào namespace `shopnow`.
 
 ## 2. Render Application {#2-render-the-applications}
 
-Script điền Git URL, revision, ECR image repository và tag của bạn. Script chỉ ghi tệp; không apply hay push.
+Script tạo Application Manifest từ Git URL, revision, ECR Repository và Image Tag của bạn. Bước này chỉ render file; Apply ở bước tiếp theo.
 
 ```bash
 cd "$GITOPS_DIR"
@@ -70,7 +70,7 @@ bash examples/workshop/prepare-applications.sh
 ls .workshop/applications
 ```
 
-**Kết quả mong đợi:** chín tệp — `shopnow-database-services`, `discovery-server`, `config-server`, `product-service`, `cart-service`, `user-service`, `api-gateway`, `frontend` và `workshop-proof.json`.
+**Kết quả cần có:** chín file — `shopnow-database-services`, `discovery-server`, `config-server`, `product-service`, `cart-service`, `user-service`, `api-gateway`, `frontend` và `workshop-proof.json`.
 
 ## 3. Đăng nhập ArgoCD {#3-log-in-to-argocd}
 
@@ -81,9 +81,9 @@ argocd login localhost:8080 --plaintext --username admin \
   --password "$(kubectl --context eks-workload -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 --decode)"
 ```
 
-## 4. Triển khai theo thứ tự phụ thuộc {#4-deploy-in-dependency-order}
+## 4. Deploy theo thứ tự {#4-deploy-in-dependency-order}
 
-Mỗi nhóm phải Healthy trước khi bắt đầu nhóm tiếp theo: service cần database, sau đó Eureka và config server.
+Deploy Database trước, tiếp theo Discovery Server, Config Server và các service. Chờ mỗi nhóm `Healthy` rồi mới tiếp tục.
 
 ```bash
 A=.workshop/applications
@@ -96,7 +96,7 @@ deploy shopnow-product-service shopnow-cart-service shopnow-user-service shopnow
 deploy shopnow-frontend
 ```
 
-Khi backend khởi động, theo dõi Karpenter tạo node pool 2:
+Khi backend bắt đầu chạy, theo dõi Karpenter cấp node cho Mixed Pool:
 
 ```bash
 kubectl --context eks-workload get nodeclaims -w
@@ -104,15 +104,15 @@ kubectl --context eks-workload get nodeclaims -w
 
 Frontend là Argo Rollout blue-green, promote thủ công; lần triển khai đầu tiên chuyển Healthy trực tiếp. Các lần cập nhật sau chờ promote ([blue-green](blue-green-argo-rollouts)).
 
-## Kiểm chứng — ArgoCD (yêu cầu 7) {#verify--argocd-requirement-7}
+## Kiểm tra ArgoCD Application {#verify--argocd-requirement-7}
 
 ```bash
 argocd app list -p shopnow | tee "$EVIDENCE_DIR/argocd-apps.txt"
 ```
 
-**Kết quả mong đợi:** mọi Application `Synced` và `Healthy`, trỏ tới đúng repo và revision của bạn.
+**Kết quả cần có:** mọi Application `Synced` và `Healthy`, trỏ tới đúng repo và revision của bạn.
 
-## Kiểm chứng — microservices trên pool 2 (yêu cầu 3) {#verify--microservices-on-pool-2-requirement-3}
+## Kiểm tra Microservices trên Mixed Pool {#verify--microservices-on-pool-2-requirement-3}
 
 ```bash
 kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
@@ -124,9 +124,9 @@ kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
   done | tee "$EVIDENCE_DIR/pool2-placement.txt"
 ```
 
-**Kết quả mong đợi:** mọi backend Pod hiển thị `ms-od/on-demand` hoặc `ms-spot/spot`. Không Pod nào chạy trên node `infra`, `batch-spot` hoặc `arm64`.
+**Kết quả cần có:** mọi backend Pod hiển thị `ms-od/on-demand` hoặc `ms-spot/spot`. Không Pod nào chạy trên node `infra`, `batch-spot` hoặc `arm64`.
 
-## Kiểm chứng — ứng dụng hoạt động {#verify--the-application-works}
+## Kiểm tra ShopNow {#verify--the-application-works}
 
 ```bash
 kubectl --context eks-workload -n shopnow port-forward svc/shopnow-api-gateway-service 5860:5860   # terminal 1
@@ -144,12 +144,12 @@ kubectl --context eks-workload -n shopnow port-forward svc/shopnow-frontend-serv
 | Application liên tục `OutOfSync` | `argocd app diff <app>`; loại tài nguyên không được AppProject cho phép |
 | PVC `Pending` | Phần xử lý sự cố [bước 3.3](efs-persistent-volumes) |
 
-## Thay đổi service về sau {#changing-a-service-later}
+## Cập nhật Service {#changing-a-service-later}
 
 1. Sửa chart hoặc values trong fork `eks-core-gitops`, commit và push.
 2. ArgoCD phát hiện commit và sync, hoặc chạy `argocd app sync <app>`.
-3. Với image mới: build lại bằng `IMAGE_TAG` mới, chạy lại `prepare-applications.sh` và apply tệp Application thay đổi.
+3. Với image mới: build lại bằng `IMAGE_TAG` mới, chạy lại `prepare-applications.sh` và apply file Application thay đổi.
 
-Để rollback, `git revert` commit rồi push; auto-sync áp dụng trạng thái trước. `argocd app rollback` bị từ chối khi bật auto-sync. `argocd app history <app>` hiển thị revision đang triển khai.
+Để Rollback, `git revert` commit rồi Push; Auto Sync sẽ áp dụng lại cấu hình trước đó. Khi bật Auto Sync, `argocd app rollback` không được phép. Dùng `argocd app history <app>` để xem Deployment History.
 
 **Tiếp theo:** [3.3 Persistent volume EFS](efs-persistent-volumes)

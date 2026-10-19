@@ -1,27 +1,27 @@
 ---
-title: "Bước 2.2 — Tạo ba nhóm node Karpenter"
-sidebar_label: "2.2 Ba nhóm node"
+title: "Bước 2.2 — Setup Karpenter NodePools"
+sidebar_label: "2.2 NodePools"
 ---
 
-# Bước 2.2 — Tạo ba nhóm node Karpenter {#step-22--create-the-three-karpenter-node-pools}
+# Bước 2.2 — Setup Karpenter NodePools {#step-22--create-the-three-karpenter-node-pools}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** pool 1 (Spot), pool 2 (mixed On-Demand/Spot), pool 3 (ARM64) và bài thử Spot chứng minh pool 1 hoạt động.
+:::info Nội dung thực hiện
+**Mục tiêu:** tạo 3 nhóm Karpenter: Spot, Mixed On-Demand/Spot và ARM64; chạy Pod thử trên Spot Pool.
 **Yêu cầu:** 2. **Thời gian:** khoảng 15 phút. **Chạy từ:** `$GITOPS_DIR`.
 :::
 
-## Cách Karpenter hoạt động trong workshop {#how-karpenter-works-here}
+## Karpenter trong Workshop {#how-karpenter-works-here}
 
-Karpenter theo dõi Pod không thể được schedule. Nó chọn **NodePool** có quy tắc khớp Pod (label, taint, architecture, capacity type), khởi chạy EC2 phù hợp rẻ nhất và xóa node khi trống hoặc ít được sử dụng. Bạn tạo Pod cần node; không tạo node thủ công.
+Khi Pod `Pending` do thiếu node phù hợp, Karpenter chọn **NodePool** theo label, taint, architecture và capacity type để cấp EC2. Khi workload giảm, Karpenter có thể gộp hoặc xóa node theo Disruption Policy. Bạn khai báo yêu cầu của Pod và NodePool; Karpenter quản lý capacity.
 
-| Đối tượng | Tệp | Nội dung khai báo |
+| Đối tượng | File | Nội dung khai báo |
 |---|---|---|
 | `EC2NodeClass default` | `platform/nodepools/ec2nodeclass.yaml` | Node IAM role, subnet và security group tìm theo tag `karpenter.sh/discovery=eks-workload`, AMI `al2023`, IMDSv2, root disk gp3 mã hóa 30 GiB |
 | `NodePool batch-spot` | `nodepool-1-spot.yaml` | **Pool 1** |
 | `NodePool ms-od` + `NodePool ms-spot` | `nodepool-2-ondemand.yaml`, `nodepool-2-spot.yaml` | **Pool 2** |
 | `NodePool arm64` | `nodepool-3-arm64.yaml` | **Pool 3** |
 
-## Ba nhóm pool {#the-three-pools}
+## 3 nhóm NodePool {#the-three-pools}
 
 | | Pool 1 `batch-spot` | Pool 2 `ms-od` | Pool 2 `ms-spot` | Pool 3 `arm64` |
 |---|---|---|---|---|
@@ -32,11 +32,11 @@ Karpenter theo dõi Pod không thể được schedule. Nó chọn **NodePool** 
 | Giới hạn CPU | 48 | **24** | **72** | 48 |
 | Weight | 50 | **100** | **10** | 50 |
 
-Mọi pool dùng họ `m`, `c`, `r`, thế hệ 6 trở lên, loại trừ kích thước `nano`, `micro`, `small`. Mỗi pool hợp nhất node trống hoặc ít sử dụng và thay node sau 30 ngày (`expireAfter: 720h`).
+Các NodePool cho phép instance family `m`, `c`, `r` từ thế hệ 6, loại trừ size `nano`, `micro`, `small`. Consolidation xử lý node trống hoặc ít sử dụng; `expireAfter: 720h` đặt thời hạn node 30 ngày.
 
-**Vì sao pool 2 có hai NodePool:** Karpenter không có tỷ lệ On-Demand/Spot bên trong một pool. `ms-od` và `ms-spot` dùng chung label và taint nên Pod microservice phù hợp cả hai. Karpenter ưu tiên `ms-od` có weight cao; khi đạt **24 vCPU**, capacity mới lấy từ `ms-spot`, tối đa **72 vCPU**. 24 : 72 = **1 : 3**. [Bước 2.3](on-demand-spot-ratio-and-limits) hướng dẫn đo.
+**Mixed Pool gồm 2 NodePool:** `ms-od` và `ms-spot` dùng chung label, taint cho Microservices. `ms-od` có weight cao hơn và CPU limit **24 vCPU**; `ms-spot` có limit **72 vCPU**. Cấu hình tạo capacity budget **1:3** khi dùng hết limit, không ép tỷ lệ node tại mọi thời điểm. [Bước 2.3](on-demand-spot-ratio-and-limits) hướng dẫn đo.
 
-**Taint giữ workload đúng pool:** Pod chỉ vào pool khi vừa **chọn** label vừa **tolerate** taint. Workload không vô tình chạy trên node Spot hoặc ARM64.
+**Selector và Toleration:** cấu hình cả Node Selector và Toleration tương ứng để workload được schedule vào đúng nhóm. Toleration chỉ cho phép Pod vào node có taint; selector mới giới hạn nhóm node được chọn.
 
 ## 1. Kiểm tra node role và AMI {#1-check-the-node-role-and-ami}
 
@@ -59,11 +59,11 @@ done
 kubectl --context eks-workload get ec2nodeclass,nodepools
 ```
 
-**Kết quả mong đợi:** `default` có `Ready=True`; tồn tại bốn NodePool. Chưa có node mới; pool chỉ tạo node khi có Pod cần.
+**Kết quả cần có:** `default` có `Ready=True`; tồn tại bốn NodePool. Chưa có node mới; pool chỉ tạo node khi có Pod cần.
 
 Nếu EC2NodeClass chưa Ready, chạy `kubectl --context eks-workload describe ec2nodeclass default`. Nguyên nhân thường gặp là AMI alias không tồn tại trong region hoặc subnet/security group thiếu discovery tag.
 
-## 3. Kiểm thử pool 1 bằng workload Spot {#3-test-pool-1-with-a-spot-workload}
+## 3. Chạy Workload trên Spot Pool {#3-test-pool-1-with-a-spot-workload}
 
 `examples/workshop/spot-proof.yaml` là Deployment nhỏ chọn `workload=batch`, tolerate taint tương ứng và yêu cầu `amd64`.
 
@@ -73,7 +73,7 @@ kubectl --context eks-workload get nodeclaims -w          # Ctrl+C once a NodeCl
 kubectl --context eks-workload rollout status deployment/workshop-spot --timeout=10m
 ```
 
-## Kiểm chứng {#verify}
+## Kiểm tra kết quả {#verify}
 
 ```bash
 kubectl --context eks-workload get pods -l app=workshop-spot -o wide
@@ -82,9 +82,9 @@ kubectl --context eks-workload get nodes -l karpenter.sh/nodepool=batch-spot \
   | tee "$EVIDENCE_DIR/pool1-spot.txt"
 ```
 
-**Kết quả mong đợi:** Pod `Running` trên node có `nodepool=batch-spot`, `capacity-type=spot`, `arch=amd64`.
+**Kết quả cần có:** Pod `Running` trên node có `nodepool=batch-spot`, `capacity-type=spot`, `arch=amd64`.
 
-Xóa bài thử; Karpenter xóa node trống sau khoảng 30 giây:
+Xóa workload thử, rồi theo dõi Karpenter dọn node trống theo `consolidateAfter` khoảng 30 giây:
 
 ```bash
 kubectl --context eks-workload delete -f "$GITOPS_DIR/examples/workshop/spot-proof.yaml"

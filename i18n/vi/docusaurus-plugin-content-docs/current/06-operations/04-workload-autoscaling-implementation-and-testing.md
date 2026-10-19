@@ -1,21 +1,21 @@
 ---
-title: "Mở rộng — Triển khai và kiểm thử HPA, CPA, KEDA"
+title: "Mở rộng · HPA, CPA và KEDA"
 ---
 
-# Bật scaling sau khi kiểm thử availability thành công {#enable-scaling-after-availability-tests-pass}
+# Setup Workload Autoscaling {#enable-scaling-after-availability-tests-pass}
 
-Scale-to-zero mâu thuẫn với bài thử yêu cầu luôn có hai replica Ready. Tắt thử nghiệm scaling hoặc dùng target riêng trong nghiệm thu PDB/EFS.
+Thực hiện Autoscaling sau bài EFS và PDB. Khi test PDB cần ít nhất 2 replica Ready; dùng workload riêng hoặc tắt Scale-to-zero trong lúc test.
 
-## 1. Metrics Server do Terraform quản lý {#1-metrics-server-belongs-to-terraform}
+## 1. Kiểm tra Metrics Server {#1-metrics-server-belongs-to-terraform}
 
 ```bash
 kubectl --context eks-workload -n kube-system get deployment metrics-server
 kubectl --context eks-workload top pods -n shopnow
 ```
 
-Không cài release thứ hai. Với metrics `<unknown>`, kiểm tra APIService và log metrics-server trước.
+Metrics Server đã do Terraform cài. Nếu HPA hiện `<unknown>`, kiểm tra APIService và Metrics Server log trước.
 
-## 2. Sửa target HPA trước khi bật {#2-repair-the-hpa-target-before-enabling-it}
+## 2. Cấu hình HPA Target {#2-repair-the-hpa-target-before-enabling-it}
 
 `templates/hpa.yaml` hiện dùng helper fullname, trong khi Deployment có tên `<global.appName>-deployment`. Cập nhật cả sáu backend chart trước khi bật HPA:
 
@@ -30,20 +30,20 @@ scaleTargetRef:
 
 Deployment chỉ nên render `replicas` khi chart quản lý trường đó. Với scaler bên ngoài, đặt `ignoreDifferences` của Application cho `/spec/replicas` và `RespectIgnoreDifferences=true`; nếu không, ArgoCD có thể liên tục khôi phục số replica từ values.
 
-## 3. Bật CPU HPA cho một service {#3-enable-cpu-hpa-for-one-service}
+## 3. Test CPU HPA {#3-enable-cpu-hpa-for-one-service}
 
-Trong values Application đọc, bật autoscaling với tối thiểu 2, tối đa 6, CPU target 70. Phải có CPU requests. Commit/push, sync rồi kiểm tra:
+Trong values của service, bật Autoscaling với min 2, max 6 replica và CPU Target 70%. Cấu hình CPU Requests, Commit/Push rồi ArgoCD Sync:
 
 ```bash
 kubectl --context eks-workload -n shopnow get hpa
 kubectl --context eks-workload -n shopnow describe hpa
 ```
 
-Tạo tải API thực tế và quan sát phần trăm target, replica mong muốn/hiện tại và NodeClaim. Vượt CPU target không nhất thiết tạo node nếu worker hiện tại còn capacity. Dừng tải và đo scale-down, không hứa thời gian cố định.
+Tạo Load vào API, theo dõi CPU Target, Desired/Current Replica và NodeClaim. Nếu worker còn capacity, HPA có thể tăng replica mà Karpenter chưa cần thêm node. Dừng Load và ghi thời gian Scale-down thực tế.
 
-## 4. KEDA: một bên quản lý mỗi target {#4-keda-one-owner-per-target}
+## 4. Setup KEDA {#4-keda-one-owner-per-target}
 
-Cài chart KEDA ghim phiên bản; kiểm chứng CRD/operator/metrics adapter. Đã có values và ScaledObject nhưng Terraform hiện chưa cài release KEDA. Trước khi apply:
+Cài chart KEDA ghim phiên bản; kiểm tra CRD/operator/metrics adapter. Đã có values và ScaledObject nhưng Terraform hiện chưa cài release KEDA. Trước khi apply:
 
 1. Tắt HPA thông thường trên Deployment đó.
 2. Cấu hình ArgoCD ngừng quản lý `/spec/replicas` của target hiện tại.
@@ -54,14 +54,14 @@ ScaledObject hiện kết hợp cron ngày thường 09:00–19:00 giờ Việt 
 
 Để thử ngay, tạo Deployment/ScaledObject riêng với cửa sổ cron ngắn. Không đổi lịch hoạt động của ứng dụng đang được dùng chỉ để demo.
 
-## 5. CPA cho CoreDNS {#5-cpa-for-coredns}
+## 5. Setup CPA cho CoreDNS {#5-cpa-for-coredns}
 
-Manifest là `platform/addons/cluster-proportional-autoscaler/coredns-autoscaler.yaml`. Kiểm chứng target deployment/coredns và autoscaling EKS add-on trước khi apply; không để hai controller tranh quyền replica. Chỉ thử khi autoscaler khác không quản lý scaling CoreDNS.
+Manifest là `platform/addons/cluster-proportional-autoscaler/coredns-autoscaler.yaml`. Kiểm tra kết quả target deployment/coredns và autoscaling EKS add-on trước khi apply; không để hai controller tranh quyền replica. Chỉ thử khi autoscaler khác không quản lý scaling CoreDNS.
 
 Sau apply, xem log CPA và replica CoreDNS theo số node/core. Khôi phục cấu hình trước sau khi thử; xóa CPA không tự đặt lại replica CoreDNS.
 
-## 6. Khôi phục {#6-restore}
+## 6. Cleanup Autoscaling {#6-restore}
 
-Xóa ScaledObject trước khi uninstall KEDA và trả quyền quản lý replica về Git. Tắt HPA qua values rồi sync. Xóa bộ tạo tải. Kiểm tra lại PDB/replica trước khi trở về bài cốt lõi.
+Xóa ScaledObject trước khi uninstall KEDA và trả quyền quản lý replica về Git. Tắt HPA qua values rồi sync. Xóa bộ tạo tải. Kiểm tra lại PDB/replica trước khi trở về workshop chính.
 
 Tham khảo: [HPA](https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/), [khái niệm KEDA](https://keda.sh/docs/latest/concepts/).

@@ -1,18 +1,18 @@
 ---
-title: "Bước 4.3 — Chuyển logs sang Loki bằng Alloy"
+title: "Bước 4.3 — Collect Logs với Alloy và Loki"
 sidebar_label: "4.3 Logs → Loki"
 ---
 
-# Bước 4.3 — Chuyển logs sang Loki bằng Alloy {#step-43--ship-logs-to-loki-with-alloy}
+# Bước 4.3 — Collect Logs với Alloy và Loki {#step-43--ship-logs-to-loki-with-alloy}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** query được log Pod từ mọi node cluster 1 tại Loki trên cluster 2.
+:::info Nội dung thực hiện
+**Mục tiêu:** cài Alloy trên các node Cluster Workload và query logs tại Loki của Cluster Observability.
 **Yêu cầu:** 9. **Thời gian:** khoảng 15 phút. **Chạy từ:** `$GITOPS_DIR`.
 :::
 
-## Cách cấu hình {#how-it-is-configured}
+## Cấu hình Alloy {#how-it-is-configured}
 
-Grafana **Alloy** chạy dưới dạng DaemonSet, mỗi node một agent, bao gồm node Karpenter. `examples/workshop/alloy-values.yaml` cấu hình:
+Grafana **Alloy** dùng DaemonSet, mỗi node có 1 agent, bao gồm node Karpenter. File `examples/workshop/alloy-values.yaml` cấu hình:
 
 - **Tolerate mọi taint**, nên chạy cả trên pool Spot, mixed và ARM64.
 - Đọc tên node qua Downward API, chỉ thu thập **Pod trên chính node đó**, tránh trùng lặp.
@@ -28,16 +28,16 @@ helm --kube-context eks-workload upgrade --install alloy grafana/alloy --version
   --namespace monitoring -f "$GITOPS_DIR/examples/workshop/alloy-values.yaml" --wait --timeout 10m
 ```
 
-## 2. Mỗi node một agent {#2-one-agent-on-every-node}
+## 2. Kiểm tra Alloy DaemonSet {#2-one-agent-on-every-node}
 
 ```bash
 kubectl --context eks-workload -n monitoring get daemonset alloy
 kubectl --context eks-workload get nodes --no-headers | wc -l
 ```
 
-**Kết quả mong đợi:** `READY` của DaemonSet bằng số node.
+**Kết quả cần có:** `READY` của DaemonSet bằng số node.
 
-## 3. Tạo dòng log để tìm kiếm {#3-generate-a-log-line-to-look-for}
+## 3. Tạo Log để kiểm tra {#3-generate-a-log-line-to-look-for}
 
 `workshop-proof`, đã triển khai ở bước 3.3, in `workshop-proof <pod> <timestamp>` mỗi 15 giây:
 
@@ -45,7 +45,7 @@ kubectl --context eks-workload get nodes --no-headers | wc -l
 kubectl --context eks-workload -n shopnow logs deployment/workshop-proof --tail=3
 ```
 
-## Kiểm chứng — query trực tiếp Loki {#verify--query-loki-directly}
+## Query Logs trực tiếp từ Loki {#verify--query-loki-directly}
 
 ```bash
 kubectl --context eks-observability -n monitoring port-forward svc/loki-gateway 13100:80   # terminal 1
@@ -57,7 +57,7 @@ curl -fsSG http://localhost:13100/loki/api/v1/query_range \
   | jq -r '.data.result[].values[][1]' | tee "$EVIDENCE_DIR/loki-query.txt"
 ```
 
-**Kết quả mong đợi:** dòng `workshop-proof …` gần đây với timestamp trong vài phút vừa qua.
+**Kết quả cần có:** dòng `workshop-proof …` gần đây với timestamp trong vài phút vừa qua.
 
 | Triệu chứng | Kiểm tra |
 |---|---|
@@ -66,6 +66,6 @@ curl -fsSG http://localhost:13100/loki/api/v1/query_range \
 | Log Alloy có `no such host` | Private DNS record (bước 4.1, phần 4) |
 | Query rỗng, Alloy không báo lỗi | Chờ một phút; kiểm tra giá trị label `cluster` trong query |
 
-Loki dùng `auth_enabled: false` trong workshop, nên chỉ có mạng riêng và security group bảo vệ nó. Không công khai Loki gateway.
+Workshop đặt Loki `auth_enabled: false`. Giữ Loki Gateway trong mạng riêng và giới hạn Security Group; không mở Public Endpoint cho gateway này.
 
 **Tiếp theo:** [4.4 Grafana](grafana-dashboards)

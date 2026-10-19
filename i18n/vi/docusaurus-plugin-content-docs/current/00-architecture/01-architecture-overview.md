@@ -5,16 +5,16 @@ sidebar_label: "0.2 Kiến trúc"
 
 # Bước 0.2 — Kiến trúc {#step-02--architecture}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** hiểu hệ thống sẽ xây dựng và công cụ quản lý từng thành phần trước khi chạy lệnh.
+:::info Nội dung thực hiện
+**Mục tiêu:** nắm kiến trúc 2 EKS Cluster và công cụ quản lý từng thành phần.
 **Thời gian:** khoảng 10 phút đọc.
 :::
 
-## Bức tranh tổng thể {#the-big-picture}
+## Overview Architecture {#the-big-picture}
 
 [![Tổng quan kiến trúc](/img/architecture/01-overview.png)](/img/architecture/01-overview.png)
 
-Chín sơ đồ chi tiết — mạng, từng cluster, Karpenter, telemetry, ShopNow, quy trình triển khai, Terraform — nằm ở trang [Sơ đồ kiến trúc](07-architecture-diagrams.md). Sơ đồ logic:
+Xem 9 sơ đồ về Network, EKS, Karpenter, Telemetry, ShopNow, GitOps và Terraform tại [Sơ đồ kiến trúc](07-architecture-diagrams.md). Luồng tổng quan:
 
 ```mermaid
 flowchart LR
@@ -52,14 +52,14 @@ flowchart LR
   ALB --> Loki
 ```
 
-Hai cluster nằm trong **cùng một VPC**, với subnet và security group riêng. Telemetry đi qua ALB **nội bộ** bằng HTTPS; không công khai ra Internet.
+Hai cluster dùng **chung VPC**, tách Subnet và Security Group. Cluster Workload gửi metrics và logs sang Cluster Observability qua **Internal ALB**, sử dụng HTTPS và Private DNS.
 
 ## Cluster 1 — `eks-workload` {#cluster-1--eks-workload}
 
 | Thành phần | Chạy trên | Mục đích |
 |---|---|---|
-| Managed Node Group `infra` (3 × t3.large, On-Demand) | — | Capacity ổn định cho công cụ nền tảng, độc lập với Karpenter |
-| ArgoCD, Karpenter, Prometheus, JavaMelody, AWS Load Balancer Controller, Metrics Server | Node `infra` | Công cụ nền tảng (yêu cầu 1) |
+| Managed Node Group `infra` (3 × t3.large, On-Demand) | — | Capacity ổn định cho Platform Tools, độc lập với Karpenter |
+| ArgoCD, Karpenter, Prometheus, JavaMelody, AWS Load Balancer Controller, Metrics Server | Node `infra` | Platform Tools (yêu cầu 1) |
 | NodePool `batch-spot` | EC2 Spot | Pool 1 — workload Spot |
 | NodePool `ms-od` + `ms-spot` | EC2 On-Demand + Spot | Pool 2 — microservices, 1:3 |
 | NodePool `arm64` | EC2 Graviton | Pool 3 — workload ARM64 |
@@ -78,9 +78,9 @@ Hai cluster nằm trong **cùng một VPC**, với subnet và security group ri�
 | S3 bucket `eks-observability-mimir-<account>`, `-loki-<account>` | Lưu trữ dài hạn |
 | ALB nội bộ + private Route 53 zone `observability.internal` | Điểm nhận dữ liệu nội bộ từ cluster 1 |
 
-## Công cụ nào quản lý tài nguyên nào {#who-owns-what}
+## Quản lý Resource {#who-owns-what}
 
-Mỗi tài nguyên chỉ có một công cụ quản lý. Thực hiện thay đổi qua đúng công cụ đó; nếu không, lần apply hoặc sync tiếp theo sẽ hoàn tác thay đổi.
+Cập nhật resource bằng đúng công cụ đang quản lý nó. Terraform Apply hoặc ArgoCD Sync sẽ đưa resource về cấu hình đã khai báo.
 
 | Tài nguyên | Công cụ quản lý | Cách thay đổi |
 |---|---|---|
@@ -91,11 +91,11 @@ Mỗi tài nguyên chỉ có một công cụ quản lý. Thực hiện thay đ�
 | Deployment, PVC, PDB, Service của ShopNow | ArgoCD, từ `eks-core-gitops/apps` | commit → ArgoCD sync |
 | cert-manager, Alloy, JavaMelody | Helm / manifest được apply trong từng bước | `helm upgrade` / `kubectl apply` |
 
-## Các quyết định thiết kế {#design-decisions}
+## Các điểm chính trong kiến trúc {#design-decisions}
 
-- **Managed Node Group giúp nền tảng không phụ thuộc vào chính nó.** Karpenter và ArgoCD phải tiếp tục chạy ngay cả khi mọi pool Karpenter đều trống.
-- **Pool 2 gồm hai NodePool.** Karpenter không có cấu hình tỷ lệ bên trong một pool, vì vậy On-Demand và Spot được tách thành hai pool dùng chung label và taint. Giới hạn CPU 24 và 72 đặt ngân sách 1:3. Xem [bước 2.3](../karpenter/on-demand-spot-ratio-and-limits).
+- **Managed Node Group chạy Platform Tools.** Karpenter và ArgoCD vẫn hoạt động khi các Karpenter NodePool chưa có node.
+- **Mixed Pool gồm `ms-od` và `ms-spot`.** Hai NodePool dùng chung label và taint cho Microservices. CPU limit lần lượt là 24 và 72 vCPU, tương ứng capacity budget 1:3; đây không phải tỷ lệ node cố định. Xem [bước 2.3](../karpenter/on-demand-spot-ratio-and-limits).
 - **EFS dành cho microservices; database dùng EBS.** PostgreSQL và MySQL dùng volume `gp3`, phù hợp với database có một writer.
-- **Telemetry chuyển sang cluster riêng** để metrics và logs còn tồn tại khi mất bất kỳ workload node nào hoặc toàn bộ cluster 1.
+- **Cluster Observability lưu metrics và logs riêng.** Dữ liệu đã gửi sang cluster 2 vẫn còn khi node hoặc Cluster Workload gặp sự cố.
 
 **Tiếp theo:** [0.3 Sơ đồ kiến trúc](07-architecture-diagrams.md), sau đó [1.0 Quy trình Terraform](00-terraform-workflow.md)

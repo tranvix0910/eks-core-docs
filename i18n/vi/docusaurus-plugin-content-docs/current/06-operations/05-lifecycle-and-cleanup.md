@@ -5,21 +5,21 @@ sidebar_label: "5.2 Vận hành và cleanup"
 
 # Bước 5.2 — Vận hành và cleanup {#step-52--day-2-operations-and-cleanup}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** thay đổi nền tảng an toàn qua đúng công cụ quản lý, rollback, tạm dừng và cuối cùng xóa mọi tài nguyên theo thứ tự.
+:::info Nội dung thực hiện
+**Mục tiêu:** cập nhật Terraform và GitOps, Rollback thay đổi và Cleanup môi trường sau workshop.
 :::
 
-## Công cụ nào thay đổi phần nào {#which-tool-changes-what}
+## Quản lý thay đổi {#which-tool-changes-what}
 
 | Bạn muốn thay đổi… | Sửa | Sau đó |
 |---|---|---|
 | Network, phiên bản EKS, kích thước node group, IAM, EFS, ECR, S3 | `eks-core-terraform/<layer>/*.tf` hoặc `terraform.tfvars` | plan → kiểm tra → apply lớp đó |
-| Platform chart (Karpenter, ArgoCD, Prometheus, Mimir, Loki, Grafana) | Tệp values tại `eks-core-gitops/platform/…` | plan → apply lớp cài chart (20 hoặc 21) |
+| Platform chart (Karpenter, ArgoCD, Prometheus, Mimir, Loki, Grafana) | File values tại `eks-core-gitops/platform/…` | plan → apply lớp cài chart (20 hoặc 21) |
 | Node pool | `eks-core-gitops/platform/nodepools/*.yaml` | `kubectl apply` |
 | Service ShopNow (replica, tài nguyên, PDB, spread) | Chart hoặc values tại `eks-core-gitops/apps/…` | commit + push → ArgoCD sync |
 | Image ShopNow | Mã trong `eks-core-apps` | `IMAGE_TAG` mới → build → render → apply Application |
 
-## Ví dụ 1 — đổi kích thước infra node group (Terraform) {#example-1--resize-the-infra-node-group-terraform}
+## Ví dụ 1 · Resize Infra Node Group {#example-1--resize-the-infra-node-group-terraform}
 
 ```bash
 # eks-core-terraform/20-cluster-workload/terraform.tfvars
@@ -34,7 +34,7 @@ kubectl --context eks-workload get nodes -l role=infra
 
 Plan phải thể hiện **update in-place** node group, không thay thế.
 
-## Ví dụ 2 — tăng replica service (GitOps) {#example-2--scale-a-service-gitops}
+## Ví dụ 2 · Scale Service qua GitOps {#example-2--scale-a-service-gitops}
 
 ```bash
 cd "$GITOPS_DIR"
@@ -44,9 +44,9 @@ argocd app sync shopnow-product-service && argocd app wait shopnow-product-servi
 kubectl --context eks-workload -n shopnow get pods -l app=shopnow-product-service -o wide
 ```
 
-`workload-values.yaml` được áp dụng cuối nên giá trị ở đó ưu tiên hơn service overlay. Không `kubectl scale` Deployment do ArgoCD quản lý; self-heal sẽ khôi phục lại.
+`workload-values.yaml` được đọc cuối nên ghi đè service overlay. Cập nhật replica trong values rồi Sync. Nếu chỉ dùng `kubectl scale`, ArgoCD Self-heal sẽ khôi phục giá trị từ Git.
 
-## Ví dụ 3 — phát hành image mới {#example-3--release-a-new-image}
+## Ví dụ 3 · Deploy Image mới {#example-3--release-a-new-image}
 
 ```bash
 export IMAGE_TAG=workshop-v2
@@ -56,7 +56,7 @@ kubectl --context eks-workload apply -f "$GITOPS_DIR/.workshop/applications/shop
 argocd app wait shopnow-product-service --health
 ```
 
-Backend rollout từng Pod (`maxUnavailable` từ chart), nên quy tắc PDB và spread được giữ trong quá trình rollout.
+Backend dùng RollingUpdate theo cấu hình `maxUnavailable` của Deployment. Topology Spread tiếp tục áp dụng khi schedule Pod mới. PDB kiểm soát Eviction API; Deployment Controller quản lý số Pod khả dụng trong RollingUpdate.
 
 ## Rollback {#roll-back}
 
@@ -67,13 +67,13 @@ Backend rollout từng Pod (`maxUnavailable` từ chart), nên quy tắc PDB và
 | Terraform | Hoàn tác `.tf`/tfvars, plan, kiểm tra, apply |
 | Node pool | `kubectl apply` manifest phiên bản trước từ Git |
 
-## Tạm dừng để tiết kiệm chi phí {#pause-to-save-cost}
+## Tạm dừng môi trường {#pause-to-save-cost}
 
-Scale Pod về 0 không ngừng tính phí: control plane, node infra/monitoring, NAT, EFS và load balancer vẫn chạy. Để tạm dừng thực sự, destroy rồi tạo lại vì toàn bộ nền tảng được mô tả bằng mã. Trước khi destroy, backup dữ liệu cần giữ như database dump và tệp EFS.
+Scale Pod về 0 vẫn phát sinh phí EKS Control Plane, node `infra`/`monitoring`, NAT, EFS và Load Balancer. Nếu không dùng môi trường trong thời gian dài, Backup Database và EFS rồi Cleanup theo thứ tự bên dưới. Có thể tạo lại hạ tầng từ Terraform và GitOps khi cần.
 
-## Cleanup — xóa toàn bộ {#clean-up--remove-everything}
+## Cleanup môi trường {#clean-up--remove-everything}
 
-Xóa theo thứ tự dưới đây. Mỗi bước xóa thành phần phụ thuộc vào bước tiếp theo.
+Thực hiện lần lượt từ ứng dụng, Load Balancer đến EKS và Network. Kiểm tra bước trước đã xong rồi mới Destroy Layer tiếp theo.
 
 ### 1. Ứng dụng và workload thử nghiệm (cluster 1) {#1-applications-and-test-workloads-cluster-1}
 
@@ -98,14 +98,14 @@ kubectl --context eks-observability delete -f "$GITOPS_DIR/.workshop/internal-in
 
 Chờ ALB nội bộ biến mất trong EC2 console; Terraform không xóa được VPC còn load balancer.
 
-### 3. Ngắt phụ thuộc giữa lớp 20 và 21 {#3-break-the-link-between-layers-20-and-21}
+### 3. Gỡ Dependency giữa Layer 20 và 21 {#3-break-the-link-between-layers-20-and-21}
 
-Lớp 21 giữ DNS record cho ALB, lớp 20 đọc state lớp 21. Trước khi destroy:
+Layer 21 giữ DNS record cho ALB, Layer 20 đọc state Layer 21. Trước khi destroy:
 
-1. Đặt `internal_observability_alb_name = null` trong tfvars lớp 21 rồi apply lớp 21 để xóa alias.
-2. Tại lớp 20, bỏ remote-state data source `cluster_observability`, đặt observability node security group thành `null`; plan và apply lớp 20.
+1. Đặt `internal_observability_alb_name = null` trong tfvars Layer 21 rồi apply Layer 21 để xóa alias.
+2. Tại Layer 20, bỏ remote-state data source `cluster_observability`, đặt observability node security group thành `null`; plan và apply Layer 20.
 
-### 4. Destroy từng lớp {#4-destroy-layer-by-layer}
+### 4. Terraform Destroy từng Layer {#4-destroy-layer-by-layer}
 
 ```bash
 for L in 21-cluster-observability 20-cluster-workload 10-network; do
@@ -118,7 +118,7 @@ done
 
 Nếu destroy dừng vì bucket Mimir/Loki còn dữ liệu, quyết định có giữ dữ liệu không, làm trống bucket rồi lập plan lại.
 
-### 5. Kiểm tra tài nguyên còn sót {#5-check-for-leftovers}
+### 5. Kiểm tra Resource còn lại {#5-check-for-leftovers}
 
 ```bash
 aws eks list-clusters

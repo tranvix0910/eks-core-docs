@@ -1,10 +1,10 @@
 ---
-title: "Load Balancer Controller: định tuyến tới ứng dụng"
+title: "AWS Load Balancer Controller"
 ---
 
-# Kiểm chứng load balancing trước khi công khai service {#verify-load-balancing-before-exposing-services}
+# Kiểm tra Load Balancer Controller {#verify-load-balancing-before-exposing-services}
 
-LBC chuyển Service/Ingress thành load balancer AWS. Terraform hiện truyền `clusterName`, region và VPC ID trực tiếp vào chart. Các tệp values riêng chứa ID môi trường cũ không phải cấu hình thực tế của release này.
+AWS Load Balancer Controller tạo Load Balancer từ Kubernetes Service/Ingress. Terraform truyền `clusterName`, region và VPC ID trực tiếp vào chart. Khi kiểm tra cấu hình, xem values của release đang chạy; một số file values mẫu còn chứa ID môi trường cũ.
 
 ## 1. Kiểm tra controller và IAM {#1-check-the-controller-and-iam}
 
@@ -17,7 +17,7 @@ helm --kube-context eks-workload -n kube-system get values aws-load-balancer-con
 
 Pod Identity phải liên kết đúng ServiceAccount `kube-system/aws-load-balancer-controller`. Thêm annotation IRSA không phải cách xử lý chung cho lỗi AccessDenied.
 
-## 2. Tạo application ingress qua ArgoCD {#2-create-application-ingress-through-argocd}
+## 2. Deploy Application Ingress qua ArgoCD {#2-create-application-ingress-through-argocd}
 
 Backend chart tạo Ingress trong `shopnow`, dùng `target-type: ip`, group `eks-workload` và listener port riêng. ALB trỏ tới IP Pod; security group phải cho phép **cổng đích của container**, không chỉ cổng Service.
 
@@ -28,17 +28,17 @@ kubectl --context eks-workload -n shopnow get endpointslices \
   -l kubernetes.io/service-name=shopnow-api-gateway-service
 ```
 
-Nếu `ADDRESS` trống, xem Events và controller log trước. Nếu có DNS nhưng request trả 503, kiểm tra target health, endpoint Ready và đường dẫn health check.
+Nếu Ingress chưa có `ADDRESS`, kiểm tra Events và controller log. Nếu ALB đã có DNS nhưng trả `503`, kiểm tra Target Health, Endpoint Ready và Health Check Path.
 
-## 3. ALB dùng chung và kiểm soát truy cập {#3-shared-alb-and-access-controls}
+## 3. Shared ALB và Access Control {#3-shared-alb-and-access-controls}
 
-Group dùng chung giảm số ALB, nhưng mọi ingress tham gia đều ảnh hưởng listener/rule. Chỉ cho phép người vận hành tin cậy tạo ingress trong group này. Namespace không phải ranh giới bảo mật của IngressGroup.
+IngressGroup dùng chung một ALB để giảm số Load Balancer. Mỗi Ingress trong group đều có thể ảnh hưởng Listener và Rule, vì vậy giới hạn quyền tạo Ingress cho người vận hành phù hợp. Namespace không tách quyền quản lý bên trong cùng IngressGroup.
 
-Bài cốt lõi có thể dùng port-forward để truy cập UI/API. Với public ingress, đặt `inboundCidrs` thành dải IP/VPN được lớp học cho phép trước khi triển khai. Không giữ `0.0.0.0/0` cho công cụ quản trị.
+Trong workshop, có thể dùng Port-forward để truy cập UI/API. Khi dùng Public Ingress, đặt `inboundCidrs` theo IP hoặc VPN được phép trước khi Apply. Với UI quản trị, không mở `0.0.0.0/0`.
 
 ## 4. ALB telemetry nội bộ {#4-internal-telemetry-alb}
 
-Dùng group riêng `eks-observability-internal`, HTTPS listener 9009/3100, chứng chỉ ACM và node SG từ lớp 20. Làm theo [bài TLS](03-cert-manager-and-internal-tls.md); không đưa ingress nội bộ vào group public.
+Dùng group riêng `eks-observability-internal`, HTTPS listener 9009/3100, chứng chỉ ACM và node SG từ Layer 20. Làm theo [bài TLS](03-cert-manager-and-internal-tls.md); không đưa ingress nội bộ vào group public.
 
 | Triệu chứng | Kiểm tra đầu tiên |
 |---|---|
@@ -48,4 +48,4 @@ Dùng group riêng `eks-observability-internal`, HTTPS listener 9009/3100, chứ
 | 404 | Path, host của Ingress và route trong application controller |
 | Lỗi TLS | Hostname trong SAN, region ACM, CA tin cậy trên client |
 
-So sánh cấu hình render với AWS trước khi sửa nhiều annotation cùng lúc.
+Đối chiếu Ingress đã render với ALB thực tế, rồi sửa từng nguyên nhân.
