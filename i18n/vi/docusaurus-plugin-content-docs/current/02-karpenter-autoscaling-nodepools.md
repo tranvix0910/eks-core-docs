@@ -1,10 +1,10 @@
 ---
-title: "Karpenter — Ba nhóm node trong đề bài"
+title: "Karpenter · 3 nhóm NodePool"
 ---
 
-# Từ yêu cầu tài nguyên Pod đến node EC2 {#from-pod-resource-requirements-to-ec2-nodes}
+# Karpenter NodePools {#from-pod-resource-requirements-to-ec2-nodes}
 
-Karpenter cấp capacity EC2 khi không có node phù hợp để chạy Pod, sau đó thu hồi capacity dư theo policy. Bạn khai báo **ràng buộc placement của workload**, thay vì danh sách máy cố định.
+Karpenter cấp EC2 cho Pod chưa có node phù hợp và thu hồi capacity dư theo policy. Workshop dùng 3 nhóm NodePool: Spot, Mixed On-Demand/Spot và ARM64.
 
 | Nhóm trong đề bài | Đối tượng Kubernetes | Workload |
 |---|---|---|
@@ -14,7 +14,7 @@ Karpenter cấp capacity EC2 khi không có node phù hợp để chạy Pod, sa
 
 Managed Node Group `infra` tách khỏi ba nhóm Karpenter, giữ controller hoạt động khi các pool động trống.
 
-## Thứ tự thực hành {#lab-sequence}
+## Các bước thực hiện {#lab-sequence}
 
 1. [Hiểu tài nguyên AWS và controller](02-karpenter/01-karpenter-two-halves-architecture.md).
 2. [Apply EC2NodeClass và NodePool](02-karpenter/02-ec2nodeclass-and-nodepools-configuration.md).
@@ -22,4 +22,4 @@ Managed Node Group `infra` tách khỏi ba nhóm Karpenter, giữ controller ho�
 4. [Kiểm tra disruption và xử lý Spot interruption](02-karpenter/04-disruption-and-spot-interruption.md).
 5. [Chạy container ARM64](02-karpenter/05-arm64-validation.md).
 
-Chỉ tạo CRD chưa đủ để nghiệm thu. Chạy thành công ít nhất một Pod trên mỗi nhóm với đúng capacity type/architecture. Với mixed pool, báo cáo cả tỷ lệ node lẫn vCPU vì hai tỷ lệ có thể khác nhau.
+Chạy ít nhất 1 Pod trên mỗi nhóm để kiểm tra Capacity Type và Architecture. Với Mixed Pool, lưu cả số node và vCPU On-Demand/Spot để đối chiếu tỷ lệ.

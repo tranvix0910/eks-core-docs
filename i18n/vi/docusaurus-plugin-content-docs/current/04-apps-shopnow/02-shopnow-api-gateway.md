@@ -1,10 +1,10 @@
 ---
-title: "Kiểm chứng API gateway và đường request"
+title: "ShopNow API Gateway"
 ---
 
-# Kiểm tra API theo từng chặng {#check-the-api-one-hop-at-a-time}
+# Kiểm tra Request Flow {#check-the-api-one-hop-at-a-time}
 
-## 1. Gọi gateway {#1-call-the-gateway}
+## 1. Gọi API qua Gateway {#1-call-the-gateway}
 
 ```bash
 kubectl --context eks-workload -n shopnow port-forward svc/shopnow-api-gateway-service 5860:5860
@@ -15,9 +15,9 @@ curl -i http://localhost:5860/actuator/health
 curl -i http://localhost:5860/product
 ```
 
-SecurityConfig cho phép GET ẩn danh tới `/product`. Thao tác ghi và giỏ hàng cần JWT theo cấu hình demo. `[]` không phải lỗi; nhận HTML thay JSON thường do request bị gửi nhầm tới frontend/Nginx.
+SecurityConfig cho phép GET `/product` không cần đăng nhập. Các thao tác ghi và Cart API cần JWT theo cấu hình demo. Database mới có thể trả danh sách rỗng `[]`. Nếu nhận HTML thay JSON, kiểm tra request có bị gửi tới Frontend/Nginx không.
 
-## 2. Hiểu tên route {#2-understand-route-names}
+## 2. Gateway Routes {#2-understand-route-names}
 
 | Request vào gateway | Đích Eureka | Request tới controller |
 |---|---|---|
@@ -25,9 +25,9 @@ SecurityConfig cho phép GET ẩn danh tới `/product`. Thao tác ghi và giỏ
 | `/shopping-cart/1` | `CART-SERVICE` qua production override | `/api/shopping-cart/1` |
 | `/user/signin` | `USER-SERVICE` | `/api/user/signin` |
 
-`PrefixPath=/api` thêm tiền tố sau khi khớp path đầu vào. Vì vậy gọi `/api/product` trên gateway khác gọi trực tiếp controller. Postman collection cũ vẫn dùng path `/api/` tại gateway; cập nhật request trước khi dùng để nghiệm thu.
+`PrefixPath=/api` thêm prefix trước khi gửi request tới Controller. Gọi Gateway bằng `/product`; gọi trực tiếp Backend bằng `/api/product`. Nếu dùng Postman Collection cũ có `/api/` trên Gateway URL, sửa lại path trước khi test.
 
-## 3. Khoanh vùng lỗi {#3-isolate-failures}
+## 3. Troubleshooting {#3-isolate-failures}
 
 - Trình duyệt gọi sai URL: kiểm tra `REACT_APP_BASE_API_URL` lúc build và tab Network.
 - Gateway 404: xem predicate và prefix đầu vào; backend trực tiếp trả lời tại `/api/product`.
@@ -41,8 +41,8 @@ kubectl --context eks-workload -n shopnow logs deployment/shopnow-product-servic
 kubectl --context eks-workload -n shopnow get endpointslices
 ```
 
-Cấu hình local và ConfigMap production khác nhau. Giá trị thực tế kết hợp mặc định trong image với `/app/config-override/application.properties`.
+Kiểm tra cả cấu hình trong image và file override `/app/config-override/application.properties`. Local config và ConfigMap production có thể dùng giá trị khác nhau.
 
-## 4. Giới hạn xác thực demo {#4-demo-authentication-limits}
+## 4. Authentication trong Demo {#4-demo-authentication-limits}
 
-User service xác minh người dùng trong database rồi xin token bằng `client_credentials`. Đây chưa phải mô hình token hoàn chỉnh theo từng người dùng cuối. Đăng nhập demo thành công không chứng minh phân quyền người dùng với giỏ hàng. Các bài security phân biệt danh tính nền tảng và xác thực ứng dụng.
+User Service kiểm tra user trong database, sau đó lấy token bằng `client_credentials`. Token này chưa đại diện đầy đủ cho từng người dùng cuối. Khi demo Login, kiểm tra riêng quyền truy cập Cart và phân biệt Application Authentication với quyền AWS/EKS.

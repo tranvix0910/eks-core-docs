@@ -1,16 +1,16 @@
 ---
-title: "Bước 2.5 — Kite dashboard"
-sidebar_label: "2.5 Kite dashboard"
+title: "Bước 2.5 — Kite Dashboard"
+sidebar_label: "2.5 Kite Dashboard"
 ---
 
-# Bước 2.5 — Kite dashboard {#step-25--kite-dashboard}
+# Bước 2.5 — Kite Dashboard {#step-25--kite-dashboard}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** hiểu Kite đã được cài như thế nào, kiểm tra nó, rồi mở bằng port-forward **hoặc** qua ALB quản trị dùng chung ở port 8088.
+:::info Nội dung thực hiện
+**Mục tiêu:** kiểm tra Kite Dashboard và truy cập bằng Port-forward hoặc ALB hostname trên port 8088.
 **Thời gian:** khoảng 15 phút. **Chạy từ:** thư mục bất kỳ khi đã export `TF_DIR`, `AWS_PROFILE`, `AWS_REGION`. Terraform cài Kite; truy cập ALB cần chủ động bật.
 :::
 
-[Kite](https://github.com/kite-org/kite) là một dashboard Kubernetes gọn nhẹ: xem mọi resource, đọc log Pod, mở shell vào container và xem CPU, memory lấy từ Prometheus. Không thành phần nào khác trong workshop phụ thuộc vào nó.
+[Kite](https://github.com/kite-org/kite) là Kubernetes Dashboard để xem resource, đọc Pod log, mở Container Shell và theo dõi CPU, memory từ Prometheus. Dùng Kite để kiểm tra Cluster Workload trong workshop.
 
 ```mermaid
 flowchart LR
@@ -24,9 +24,9 @@ flowchart LR
   end
 ```
 
-## Phần 1 — Kite được cài như thế nào {#part-1--how-kite-is-installed}
+## Phần 1 · Cài đặt Kite {#part-1--how-kite-is-installed}
 
-Kite là một `helm_release` trong **Terraform layer 20** (`$TF_DIR/20-cluster-workload/helm_releases.tf`). Nó đã được cài khi bạn apply layer đó ở [bước 1.3](../architecture/layer-21-cluster-observability#6-finish-cluster-1); không có lệnh cài riêng.
+Terraform quản lý Kite qua `helm_release` trong **Layer 20**, file `$TF_DIR/20-cluster-workload/helm_releases.tf`. Kite được cài khi full Apply tại [bước 1.3](../architecture/layer-21-cluster-observability#6-finish-cluster-1); không cần cài thêm release bằng tay.
 
 ```mermaid
 flowchart LR
@@ -53,7 +53,7 @@ Các values chính truyền vào chart:
 | `nodeSelector`, `tolerations` | `role: infra`, `CriticalAddonsOnly` | Chạy trên Managed Node Group infra |
 | `ingress.enabled` | `false` | Truy cập bằng port-forward hoặc Ingress ở Phần 2 |
 
-Muốn đổi value, sửa khối `helm_release "kite"` rồi plan và apply layer 20 như bình thường. Helm chờ Pod Ready (`wait`, `atomic`) và tự rollback nếu Pod không lên.
+Để cập nhật Kite, sửa values trong `helm_release "kite"`, rồi Plan và Apply Layer 20. Với `wait` và `atomic`, Helm chờ Pod Ready và Rollback nếu cài đặt thất bại.
 
 ### Kiểm tra Kite đang chạy {#check-that-kite-is-running}
 
@@ -65,7 +65,7 @@ kubectl --context eks-workload -n kite-system get pod -l app.kubernetes.io/name=
 kubectl --context eks-workload -n kite-system logs deploy/kite --tail=20
 ```
 
-**Kết quả mong đợi:**
+**Kết quả cần có:**
 
 - release `kite` ở trạng thái `deployed`, chart `kite-0.15.0`;
 - Deployment `kite` `1/1`, Pod `Running`;
@@ -75,9 +75,13 @@ kubectl --context eks-workload -n kite-system logs deploy/kite --tail=20
 - node hiển thị `role=infra`;
 - log không có lỗi.
 
-## Phần 2 — Truy cập Kite {#part-2--access-kite}
+[![Kite deployed, Pod Running trên node infra, Service port 8080 và PVC gp3 5Gi Bound](/img/workshop/platform/kite-release-and-storage.png)](/img/workshop/platform/kite-release-and-storage.png)
 
-Terraform quản lý Helm release Kite và Ingress **tuỳ chọn**. Chart Helm vẫn đặt `ingress.enabled=false`; resource `kubernetes_ingress_v1.kite[0]` riêng trong `$TF_DIR/20-cluster-workload/kite_ingress.tf` quản lý truy cập qua ALB. Không tạo thêm Ingress bằng Helm, ArgoCD hoặc `kubectl apply`.
+*Kiểm tra release, Pod, Service, PVC và node `role=infra` của Kite. Resource ID và IP là giá trị tại thời điểm capture. Bấm vào ảnh để xem đầy đủ.*
+
+## Phần 2 · Truy cập Kite {#part-2--access-kite}
+
+Terraform quản lý cả Helm Release và Ingress của Kite. Trong chart, giữ `ingress.enabled=false`. Khi bật truy cập ALB, resource `kubernetes_ingress_v1.kite[0]` trong `$TF_DIR/20-cluster-workload/kite_ingress.tf` sẽ tạo Ingress. Dùng Terraform để cập nhật resource này, tránh tạo thêm bằng Helm, ArgoCD hoặc `kubectl apply`.
 
 | | A · Port-forward (mặc định) | B · ALB quản trị (chủ động bật) |
 |---|---|---|
@@ -95,7 +99,7 @@ Mở http://localhost:8088 rồi chuyển sang [Phần 3](#part-3--first-sign-in
 
 ### 2B — Qua ALB quản trị {#2b--through-the-admin-alb}
 
-Dùng hostname của ALB; đường truy cập HTTP của lab không cần domain public riêng. Ingress tham gia group `eks-workload`. Nếu group đã có ALB phù hợp, controller thêm listener 8088 vào ALB đó; nếu chưa có thì tạo ALB của group. Giữ nguyên group, scheme, các listener khác và routing hiện tại.
+Truy cập bằng `http://<ALB-DNS>:8088`, dùng trực tiếp hostname ALB. Ingress thuộc group `eks-workload`: controller thêm Listener 8088 vào ALB của group hoặc tạo ALB nếu chưa có. Giữ các Listener và routing đang dùng cho dịch vụ khác.
 
 | Field | Value |
 |---|---|
@@ -109,11 +113,11 @@ Dùng hostname của ALB; đường truy cập HTTP của lab không cần domai
 
 Terraform tạo Kubernetes Ingress sau khi Helm release Kite sẵn sàng. **AWS Load Balancer Controller**, không phải AWS provider của Terraform, tạo và cập nhật listener, rule, target group cùng các rule security group do controller quản lý.
 
-#### 2B.1 Kiểm tra môi trường và điều kiện trước {#2b1-read-the-manifest}
+#### 2B.1 Kiểm tra Environment {#2b1-read-the-manifest}
 
-Nạp biến môi trường workshop trước ([điều kiện bắt đầu](../architecture/organizational-constraints-and-prerequisites#5-variables-used-in-every-step)). Các lệnh dùng `TF_DIR` và `terraform -chdir`, nên chạy được từ thư mục Terraform, repo GitOps hoặc thư mục khác. Đặt `AWS_PROFILE` theo profile thực tế của môi trường, không nhất thiết là tên mẫu `eks-core`. Identity và region phải khớp `aws_profile`, `account_id`, `region` của layer 20. Region lưu state S3 có thể khác region EKS.
+Source `workshop.env` theo [bước Setup Environment](../architecture/organizational-constraints-and-prerequisites#5-variables-used-in-every-step). Lệnh dùng `TF_DIR` và `terraform -chdir`, nên có thể chạy từ thư mục bất kỳ. Kiểm tra `AWS_PROFILE`, Account ID và region khớp cấu hình Layer 20. Dùng profile thực tế trên máy; `eks-core` chỉ là tên mẫu. S3 Backend có thể dùng region riêng.
 
-Các ví dụ cũng cần Python 3 và `jq` để kiểm tra dữ liệu và chọn trường JSON.
+Chuẩn bị Python 3 và `jq` cho các lệnh kiểm tra bên dưới.
 
 ```bash
 bash <<'BASH'
@@ -137,11 +141,15 @@ kubectl --context eks-workload get ingress -A -o json | jq '
 BASH
 ```
 
-Kết quả mong đợi: đúng AWS account; controller Ready; có class `alb`; Kite Ready; PVC Bound; EndpointSlice có địa chỉ Ready trên port 8080. Kiểm tra annotation của tất cả thành viên group. Nếu khai báo `alb.ingress.kubernetes.io/security-groups` tường minh, `inbound-cidrs` **không** quản lý quyền truy cập: phải kiểm tra rule SG thực tế trước khi tiếp tục. Xác nhận port 8088 chưa được ứng dụng khác sử dụng.
+Kết quả cần có: đúng AWS account; controller Ready; có class `alb`; Kite Ready; PVC Bound; EndpointSlice có địa chỉ Ready trên port 8080. Kiểm tra annotation của tất cả thành viên group. Nếu khai báo `alb.ingress.kubernetes.io/security-groups` tường minh, `inbound-cidrs` **không** quản lý quyền truy cập: phải kiểm tra rule SG thực tế trước khi tiếp tục. Xác nhận port 8088 chưa được ứng dụng khác sử dụng.
 
-#### 2B.2 Khai báo CIDR được phép {#2b2-check-the-prerequisites}
+[![Load Balancer Controller Ready 2/2, IngressClass alb tồn tại và chưa có Ingress trong group](/img/workshop/platform/kite-alb-prerequisites.png)](/img/workshop/platform/kite-alb-prerequisites.png)
 
-Truy cập public mặc định **tắt** (`kite_ingress_enabled=false`, `kite_admin_cidrs=[]`). Lưu cấu hình riêng tại `$TF_DIR/20-cluster-workload/kite.auto.tfvars`, file đã được gitignore. File `.example` chỉ chứa giá trị mặc định. Ví dụ sau tạo file mới với IPv4 public hiện tại và từ chối ghi đè file có sẵn. Nếu file đã tồn tại, chỉnh sửa file đó. Với VPN hoặc mạng công ty, tự đặt `ADMIN_CIDR` thay vì lấy IP qua dịch vụ bên ngoài.
+*Preflight: Controller Ready và có IngressClass `alb`. Danh sách Ingress trống trong ảnh là trạng thái trước khi bật Kite Ingress. Bấm vào ảnh để xem đầy đủ.*
+
+#### 2B.2 Cấu hình Admin CIDR {#2b2-check-the-prerequisites}
+
+Mặc định, truy cập ALB **tắt**: `kite_ingress_enabled=false`, `kite_admin_cidrs=[]`. Tạo file local `$TF_DIR/20-cluster-workload/kite.auto.tfvars` đã được gitignore để bật và khai báo CIDR. Lệnh dưới lấy Public IPv4 hiện tại, tạo file mới và dừng nếu file đã tồn tại. Nếu đã có file, sửa trực tiếp file đó. Khi dùng VPN hoặc mạng công ty, tự đặt `ADMIN_CIDR` theo IP được phép.
 
 ```bash
 export ADMIN_CIDR="$(curl --fail --silent --show-error --ipv4 --max-time 10 https://checkip.amazonaws.com)/32"
@@ -163,9 +171,9 @@ print("Created", path)
 PYCONFIG
 ```
 
-Chỉ dùng CIDR IPv4 từ `/1` đến `/32`; cấu hình `/0`, danh sách trống khi đã bật, CIDR sai định dạng và IPv6 đều bị từ chối. ALB dùng chung đang cấu hình IPv4. CIDR không vào Git nhưng vẫn xuất hiện trong Terraform state và cấu hình Kubernetes/AWS. Lấy IP thất bại không được dẫn tới mặc định mở toàn Internet.
+ALB dùng IPv4; cấu hình chỉ nhận CIDR từ `/1` đến `/32`. Terraform từ chối `/0`, IPv6, CIDR sai định dạng hoặc danh sách trống khi đã bật Ingress. CIDR được lưu trong Terraform State và cấu hình Kubernetes/AWS. Nếu không lấy được Public IP, dừng để kiểm tra và không thay bằng `0.0.0.0/0`.
 
-#### 2B.3 Khởi tạo và nhận quản lý Ingress có sẵn {#2b3-fill-in-your-address-and-review-the-result}
+#### 2B.3 Terraform Init và Import Ingress có sẵn {#2b3-fill-in-your-address-and-review-the-result}
 
 Khởi tạo bằng AWS profile đã chọn, ghi đè tên profile mẫu trong `backend.hcl` mà không sửa file này:
 
@@ -174,7 +182,7 @@ terraform -chdir="$TF_DIR/20-cluster-workload" init   -backend-config="$TF_DIR/2
 terraform -chdir="$TF_DIR/20-cluster-workload" validate
 ```
 
-Nếu Ingress đã tồn tại, kiểm tra công cụ đang quản lý trước khi import. Ingress apply bằng tay thường có manager `kubectl-client-side-apply`. Nếu thuộc Helm, ArgoCD hoặc Terraform state khác, phải chuyển quyền quản lý trước; không để nhiều công cụ cùng reconcile. Chưa có Ingress là trạng thái bình thường khi cài mới.
+Nếu đã có Ingress, kiểm tra công cụ quản lý trước khi Import. Ingress Apply bằng tay thường có manager `kubectl-client-side-apply`. Nếu Helm, ArgoCD hoặc Terraform State khác đang quản lý, chuyển quyền quản lý trước. Với cài đặt mới, chưa có Ingress là bình thường.
 
 ```bash
 kubectl --context eks-workload -n kite-system get ingress kite \
@@ -205,9 +213,9 @@ fi
 BASH
 ```
 
-Template GitOps cũ `platform/ingress/kite-ingress.yaml` đã được gỡ. Không chạy lại `sed ... | kubectl apply` hoặc bật app-of-apps đệ quy toàn platform chỉ để cài Ingress Kite.
+Ingress Kite đã chuyển sang Terraform. File cũ `platform/ingress/kite-ingress.yaml` đã được gỡ; bỏ lệnh `sed ... | kubectl apply` trong hướng dẫn cũ. Không cần bật app-of-apps cho toàn platform để tạo Ingress này.
 
-#### 2B.4 Kiểm tra plan và apply {#2b4-apply-the-ingress}
+#### 2B.4 Terraform Plan và Apply {#2b4-apply-the-ingress}
 
 ```bash
 terraform -chdir="$TF_DIR/20-cluster-workload" plan   -out="$TF_DIR/20-cluster-workload/kite-ingress.tfplan"
@@ -215,7 +223,7 @@ terraform -chdir="$TF_DIR/20-cluster-workload" show \
   "$TF_DIR/20-cluster-workload/kite-ingress.tfplan"
 ```
 
-Đọc toàn bộ plan. Trong tác vụ này chỉ Ingress Kite tuỳ chọn và output URL được thay đổi. Ingress đã import có thể khớp hoàn toàn và không phát sinh thay đổi resource. **Không apply plan có thay đổi ngoài phạm vi**, replace, thay đổi Secret/PVC hoặc các listener khác. Xử lý riêng các thay đổi đó mà không bỏ công việc của người khác. Saved plan có thể chứa dữ liệu nhạy cảm; giữ cục bộ và bảo vệ file.
+Kiểm tra toàn bộ plan: bước này chỉ thay đổi Kite Ingress và URL output. Nếu Ingress đã Import khớp cấu hình, plan có thể không cần thay đổi resource. Nếu thấy Replace, thay Secret/PVC, Listener khác hoặc resource ngoài phạm vi Kite, xử lý riêng trước khi Apply. Giữ file plan local vì có thể chứa Secret.
 
 ```bash
 terraform -chdir="$TF_DIR/20-cluster-workload" apply \
@@ -223,11 +231,11 @@ terraform -chdir="$TF_DIR/20-cluster-workload" apply \
 terraform -chdir="$TF_DIR/20-cluster-workload" output -raw kite_url
 ```
 
-`kite_url` xuất hiện sau khi controller điền địa chỉ Ingress. Reconcile diễn ra bất đồng bộ; trạng thái target ban đầu không đảm bảo thời gian hoàn thành cụ thể.
+Sau khi controller cập nhật Ingress Address, output `kite_url` mới có URL. Chờ controller Reconcile và kiểm tra Target Health trước khi mở UI.
 
-#### 2B.5 Kiểm chứng routing, target và truy cập mạng {#2b5-check-the-listener-and-target-on-aws}
+#### 2B.5 Kiểm tra Listener, Target Health và Security Group {#2b5-check-the-listener-and-target-on-aws}
 
-Lấy target group từ `TargetGroupBinding` của Kite, sau đó kiểm chứng listener 8088 forward tới đúng group. Không đoán tên target group. So sánh listener và rule SG với trước khi thay đổi; dịch vụ cũ phải tiếp tục truy cập được.
+Lấy Target Group từ `TargetGroupBinding` của Kite, rồi kiểm tra Listener 8088 forward đúng group. Đối chiếu Listener và Security Group trước/sau Apply, đồng thời kiểm tra các dịch vụ đang dùng ALB.
 
 ```bash
 bash <<'BASH'
@@ -270,25 +278,25 @@ curl --noproxy '*' --fail --silent --show-error --connect-timeout 10 --max-time 
 BASH
 ```
 
-Kết quả mong đợi: có ADDRESS; listener HTTP 8088 forward tới Kite; endpoint Ready và target healthy trên 8080; mọi SG gắn với ALB chỉ cho phép CIDR dự kiến truy cập 8088; `/healthz` trả 200 từ mạng được phép. Đọc cả rule có thể bao phủ port 8088, gồm dải port rộng hoặc mọi protocol. Nếu chưa thử từ mạng khác, ghi rõ chưa kiểm chứng thay vì khẳng định đã chặn.
+Kết quả cần có: có ADDRESS; listener HTTP 8088 forward tới Kite; endpoint Ready và target healthy trên 8080; mọi SG gắn với ALB chỉ cho phép CIDR dự kiến truy cập 8088; `/healthz` trả 200 từ mạng được phép. Đọc cả rule có thể bao phủ port 8088, gồm dải port rộng hoặc mọi protocol. Nếu chưa thử từ mạng khác, ghi rõ chưa kiểm tra thay vì khẳng định đã chặn.
 
 ```bash
 terraform -chdir="$TF_DIR/20-cluster-workload" plan -detailed-exitcode
 ```
 
-Exit code `0` là không có thay đổi; `2` là plan có thay đổi; `1` là lỗi. Đọc mọi thay đổi còn lại, kể cả drift đã tồn tại trước đó, rồi mới kết luận môi trường hội tụ.
+Kiểm tra Exit Code: `0` không có thay đổi, `2` có thay đổi, `1` là lỗi. Nếu còn Drift, đọc từng resource trước khi kết luận cấu hình đã đồng bộ.
 
 #### 2B.6 Mở Kite qua ALB {#2b6-open-kite-through-the-alb}
 
 Mở URL `http://<ALB-DNS>:8088` vừa in ra. HTTP 200 của health endpoint không chứng minh đăng nhập thành công. Chỉ kiểm tra đăng nhập và request tiếp theo bằng tài khoản có sẵn. Không tạo, reset hoặc sửa tài khoản để kiểm tra hạ tầng.
 
-Nếu lặp chuyển hướng hoặc gặp `401`, kiểm tra Network/Cookies trong trình duyệt, forwarded scheme và log Kite trước khi kết luận. Cookie `Secure` là một nguyên nhân có thể xảy ra với session qua HTTP, không thể chẩn đoán chỉ từ status code. Có thể dùng port-forward trong lúc tìm lỗi.
+Nếu Login lặp Redirect hoặc trả `401`, kiểm tra tab Network/Cookies, Forwarded Scheme và Kite log. Cookie `Secure` có thể ảnh hưởng session qua HTTP, nhưng cần đối chiếu log và cookie thực tế. Trong lúc Troubleshooting, dùng lại Port-forward.
 
-Ví dụ này truy cập ALB bằng **HTTP thuần**. Giới hạn CIDR không mã hoá kết nối. Workshop không xin chứng chỉ được public CA tin cậy cho hostname ALB thuộc AWS; dùng port-forward hoặc domain bạn sở hữu với TLS phù hợp khi cần bảo vệ đường truyền tốt hơn.
+URL ALB trong bài dùng **HTTP**, nên giới hạn CIDR không mã hóa dữ liệu truyền. Khi cần HTTPS, dùng domain bạn sở hữu với Certificate phù hợp. Với ALB hostname trực tiếp trong lab, ưu tiên Port-forward khi truyền thông tin đăng nhập.
 
 #### 2B.7 Khi IP thay đổi {#2b7-when-your-ip-changes}
 
-Chỉ sửa `kite_admin_cidrs` trong file local `kite.auto.tfvars` có sẵn, giữ cờ bật ở true. Kiểm tra CIDR IPv4 mới, chạy lại đầy đủ plan/review/apply và kiểm chứng rule SG thực tế. Không cần Ingress hay ALB mới. Không patch Kubernetes resource bằng tay vì Terraform sẽ reconcile về cấu hình đã khai báo.
+Sửa `kite_admin_cidrs` trong file local `kite.auto.tfvars`, giữ `kite_ingress_enabled=true`. Kiểm tra CIDR mới, Plan và Apply lại, rồi xác nhận rule Security Group trên AWS. Dùng lại Ingress và ALB hiện tại.
 
 #### 2B.8 Tắt truy cập ALB và quay lại port-forward {#2b8-remove-the-alb-access}
 
@@ -309,13 +317,21 @@ kubectl --context eks-workload -n kite-system describe ingress kite
 kubectl --context eks-workload -n kube-system logs deploy/aws-load-balancer-controller --since=10m   | grep -iE 'kite|eks-workload|error' || true
 ```
 
-## Phần 3 — Đăng nhập lần đầu {#part-3--first-sign-in}
+## Phần 3 · Setup Kite lần đầu {#part-3--first-sign-in}
 
-Lần đầu mở, Kite chưa có user nào:
+Với cài đặt mới, thực hiện Initial Setup:
 
 1. Tạo tài khoản **quản trị** đầu tiên. Dùng mật khẩu mạnh; tài khoản này làm được mọi thứ trong cluster.
 2. Thêm cluster mà Kite sẽ quản lý và chọn **in-cluster**. Kite sẽ dùng ServiceAccount của chính nó; không cần tải kubeconfig lên.
 3. Đặt Prometheus URL cho biểu đồ tài nguyên: `http://prometheus-kube-prometheus-prometheus.monitoring.svc:9090`.
+
+[![Kite Initial Setup với form tạo Super Admin User đầu tiên](/img/workshop/platform/kite-initial-admin.png)](/img/workshop/platform/kite-initial-admin.png)
+
+*Bước 1: tạo Admin User trên cài đặt Kite mới. Nếu đã có tài khoản, đăng nhập bằng tài khoản hiện tại. Bấm vào ảnh để xem đầy đủ.*
+
+[![Kite Initial Setup chọn In-Cluster để kết nối Kubernetes Cluster bằng ServiceAccount](/img/workshop/platform/kite-in-cluster-connection.png)](/img/workshop/platform/kite-in-cluster-connection.png)
+
+*Bước 2: chọn In-Cluster rồi Import Cluster để Kite dùng ServiceAccount hiện tại. Bấm vào ảnh để xem đầy đủ.*
 
 ### Kiểm tra {#verify}
 
@@ -323,7 +339,11 @@ Lần đầu mở, Kite chưa có user nào:
 - Một Pod ShopNow hiển thị log liên tục và biểu đồ CPU, memory.
 - Khởi động lại Pod (`kubectl --context eks-workload -n kite-system rollout restart deploy/kite`) rồi đăng nhập lại bằng đúng tài khoản cũ: dữ liệu nằm trên PVC.
 
-## Phần 4 — Tăng cường bảo mật (khuyến nghị ngoài lab) {#part-4--hardening-recommended-outside-a-lab}
+[![Kite Overview hiển thị Node, Pod, Namespace, Service, CPU, Memory và Recent Events](/img/workshop/platform/kite-overview.png)](/img/workshop/platform/kite-overview.png)
+
+*Kite Overview sau khi kết nối Cluster Workload. Số Node, Pod và Service phụ thuộc tiến độ thực hiện workshop. Bấm vào ảnh để xem đầy đủ.*
+
+## Phần 4 · Cấu hình bảo mật ngoài Workshop {#part-4--hardening-recommended-outside-a-lab}
 
 | Rủi ro | Thay đổi |
 |---|---|
@@ -345,9 +365,9 @@ Quyền Kubernetes chỉ đọc cho Kite — thêm vào values của `helm_relea
     }
 ```
 
-Sau đó plan và apply layer 20. Với quyền chỉ đọc, các thao tác terminal, sửa và xoá trong Kite sẽ không hoạt động; đó chính là mục đích.
+Plan và Apply lại Layer 20. Với RBAC chỉ đọc, user vẫn xem được resource; các thao tác Shell, sửa và xóa sẽ bị chặn.
 
-## Xử lý sự cố {#troubleshooting}
+## Troubleshooting {#troubleshooting}
 
 | Triệu chứng | Kiểm tra |
 |---|---|
@@ -358,8 +378,8 @@ Sau đó plan và apply layer 20. Với quyền chỉ đọc, các thao tác ter
 | Trình duyệt timeout | IP hiện tại của bạn không thuộc `ADMIN_CIDR` — làm lại 2B.7 |
 | Biểu đồ tài nguyên trống | Prometheus URL trong phần cấu hình cluster của Kite |
 
-## Gỡ Kite {#remove-kite}
+## Uninstall Kite {#remove-kite}
 
-Tắt Ingress do Terraform quản lý (2B.8), rồi bỏ các resource `kite` (`kubernetes_namespace_v1.kite`, `random_password.kite_*`, `kubernetes_secret_v1.kite`, `helm_release.kite`) khỏi layer 20 và apply. Xoá namespace cũng xoá luôn PVC và dữ liệu của Kite.
+Tắt Ingress do Terraform quản lý (2B.8), rồi bỏ các resource `kite` (`kubernetes_namespace_v1.kite`, `random_password.kite_*`, `kubernetes_secret_v1.kite`, `helm_release.kite`) khỏi Layer 20 và apply. Xoá namespace cũng xoá luôn PVC và dữ liệu của Kite.
 
 **Tiếp theo:** [3.1 Build image](../apps-shopnow/docker-build-multi-arch-and-ci)

@@ -1,10 +1,10 @@
 ---
-title: "Phát hành và rollback ứng dụng"
+title: "Application Deployment và Rollback"
 ---
 
-# Chọn chiến lược phát hành phù hợp {#choose-the-appropriate-release-strategy}
+# Deploy và cập nhật ShopNow {#choose-the-appropriate-release-strategy}
 
-Bài cốt lõi triển khai microservices qua ArgoCD, mount EFS, phân bổ replica và áp dụng PDB. Backend hiện dùng Deployment RollingUpdate. Frontend đã có chiến lược Argo Rollout blue-green và được trình bày trong bài mở rộng.
+Workshop Deploy Microservices qua ArgoCD, sử dụng EFS, Topology Spread và PDB. Backend dùng Deployment RollingUpdate; Frontend dùng Argo Rollout Blue-Green. Bài mở rộng hướng dẫn test Preview và Promote phiên bản mới.
 
 | Công việc | Hướng dẫn |
 |---|---|
@@ -13,6 +13,6 @@ Bài cốt lõi triển khai microservices qua ArgoCD, mount EFS, phân bổ rep
 | Kiểm thử preview và promote frontend | [Blue-green](04-apps-shopnow/03-blue-green-argo-rollouts.md) |
 | Khôi phục cấu hình cũ và xem drift | [Vận hành](06-operations/05-lifecycle-and-cleanup.md) |
 
-Hoàn tác commit cấu hình nguồn rồi sync để rollback bền vững. Rollback qua UI/CLI lúc chạy là bước ứng phó sự cố; cập nhật Git sau đó để self-heal không triển khai lại bản lỗi.
+Để Rollback, Revert commit cấu hình trong Git rồi ArgoCD Sync. Nếu Rollback nhanh bằng UI/CLI khi xử lý sự cố, cập nhật Git sau đó để Self-heal giữ đúng phiên bản cần chạy.
 
-Không dùng cùng image tag cho hai bản build khác nhau trong bài phát hành. Ghi commit, image digest và thời điểm promote/rollback làm bằng chứng.
+Dùng Image Tag riêng cho mỗi bản Build. Lưu commit, Image Digest và thời điểm Promote/Rollback trong kết quả bài test.

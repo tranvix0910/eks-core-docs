@@ -1,16 +1,16 @@
 ---
-title: "Bước 3.3 — Persistent volume trên EFS"
-sidebar_label: "3.3 Persistent volume EFS"
+title: "Bước 3.3 — Persistent Volume EFS"
+sidebar_label: "3.3 Persistent Volume EFS"
 ---
 
-# Bước 3.3 — Persistent volume trên EFS {#step-33--persistent-volumes-on-efs}
+# Bước 3.3 — Persistent Volume EFS {#step-33--persistent-volumes-on-efs}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** chứng minh microservices dùng volume EFS chia sẻ giữa các replica và giữ dữ liệu khi thay Pod.
+:::info Nội dung thực hiện
+**Mục tiêu:** kiểm tra PVC EFS của Microservices, chia sẻ file giữa replica và giữ dữ liệu sau khi thay Pod.
 **Yêu cầu:** 4. **Thời gian:** khoảng 15 phút. **Chạy từ:** `$GITOPS_DIR`.
 :::
 
-## Cách kết nối lưu trữ {#how-storage-is-wired}
+## Cấu trúc EFS Storage {#how-storage-is-wired}
 
 ```mermaid
 flowchart LR
@@ -22,14 +22,14 @@ flowchart LR
 
 | Thành phần | Công cụ quản lý | Chi tiết |
 |---|---|---|
-| EFS file system + mount target | Terraform lớp 20 | Một mount target mỗi workload subnet; mở NFS 2049 từ node |
+| EFS file system + mount target | Terraform Layer 20 | Một mount target mỗi workload subnet; mở NFS 2049 từ node |
 | EFS CSI driver | EKS add-on, Pod Identity cho `efs-csi-controller-sa` | Tạo một access point cho mỗi PVC |
 | StorageClass `efs-sc` | Terraform | `provisioningMode: efs-ap`, `uid/gid 10001`, `basePath /dynamic` |
 | PVC `<service>-efs` | Từng backend chart (`pvc-efs.yaml`) | `ReadWriteMany`, mount tại `/data` |
 
 `ReadWriteMany` cho phép mọi replica của một service, trên node hoặc AZ bất kỳ, mount cùng thư mục. Database vẫn dùng volume `gp3` (EBS) riêng.
 
-## 1. Kiểm tra lớp lưu trữ {#1-check-the-storage-layer}
+## 1. Kiểm tra EFS và PVC {#1-check-the-storage-layer}
 
 ```bash
 kubectl --context eks-workload get storageclass efs-sc
@@ -39,11 +39,11 @@ aws efs describe-mount-targets \
   --query 'MountTargets[].[AvailabilityZoneName,LifeCycleState]' --output table
 ```
 
-**Kết quả mong đợi:** sáu PVC `*-efs` ở trạng thái `Bound`, access mode `RWX`, class `efs-sc`; mỗi AZ có một mount target `available`.
+**Kết quả cần có:** sáu PVC `*-efs` ở trạng thái `Bound`, access mode `RWX`, class `efs-sc`; mỗi AZ có một mount target `available`.
 
-## 2. Chia sẻ giữa các replica {#2-shared-between-replicas}
+## 2. Test Shared Volume {#2-shared-between-replicas}
 
-Ghi tệp từ một product Pod rồi đọc từ Pod còn lại:
+Ghi file từ một Product Pod, sau đó đọc từ replica còn lại:
 
 ```bash
 read -r WRITER READER < <(kubectl --context eks-workload -n shopnow get pods -l app=shopnow-product-service \
@@ -53,9 +53,9 @@ kubectl --context eks-workload -n shopnow exec "$WRITER" -- sh -c 'echo "efs-tes
 kubectl --context eks-workload -n shopnow exec "$READER" -- cat /data/efs-test.txt
 ```
 
-**Kết quả mong đợi:** Pod đọc in ra dòng do Pod ghi tạo. Hai Pod nằm trên node khác nhau (xem [bước 3.4](pod-placement)), chứng minh volume được chia sẻ xuyên node.
+**Kết quả cần có:** Pod đọc in ra dòng do Pod ghi tạo. Hai Pod nằm trên node khác nhau (xem [bước 3.4](pod-placement)), chứng minh volume được chia sẻ xuyên node.
 
-## 3. Giữ dữ liệu khi thay Pod {#3-survives-pod-replacement}
+## 3. Test Persistent Data {#3-survives-pod-replacement}
 
 ```bash
 kubectl --context eks-workload -n shopnow delete pod "$WRITER"
@@ -64,17 +64,17 @@ NEW=$(kubectl --context eks-workload -n shopnow get pods -l app=shopnow-product-
 kubectl --context eks-workload -n shopnow exec "$NEW" -- cat /data/efs-test.txt | tee "$EVIDENCE_DIR/efs-persistence.txt"
 ```
 
-**Kết quả mong đợi:** cùng dòng dữ liệu, được đọc bởi Pod chưa tồn tại lúc ghi.
+**Kết quả cần có:** cùng dòng dữ liệu, được đọc bởi Pod chưa tồn tại lúc ghi.
 
-Xóa tệp thử nghiệm:
+Xóa file test:
 
 ```bash
 kubectl --context eks-workload -n shopnow exec "$NEW" -- rm /data/efs-test.txt
 ```
 
-## 4. Triển khai workload kiểm chứng {#4-deploy-the-proof-workload}
+## 4. Deploy Workload Test {#4-deploy-the-proof-workload}
 
-Hai bước tiếp theo dùng `workshop-proof`: ba replica chia sẻ một EFS claim với PDB yêu cầu 2/3 replica. Workload này giúp kiểm thử placement và eviction mà không ảnh hưởng ShopNow.
+Deploy `workshop-proof` để dùng ở bài Pod Placement và PDB. Workload có 3 replica, dùng chung PVC EFS và PDB `minAvailable: 2`. Chạy test trên workload này trước khi thử với ShopNow.
 
 ```bash
 kubectl --context eks-workload apply -f "$GITOPS_DIR/.workshop/applications/workshop-proof.json"
@@ -82,7 +82,7 @@ argocd app wait workshop-proof --sync --health --timeout 900
 kubectl --context eks-workload -n shopnow get pods -l app=workshop-proof -o wide
 ```
 
-## Xử lý sự cố {#troubleshooting}
+## Troubleshooting {#troubleshooting}
 
 | Triệu chứng | Kiểm tra |
 |---|---|

@@ -1,16 +1,16 @@
 ---
-title: "Xử lý sự cố theo triệu chứng"
+title: "Troubleshooting"
 ---
 
-# Chẩn đoán bằng thành phần và bằng chứng {#diagnose-using-components-and-evidence}
+# Các lỗi thường gặp {#diagnose-using-components-and-evidence}
 
-Danh mục giữ lại tình huống hữu ích từ tài liệu trước và bổ sung khoảng trống tìm thấy trong cấu hình. Các mục là **giả thuyết cần kiểm chứng**, không khẳng định mọi sự cố đã xảy ra hoặc được xử lý trong môi trường của bạn.
+Dùng bảng dưới để chọn thành phần cần kiểm tra theo triệu chứng. Đối chiếu Events, log và cấu hình thực tế trước khi áp dụng cách xử lý.
 
-| # | Triệu chứng | Bằng chứng cần xem | Hành động sau khi xác minh |
+| # | Triệu chứng | Cần kiểm tra | Cách xử lý |
 |---|---|---|---|
 | 1 | EKS/EFS AccessDenied dù có IAM admin | Explicit deny/SCP và region hiện tại | Dùng region/bộ quyền được cho phép |
 | 2 | Không destroy được Flow Log | SCP `DeleteFlowLogs` và chủ tài nguyên | Thống nhất lưu giữ/cleanup; không âm thầm xóa state |
-| 3 | Lớp 20 không đọc được state 21 | Bucket/key và state tồn tại hay chưa | Bootstrap hạ tầng nền hai giai đoạn |
+| 3 | Layer 20 không đọc được state 21 | Bucket/key và state tồn tại hay chưa | Bootstrap AWS Foundation hai giai đoạn |
 | 4 | Provider không kết nối được lần triển khai đầu | Cluster endpoint tồn tại và exec credentials | Tạo hạ tầng AWS trước tài nguyên Helm |
 | 5 | LBC `Evaluated 0 subnets` | Region/VPC thực tế và subnet tag | Sửa cấu hình qua đúng công cụ quản lý |
 | 6 | Target ALB nội bộ unhealthy | Cổng đích container, chặng SG thứ hai, gateway readiness | Cho phép cổng gateway hiện tại 8080 |
@@ -41,8 +41,8 @@ Danh mục giữ lại tình huống hữu ích từ tài liệu trước và b�
 | 31 | Replica dao động giữa các giá trị | ArgoCD/self-heal, HPA, KEDA cùng điều khiển | Một scaler mỗi target; xác định bên quản lý replica |
 | 32 | Grafana No data hoặc RPS sai | Datasource UID, tenant, label, đơn vị metric | Sửa query/UID; không dùng CPU thay traffic |
 
-## Sử dụng trong lab {#using-this-during-the-lab}
+## Quy trình Troubleshooting {#using-this-during-the-lab}
 
-Lưu `describe`, Events và log có timestamp trước khi thay đổi. Mỗi lần sửa một nguyên nhân, render/plan khi phù hợp, rồi chạy lại phép thử thất bại. Không áp dụng mọi cách xử lý: một triệu chứng có thể có nhiều nguyên nhân.
+Lưu output `describe`, Events và log kèm timestamp. Xác định nguyên nhân, sửa qua Terraform hoặc GitOps, rồi chạy lại bước đang lỗi. Mỗi lần thay một phần để dễ đối chiếu kết quả.
 
-Lệnh thu thập: [kiểm chứng và chẩn đoán](03-system-verification-and-diagnostics.md).
+Lệnh thu thập: [kiểm tra và chẩn đoán](03-system-verification-and-diagnostics.md).

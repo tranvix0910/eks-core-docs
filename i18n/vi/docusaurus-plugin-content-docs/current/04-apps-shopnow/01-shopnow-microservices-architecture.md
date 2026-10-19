@@ -1,10 +1,10 @@
 ---
-title: "ShopNow — Service, cổng và phụ thuộc"
+title: "ShopNow · Microservices Architecture"
 ---
 
-# Ứng dụng dùng để kiểm chứng nền tảng {#the-application-used-to-validate-the-platform}
+# Tổng quan ShopNow {#the-application-used-to-validate-the-platform}
 
-ShopNow là ứng dụng tham chiếu cho bài kiểm thử triển khai, lưu trữ, scheduling và telemetry. Đây chưa phải hệ thống thương mại hoàn chỉnh với phân quyền hoặc bảo đảm availability cho production.
+ShopNow là dự án Microservices dùng trong workshop để thực hành Deploy với ArgoCD, mount EFS, Pod Placement, PDB và Observability. Cấu hình hiện tại phục vụ lab; phần Authentication và HA còn các giới hạn nêu bên dưới.
 
 | Thành phần | Mã nguồn | Service/cổng trong cluster | Mục đích |
 |---|---|---|---|
@@ -19,16 +19,16 @@ ShopNow là ứng dụng tham chiếu cho bài kiểm thử triển khai, lưu t
 | MySQL | Manifest database | `shopnow-keycloak-mysql-service:3306` | Dữ liệu Keycloak |
 | Keycloak | Manifest database | `shopnow-keycloak-realms-service:8080` | Cấp JWT cho cấu hình demo |
 
-Config server hiện dùng cổng 5859, không phải 8888. Cart dùng PostgreSQL; MySQL phục vụ Keycloak. Realm thực tế là `java-microservice-realm`, không phải `shopnow`.
+Các giá trị cần đối chiếu: Config Server port `5859`; Cart dùng PostgreSQL; Keycloak dùng MySQL và realm `java-microservice-realm`.
 
-## Luồng request {#request-flow}
+## Request Flow {#request-flow}
 
-Trình duyệt gọi gateway qua `/product`, `/shopping-cart` và `/user`. Gateway tìm service qua Eureka, thêm `/api` và chuyển tiếp tới Spring controller. Khi xử lý sự cố, xác định lỗi ở trình duyệt, gateway hay backend trước khi sửa ALB.
+Frontend gọi Gateway qua `/product`, `/shopping-cart` và `/user`. Gateway tìm service qua Eureka, thêm prefix `/api`, rồi chuyển request tới Spring Controller. Khi API lỗi, kiểm tra lần lượt Browser, Gateway và Backend để xác định chặng lỗi.
 
-## Lưu trữ trong workshop {#workshop-storage}
+## Storage {#workshop-storage}
 
-Cả sáu backend mount PVC EFS riêng cho service tại `/data` thông qua workshop override. Replica cùng service dùng chung PVC; các service khác nhau không tự dùng chung Access Point. Mount EFS chứng minh khả năng hỗ trợ filesystem chia sẻ, nhưng không có nghĩa mã hiện tại lưu sản phẩm/người dùng trên đó; dữ liệu này vẫn ở PostgreSQL.
+Mỗi backend có PVC EFS riêng, mount tại `/data`. Các replica của cùng service dùng chung PVC; mỗi service dùng Access Point riêng. Dữ liệu sản phẩm và người dùng vẫn lưu trong PostgreSQL. Mount EFS dùng để thực hành Shared Filesystem và kiểm tra dữ liệu sau khi thay Pod.
 
-## Ranh giới availability {#availability-boundaries}
+## Availability trong Workshop {#availability-boundaries}
 
-Registry và database vẫn chỉ có một replica. PDB backend không cung cấp HA cho database/Eureka hoặc bảo đảm giao dịch xuyên service thành công. Khi báo cáo PDB, chỉ rõ service được thử và các phụ thuộc singleton còn lại.
+Eureka và Database hiện có 1 replica. PDB của backend không tạo HA cho các thành phần này. Khi báo cáo kết quả, ghi service đã test PDB và các dependency vẫn chạy một replica.

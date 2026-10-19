@@ -1,12 +1,12 @@
 ---
-title: "Bước 4.0 — Observability tập trung: luồng telemetry"
-sidebar_label: "4.0 Luồng telemetry"
+title: "Bước 4.0 — Centralized Observability"
+sidebar_label: "4.0 Telemetry Flow"
 ---
 
-# Bước 4.0 — Observability tập trung: luồng telemetry {#step-40--centralized-observability-how-telemetry-flows}
+# Bước 4.0 — Centralized Observability {#step-40--centralized-observability-how-telemetry-flows}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** hiểu hai luồng chuyển metrics và logs từ cluster 1 sang cluster 2.
+:::info Nội dung thực hiện
+**Mục tiêu:** nắm luồng Collect Metrics và Logs từ Cluster Workload sang Cluster Observability.
 **Yêu cầu:** 8, 9. **Thời gian:** 5 phút đọc.
 :::
 
@@ -33,16 +33,16 @@ flowchart LR
 | Logs | Alloy trên mọi node đọc log Pod | Loki | Label `cluster="eks-workload"` |
 
 - Hai luồng dùng ALB nội bộ và TLS từ [bước 4.1](../platform-addons/cert-manager-and-internal-tls); traffic không rời VPC.
-- Mimir và Loki giữ dữ liệu gần đây trên EBS rồi đẩy sang S3, nên dữ liệu tồn tại lâu hơn node của cả hai cluster.
+- Mimir và Loki dùng EBS cho dữ liệu cục bộ, đồng thời lưu dữ liệu dài hạn vào S3. Việc mất Workload Node không xóa dữ liệu đã gửi sang Cluster Observability.
 - Grafana trong cluster 2 là nơi query cả hai. Prometheus riêng của cluster 2 chỉ theo dõi cluster 2.
 
-## Các bước trong phần này {#steps-in-this-module}
+## Các bước thực hiện {#steps-in-this-module}
 
 1. [4.1 TLS và DNS nội bộ](../platform-addons/cert-manager-and-internal-tls) — đường kết nối.
 2. [4.2 Metrics → Mimir](mimir-metrics-pipeline).
 3. [4.3 Logs → Loki](loki-logging-pipeline).
 4. [4.4 Grafana](grafana-dashboards).
 
-Hoàn thành khi có thể query metric **mới** và dòng log **mới** của cluster 1 trong Grafana cluster 2.
+Kết quả cần có: Grafana trên Cluster Observability query được metrics và logs **mới** từ Cluster Workload.
 
 **Tiếp theo:** [4.1 TLS và DNS nội bộ](../platform-addons/cert-manager-and-internal-tls)

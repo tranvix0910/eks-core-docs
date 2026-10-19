@@ -1,43 +1,43 @@
 ---
-title: "Triển khai lại hoặc chuyển môi trường"
+title: "Deploy sang AWS Account hoặc Region khác"
 ---
 
-# Dùng lại workshop ở tài khoản hoặc region khác {#reuse-the-workshop-in-another-account-or-region}
+# Setup môi trường mới {#reuse-the-workshop-in-another-account-or-region}
 
-Runbook này mô tả triển khai song song và chuyển đổi có kiểm chứng, thay vì đổi `region` rồi apply trên state cũ. Lộ trình chính vẫn ở [trang bắt đầu workshop](../00-platform-overview-and-deployment.md).
+Dùng runbook này để tạo môi trường mới, kiểm tra rồi Cutover. Mỗi môi trường cần state riêng; không đổi `region` rồi Apply vào state cũ. Các bước workshop chính nằm ở [trang bắt đầu workshop](../00-platform-overview-and-deployment.md).
 
-## 1. Kiểm kê cấu hình riêng của môi trường {#1-inventory-environment-specific-settings}
+## 1. Kiểm tra Environment Configuration {#1-inventory-environment-specific-settings}
 
 | Cấu hình | Vị trí |
 |---|---|
-| Tài khoản, profile, region, phiên bản, tag | tfvars của cả ba lớp |
+| Tài khoản, profile, region, phiên bản, tag | tfvars của cả 3 Layer |
 | Bucket, state key, backend region | Cấu hình backend và remote state |
-| CIDR và AZ | tfvars lớp 10 |
+| CIDR và AZ | tfvars Layer 10 |
 | Bucket Mimir/Loki và S3 endpoint | Receiver values |
 | Node IAM role, AMI pin, discovery label | EC2NodeClass và output Terraform |
-| Certificate ARN, SG, tên ALB nội bộ | Render TLS và tfvars lớp 21 |
+| Certificate ARN, SG, tên ALB nội bộ | Render TLS và tfvars Layer 21 |
 | Repo, revision, registry, image tag | Biến render Application |
 | Frontend API URL | Docker build argument |
 | Hostname nội bộ và CA | Chứng chỉ, sender values, DNS |
 
 Không sao chép `.terraform/`, `.tfstate` hoặc key chứng chỉ tài khoản khác vào repo mới. Provider lock file giúp giữ phiên bản có thể tái tạo; xem ràng buộc module khi init.
 
-## 2. Tạo môi trường đích độc lập {#2-create-an-independent-destination}
+## 2. Deploy môi trường mới {#2-create-an-independent-destination}
 
-Dùng checkout/branch và state key riêng. Dùng lại key trong cùng bucket trỏ về cùng state, không tạo môi trường độc lập. Kiểm chứng identity và backend trước mỗi plan.
+Chuẩn bị checkout/branch và state key riêng cho môi trường mới. Cùng bucket và state key sẽ trỏ vào cùng state. Kiểm tra AWS Identity và Backend trước mỗi lần Plan.
 
-Theo thứ tự: network → workload foundation → observability foundation → full workload → monitoring prerequisites → full observability → NodePool → ứng dụng → TLS/telemetry → nghiệm thu.
+Theo thứ tự: network → workload foundation → observability foundation → full workload → monitoring prerequisites → full observability → NodePool → ứng dụng → TLS/telemetry → kiểm tra.
 
-## 3. Chuyển dữ liệu có kế hoạch {#3-move-data-deliberately}
+## 3. Backup và Restore dữ liệu {#3-move-data-deliberately}
 
-Dữ liệu ứng dụng nằm trong PostgreSQL, MySQL/Keycloak và có thể cả tệp EFS. Backup/restore từng loại theo quy trình đã thử. Sao chép image không sao chép database. EFS Access Point ID/PV volumeHandle cũ không thể dùng nguyên trạng với filesystem mới.
+Backup và Restore riêng PostgreSQL, MySQL/Keycloak và file EFS cần giữ. Push image sang ECR mới không chuyển dữ liệu Database. Với EFS mới, tạo Access Point/PV mới và kiểm tra `volumeHandle` tương ứng.
 
 Với lịch sử Mimir/Loki trên S3, chọn giữ môi trường cũ hoặc di chuyển theo quy trình sản phẩm. Không cho writer độc lập dùng chung bucket/prefix nếu thiết kế chưa hỗ trợ.
 
-## 4. Chuyển đổi {#4-cut-over}
+## 4. Cutover {#4-cut-over}
 
-Kiểm chứng API, đăng nhập, EFS, placement, PDB và metrics/logs tại môi trường đích. Đổi endpoint/DNS và frontend API URL theo thiết kế truy cập. Theo dõi lỗi, giữ môi trường cũ để rollback cho tới khi dữ liệu mới được chấp nhận.
+Kiểm tra kết quả API, đăng nhập, EFS, placement, PDB và metrics/logs tại môi trường đích. Đổi endpoint/DNS và frontend API URL theo thiết kế truy cập. Theo dõi lỗi, giữ môi trường cũ để rollback cho tới khi dữ liệu mới được chấp nhận.
 
-## 5. Hoàn tất {#5-finish}
+## 5. Hoàn tất Migration {#5-finish}
 
 Ghi ánh xạ môi trường cũ/mới, thời điểm chuyển đổi, người phụ trách và bằng chứng. Chỉ xóa tài nguyên cũ khi backup/rollback không cần nữa. Flow Logs bị SCP bảo vệ hoặc bucket có versioning là trở ngại cleanup cụ thể; xóa khỏi state không chứng minh đã dọn xong.

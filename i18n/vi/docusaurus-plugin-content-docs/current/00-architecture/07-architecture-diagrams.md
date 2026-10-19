@@ -1,12 +1,12 @@
 ---
-title: "Sơ đồ kiến trúc"
-sidebar_label: "0.3 Sơ đồ kiến trúc"
+title: "Architecture Diagrams"
+sidebar_label: "0.3 Architecture Diagrams"
 ---
 
-# Sơ đồ kiến trúc {#architecture-diagrams}
+# Architecture Diagrams {#architecture-diagrams}
 
 :::info File nguồn
-Tất cả sơ đồ nằm trong một file draw.io gồm chín tab: **[eks-core-architecture.drawio](https://github.com/tranvix0910/eks-core-docs/raw/main/static/diagrams/eks-core-architecture.drawio)**. Mở bằng [draw.io desktop](https://github.com/jgraph/drawio-desktop/releases) hoặc [app.diagrams.net](https://app.diagrams.net) để phóng to hoặc chỉnh sửa. Các ảnh bên dưới được xuất từ file này; bấm vào ảnh để xem kích thước đầy đủ.
+File draw.io gồm 9 tab kiến trúc: **[eks-core-architecture.drawio](https://github.com/tranvix0910/eks-core-docs/raw/main/static/diagrams/eks-core-architecture.drawio)**. Mở bằng [draw.io desktop](https://github.com/jgraph/drawio-desktop/releases) hoặc [app.diagrams.net](https://app.diagrams.net) để phóng to hoặc chỉnh sửa. Các ảnh bên dưới được export từ file này. Bấm vào ảnh để xem đầy đủ.
 :::
 
 | Tab | Nội dung |
@@ -18,14 +18,14 @@ Tất cả sơ đồ nằm trong một file draw.io gồm chín tab: **[eks-core
 | [5. Cluster 2 · Observability](#5-cluster-2--observability) | Các thành phần Mimir, Loki, Grafana, ALB nội bộ, S3, DNS, ACM |
 | [6. Luồng telemetry](#6-telemetry-flow) | Metrics và logs từ cluster 1 sang cluster 2, chuỗi TLS |
 | [7. Ứng dụng ShopNow](#7-shopnow-application) | Service, port, database, Keycloak, EFS, quy tắc spread và PDB |
-| [8. GitOps và triển khai](#8-gitops-and-delivery) | Bốn repository đi tới AWS, ECR, ArgoCD và GitHub Pages như thế nào |
-| [9. Các layer Terraform](#9-terraform-layers) | Ba layer, state và phụ thuộc, thứ tự apply lần đầu |
+| [8. GitOps và Deployment](#8-gitops-and-delivery) | Bốn repository đi tới AWS, ECR, ArgoCD và GitHub Pages như thế nào |
+| [9. Terraform Layers](#9-terraform-layers) | Ba layer, state và phụ thuộc, thứ tự apply lần đầu |
 
 ## 1. Tổng quan {#1-overview}
 
 [![Tổng quan](/img/architecture/01-overview.png)](/img/architecture/01-overview.png)
 
-## 2. Mạng {#2-network}
+## 2. Network {#2-network}
 
 [![Mạng](/img/architecture/02-network.png)](/img/architecture/02-network.png)
 
@@ -49,17 +49,17 @@ Tất cả sơ đồ nằm trong một file draw.io gồm chín tab: **[eks-core
 
 [![ShopNow](/img/architecture/07-shopnow-application.png)](/img/architecture/07-shopnow-application.png)
 
-## 8. GitOps và triển khai {#8-gitops-and-delivery}
+## 8. GitOps và Deployment {#8-gitops-and-delivery}
 
-[![GitOps và triển khai](/img/architecture/08-gitops-delivery.png)](/img/architecture/08-gitops-delivery.png)
+[![GitOps và Deployment](/img/architecture/08-gitops-delivery.png)](/img/architecture/08-gitops-delivery.png)
 
-## 9. Các layer Terraform {#9-terraform-layers}
+## 9. Terraform Layers {#9-terraform-layers}
 
-[![Các layer Terraform](/img/architecture/09-terraform-layers.png)](/img/architecture/09-terraform-layers.png)
+[![Terraform Layers](/img/architecture/09-terraform-layers.png)](/img/architecture/09-terraform-layers.png)
 
 ## Cập nhật sơ đồ {#updating-the-diagrams}
 
-File `.drawio` được sinh bởi `diagrams/build.py` trong repository này, nên các chỉnh sửa bố cục luôn tái tạo được:
+Script `diagrams/build.py` tạo file `.drawio` trong repo. Khi cập nhật qua script, chạy lại để tạo sơ đồ:
 
 ```bash
 cd diagrams
@@ -67,4 +67,4 @@ python3 build.py                     # writes eks-core-architecture.drawio and c
 drawio -x -f png -s 1.5 -b 16 --page-index 1 -o ../static/img/architecture/01-overview.png eks-core-architecture.drawio
 ```
 
-Có thể chỉnh trực tiếp trong draw.io; khi đó không dùng lại script sinh cho file này nữa.
+Nếu chọn chỉnh trực tiếp bằng draw.io, giữ file đã chỉnh làm nguồn. Chạy lại script sẽ ghi đè các chỉnh sửa đó.

@@ -1,18 +1,18 @@
 ---
-title: "Bước 2.1 — Công cụ nền tảng trên Managed Node Group"
-sidebar_label: "2.1 Công cụ nền tảng"
+title: "Bước 2.1 — Platform Tools trên Managed Node Group"
+sidebar_label: "2.1 Platform Tools"
 ---
 
-# Bước 2.1 — Công cụ nền tảng trên Managed Node Group {#step-21--platform-tools-on-the-managed-node-group}
+# Bước 2.1 — Platform Tools trên Managed Node Group {#step-21--platform-tools-on-the-managed-node-group}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** mọi công cụ hạ tầng — Prometheus, JavaMelody, Karpenter, ArgoCD — chạy trên Managed Node Group `infra`; bổ sung cert-manager và Argo Rollouts cho các bước sau.
+:::info Nội dung thực hiện
+**Mục tiêu:** kiểm tra Prometheus, Karpenter, ArgoCD trên node `infra`; cài thêm cert-manager, Argo Rollouts và JavaMelody.
 **Yêu cầu:** 1. **Thời gian:** khoảng 15 phút. **Chạy từ:** `$GITOPS_DIR`.
 :::
 
-## Cách gán công cụ vào node infra {#how-the-tools-are-pinned-to-the-infra-nodes}
+## Node Selector cho Platform Tools {#how-the-tools-are-pinned-to-the-infra-nodes}
 
-Node group `infra` có label `role=infra`. Mọi platform chart đặt cùng selector trong values:
+Managed Node Group `infra` có label `role=infra`. Platform Tools dùng Node Selector sau trong Helm values:
 
 ```yaml
 nodeSelector:
@@ -30,7 +30,7 @@ nodeSelector:
 | JavaMelody collector | kubectl, tại bước này | `platform/addons/javamelody/javamelody-collector.yaml` |
 | Kite dashboard | Terraform (bước 1.3) | values trong `20-cluster-workload/helm_releases.tf` — xem [bước 2.5](kite-dashboard) |
 
-Không cài lại chart do Terraform quản lý bằng `helm install`; sửa tệp values rồi apply lại Terraform.
+Với chart do Terraform quản lý, sửa values rồi Plan và Apply lại Layer tương ứng. Giữ một công cụ quản lý cho mỗi release.
 
 ## 1. Cài cert-manager {#1-install-cert-manager}
 
@@ -43,9 +43,13 @@ helm --kube-context eks-workload upgrade --install cert-manager jetstack/cert-ma
   --values "$GITOPS_DIR/platform/addons/cert-manager/values.yaml" --wait --timeout 10m
 ```
 
+[![Helm cài cert-manager trong namespace cert-manager với trạng thái deployed](/img/workshop/platform/cert-manager-deployed.png)](/img/workshop/platform/cert-manager-deployed.png)
+
+*Release `cert-manager` đã `deployed` sau bước cài đặt. Bấm vào ảnh để xem đầy đủ.*
+
 ## 2. Cài Argo Rollouts {#2-install-argo-rollouts}
 
-Frontend ShopNow dùng Argo `Rollout` (blue-green), nên cần CRD và controller Rollouts trước khi triển khai frontend.
+Frontend ShopNow dùng Argo `Rollout` với chiến lược Blue-Green. Cài CRD và Rollouts Controller trước khi Deploy Frontend.
 
 ```bash
 helm repo add argo https://argoproj.github.io/argo-helm && helm repo update argo
@@ -59,16 +63,16 @@ kubectl --context eks-workload get crd rollouts.argoproj.io
 
 ## 3. Cài JavaMelody collector {#3-install-the-javamelody-collector}
 
-JavaMelody thu thập thống kê JVM, HTTP và JDBC từ các Spring service. Collector chạy dưới dạng StatefulSet với volume `gp3` riêng.
+JavaMelody thu thập JVM, HTTP và JDBC metrics từ Spring Services. Collector dùng StatefulSet và PVC `gp3` riêng.
 
 ```bash
 kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/addons/javamelody/javamelody-collector.yaml"
 kubectl --context eks-workload -n javamelody rollout status statefulset/javamelody-collector --timeout=10m
 ```
 
-Collector khởi đầu chưa có dữ liệu. Kết nối tới các service sau khi triển khai chúng ([JavaMelody](javamelody)).
+Collector chỉ có dữ liệu sau khi kết nối với các service đã Deploy ([JavaMelody](javamelody)).
 
-## Kiểm chứng — mọi công cụ chạy trên node infra {#verify--every-tool-is-on-an-infra-node}
+## Kiểm tra Platform Tools trên node infra {#verify--every-tool-is-on-an-infra-node}
 
 ```bash
 for ns in kube-system argocd monitoring cert-manager argo-rollouts javamelody; do
@@ -81,11 +85,11 @@ done | grep -Ev 'aws-node|kube-proxy|ebs-csi-node|efs-csi-node|pod-identity|node
   | tee "$EVIDENCE_DIR/infra-placement.txt"
 ```
 
-**Kết quả mong đợi:** mọi dòng kết thúc bằng `role=infra`. DaemonSet như VPC CNI, kube-proxy, CSI node driver và node-exporter vốn chạy trên mọi node và được loại khỏi kết quả.
+**Kết quả cần có:** mọi dòng kết thúc bằng `role=infra`. DaemonSet như VPC CNI, kube-proxy, CSI node driver và node-exporter vốn chạy trên mọi node và được loại khỏi kết quả.
 
-## Mở các công cụ {#open-the-tools}
+## Truy cập Platform Tools {#open-the-tools}
 
-Dùng port-forward; không công khai dịch vụ. Chạy mỗi lệnh trong một terminal riêng.
+Dùng Port-forward để truy cập các UI trên máy local. Chạy mỗi lệnh trong một terminal riêng.
 
 | Công cụ | Lệnh | URL |
 |---|---|---|
@@ -100,4 +104,4 @@ kubectl --context eks-workload -n argocd get secret argocd-initial-admin-secret 
   -o jsonpath='{.data.password}' | base64 --decode; echo
 ```
 
-**Tiếp theo:** [2.2 Ba nhóm node](../karpenter/ec2nodeclass-and-nodepools-configuration)
+**Tiếp theo:** [2.2 3 nhóm NodePool](../karpenter/ec2nodeclass-and-nodepools-configuration)

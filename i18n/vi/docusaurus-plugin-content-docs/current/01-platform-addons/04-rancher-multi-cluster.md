@@ -1,10 +1,10 @@
 ---
-title: "Mở rộng — Quản lý hai cluster bằng Rancher"
+title: "Mở rộng · Quản lý Cluster bằng Rancher"
 ---
 
-# Rancher là bài mở rộng {#rancher-is-an-extension-lab}
+# Setup Rancher {#rancher-is-an-extension-lab}
 
-Rancher cung cấp một UI cho hai cluster. Đây không phải điều kiện nghiệm thu ArgoCD, EFS, Karpenter hoặc telemetry; hãy cài sau khi hoàn tất bài cốt lõi.
+Rancher cung cấp UI quản lý 2 EKS Cluster. Đây là phần mở rộng, thực hiện sau khi hoàn tất ArgoCD, EFS, Karpenter và Telemetry.
 
 ## 1. Cài trên Managed Node Group infra {#1-install-on-the-infra-managed-node-group}
 
@@ -17,7 +17,7 @@ helm --kube-context eks-workload upgrade --install rancher rancher-stable/ranche
 kubectl --context eks-workload -n cattle-system get pods -o wide
 ```
 
-Kiểm tra support matrix với phiên bản Kubernetes trước khi dùng phiên bản được ghim này. Values dùng `extraNodeSelectorTerms` và `extraTolerations`; chỉ dùng `nodeSelector` nếu template chart hỗ trợ key đó.
+Kiểm tra Support Matrix của Rancher với phiên bản Kubernetes trước khi cài. Chart này dùng `extraNodeSelectorTerms` và `extraTolerations`; đối chiếu template trước khi thêm `nodeSelector`.
 
 ## 2. Truy cập UI {#2-access-the-ui}
 
@@ -33,6 +33,6 @@ Apply `platform/addons/rancher/internal-nlb-service.yaml` sau khi đối chiếu
 
 Trong Rancher, đặt server URL thành endpoint agent truy cập được, chọn Import Existing Cluster và dùng manifest đăng ký do UI của phiên bản đang chạy tạo ra. Manifest chứa registration token; không commit. Apply bằng `--context eks-observability`, sau đó kiểm tra log `cattle-cluster-agent` và trạng thái Active trong Rancher.
 
-## 4. Quản lý và gỡ bỏ {#4-management-and-removal}
+## 4. Quản lý và Uninstall Rancher {#4-management-and-removal}
 
-Import cluster không chuyển quyền quản lý Terraform/GitOps sang Rancher. Sửa Deployment do ArgoCD quản lý qua UI không tạo desired state bền vững. Để gỡ Rancher, gỡ cluster/agent đã import trước, xóa NLB Service rồi uninstall Rancher. Chờ load balancer được dọn xong trước khi destroy VPC.
+Sau khi Import, Terraform và ArgoCD vẫn quản lý các resource hiện tại. Muốn cập nhật Deployment do ArgoCD quản lý, sửa trong Git rồi Sync. Khi gỡ Rancher, xóa cluster/agent đã Import, xóa NLB Service rồi Uninstall release. Chờ Load Balancer được dọn xong trước khi Destroy VPC.

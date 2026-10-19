@@ -1,16 +1,16 @@
 ---
-title: "Bước 2.4 — Chạy workload trên pool ARM64"
-sidebar_label: "2.4 Pool ARM64"
+title: "Bước 2.4 — Test ARM64 Pool"
+sidebar_label: "2.4 ARM64"
 ---
 
-# Bước 2.4 — Chạy workload trên pool ARM64 {#step-24--run-a-workload-on-the-arm64-pool}
+# Bước 2.4 — Test ARM64 Pool {#step-24--run-a-workload-on-the-arm64-pool}
 
-:::info Tóm tắt bước thực hành
-**Mục tiêu:** chứng minh pool 3 tạo node Graviton (ARM64) và chạy container trên đó.
+:::info Nội dung thực hiện
+**Mục tiêu:** tạo node Graviton và chạy Container ARM64 trên NodePool `arm64`.
 **Yêu cầu:** 2 (pool ARM64). **Thời gian:** khoảng 10 phút. **Chạy từ:** `$GITOPS_DIR`.
 :::
 
-## Cách Pod đến pool 3 {#how-a-pod-reaches-pool-3}
+## Node Selector cho ARM64 {#how-a-pod-reaches-pool-3}
 
 `examples/workshop/arm64-proof.yaml` chạy `busybox`, được phát hành cho cả amd64 và arm64. Pod spec:
 
@@ -25,7 +25,7 @@ tolerations:
     effect: NoSchedule            # taint set by NodePool arm64
 ```
 
-Image phải có biến thể `linux/arm64` để chạy tại đây. Selector không biến image chỉ hỗ trợ amd64 thành ARM64; khi đó sẽ gặp `exec format error`.
+Image cần hỗ trợ `linux/arm64`. Nếu image chỉ có `amd64`, Container có thể lỗi `exec format error` dù Node Selector đã chọn đúng node.
 
 ## 1. Kiểm tra image hỗ trợ ARM64 {#1-check-the-image-supports-arm64}
 
@@ -33,14 +33,14 @@ Image phải có biến thể `linux/arm64` để chạy tại đây. Selector k
 docker buildx imagetools inspect public.ecr.aws/docker/library/busybox:1.37.0 | grep -E 'Platform: +linux/(amd64|arm64)'
 ```
 
-## 2. Chạy workload thử nghiệm {#2-run-the-test-workload}
+## 2. Deploy Workload ARM64 {#2-run-the-test-workload}
 
 ```bash
 kubectl --context eks-workload apply -f "$GITOPS_DIR/examples/workshop/arm64-proof.yaml"
 kubectl --context eks-workload rollout status deployment/workshop-arm64 --timeout=10m
 ```
 
-## Kiểm chứng {#verify}
+## Kiểm tra kết quả {#verify}
 
 ```bash
 kubectl --context eks-workload get pods -l app=workshop-arm64 -o wide
@@ -49,9 +49,9 @@ kubectl --context eks-workload get nodes -l karpenter.sh/nodepool=arm64 \
 kubectl --context eks-workload logs deployment/workshop-arm64 | tee "$EVIDENCE_DIR/pool3-arm64.txt"
 ```
 
-**Kết quả mong đợi:** Pod chạy trên node thuộc NodePool `arm64`, có `kubernetes.io/arch=arm64`, dùng loại Graviton như `m7g` hoặc `c7g`; log hiển thị `aarch64`.
+**Kết quả cần có:** Pod chạy trên node thuộc NodePool `arm64`, có `kubernetes.io/arch=arm64`, dùng loại Graviton như `m7g` hoặc `c7g`; log hiển thị `aarch64`.
 
-## 3. Dọn tài nguyên {#3-clean-up}
+## 3. Cleanup {#3-clean-up}
 
 ```bash
 kubectl --context eks-workload delete -f "$GITOPS_DIR/examples/workshop/arm64-proof.yaml"

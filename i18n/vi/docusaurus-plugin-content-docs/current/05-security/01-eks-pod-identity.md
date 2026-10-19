@@ -1,12 +1,12 @@
 ---
-title: "Pod Identity — Cấp quyền gọi AWS API cho controller"
+title: "EKS Pod Identity"
 ---
 
-# Gắn quyền AWS với đúng ServiceAccount {#associate-aws-permissions-with-the-correct-serviceaccount}
+# Cấu hình AWS Permission cho Pod {#associate-aws-permissions-with-the-correct-serviceaccount}
 
-Terraform tạo IAM role/policy và association. Pod Identity Agent cấp credentials cho SDK trong Pod. Không mặc định gắn policy vào node role để thay cho việc sửa association sai.
+Terraform tạo IAM Role, Policy và Pod Identity Association cho ServiceAccount. Pod Identity Agent cung cấp credentials để SDK trong Pod gọi AWS API. Khi thiếu quyền, kiểm tra association của Pod trước khi sửa Node Role.
 
-## 1. Đối chiếu ánh xạ {#1-compare-mappings}
+## 1. ServiceAccount và IAM Permission {#1-compare-mappings}
 
 | Cluster | Namespace/ServiceAccount | Quyền cần có |
 |---|---|---|
@@ -19,7 +19,7 @@ Terraform tạo IAM role/policy và association. Pod Identity Agent cấp creden
 | Observability | `monitoring/mimir` | Truy cập đúng bucket Mimir |
 | Observability | `monitoring/loki` | Truy cập đúng bucket Loki |
 
-## 2. Kiểm chứng AWS và Kubernetes {#2-verify-aws-and-kubernetes}
+## 2. Kiểm tra Pod Identity Association {#2-verify-aws-and-kubernetes}
 
 ```bash
 aws eks list-pod-identity-associations --cluster-name eks-workload
@@ -28,7 +28,7 @@ kubectl --context eks-workload -n kube-system get daemonset eks-pod-identity-age
 kubectl --context eks-observability -n monitoring get serviceaccount mimir loki
 ```
 
-Chọn association ID từ danh sách, đặt biến bên dưới rồi xem role/namespace/ServiceAccount trong terminal cá nhân:
+Lấy Association ID từ danh sách trên và kiểm tra Role, Namespace, ServiceAccount:
 
 ```bash
 : "${WORKSHOP_ASSOCIATION_ID:?Set an association ID from the list above}"
@@ -38,14 +38,14 @@ aws eks describe-pod-identity-association --cluster-name eks-workload \
 
 Với cluster 2, dùng tên cluster sở hữu association đó. Không sao chép ARN của tài khoản khác.
 
-## 3. Chẩn đoán AccessDenied {#3-diagnose-accessdenied}
+## 3. Troubleshooting AccessDenied {#3-diagnose-accessdenied}
 
 1. Xác nhận `serviceAccountName` của Pod.
 2. Kiểm tra cluster, namespace và ServiceAccount trong association.
 3. Xác nhận agent Ready trên node đó, network hoạt động và SDK hỗ trợ credential chain.
-4. Kiểm chứng action/resource trong policy và region/tên bucket.
+4. Kiểm tra kết quả action/resource trong policy và region/tên bucket.
 5. Khi identity đã đúng, xem explicit deny trong SCP/bucket policy.
 
-Không thêm AWS key tĩnh vào Helm values để bỏ qua lỗi IAM. Sau khi sửa association, kiểm tra Pod mới và log thực tế; không in toàn bộ credentials môi trường để debug.
+Sau khi sửa Association, kiểm tra Pod mới và Controller log. Giữ credentials qua Pod Identity; không thêm Access Key tĩnh vào Helm values hoặc in credentials ra log để debug.
 
 Tham khảo: [AWS EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html).

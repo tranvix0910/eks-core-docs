@@ -16,9 +16,20 @@ const documentPaths = (directory) => walk(directory)
   .map((file) => path.relative(directory, file)).sort();
 const codeBlocks = (text) => text.match(/^```[^\n]*\n[\s\S]*?^```[ \t]*$/gm) ?? [];
 const frontMatter = (text) => YAML.parse(text.match(/^---\n([\s\S]*?)\n---/)?.[1] ?? '') ?? {};
+const workshopCapture = /^\/img\/workshop\/(?:[a-z0-9-]+\/)*[a-z0-9-]+\.png$/;
 const destinations = (text) => [...text.replace(/^```[^\n]*\n[\s\S]*?^```[ \t]*$/gm, '')
   .matchAll(/\]\(([^)]+)\)|\bto="([^"]+)"/g)]
-  .map((match) => match[1] ?? match[2]).sort();
+  .map((match) => match[1] ?? match[2])
+  .filter((destination) => {
+    // Practice screenshots may differ by locale; navigation and all other links must match.
+    if (!destination.startsWith('/img/workshop/')) return true;
+    assert(workshopCapture.test(destination), `Invalid workshop capture path: ${destination}`);
+    const asset = path.join(root, 'static', destination);
+    assert(fs.existsSync(asset) && fs.statSync(asset).isFile(), `Missing workshop capture: ${destination}`);
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    assert(fs.readFileSync(asset).subarray(0, 8).equals(pngSignature), `Invalid PNG capture: ${destination}`);
+    return false;
+  }).sort();
 
 const sourceFiles = documentPaths(docs);
 assert.deepEqual(documentPaths(translated), sourceFiles, 'Every English document needs a Vietnamese counterpart.');
