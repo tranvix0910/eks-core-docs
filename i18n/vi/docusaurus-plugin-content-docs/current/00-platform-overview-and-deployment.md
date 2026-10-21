@@ -5,7 +5,7 @@ sidebar_label: "Nội dung và lộ trình"
 
 # Nội dung workshop {#workshop-roadmap}
 
-workshop hướng dẫn tạo hai EKS cluster và triển khai ShopNow bằng Terraform, Karpenter, ArgoCD. Chúng ta sẽ đi từ cách các thành phần hoạt động đến cấu hình và kiểm tra kết quả. Các bài lý thuyết được đặt trước phần thực hành liên quan để bạn có thể đọc lại ngay khi cần.
+Workshop hướng dẫn tạo hai EKS cluster và triển khai ShopNow bằng Terraform, Karpenter, ArgoCD. Chúng ta sẽ đi từ cách các thành phần hoạt động đến cấu hình và kiểm tra kết quả. Các bài lý thuyết được đặt trước phần thực hành liên quan để bạn có thể đọc lại ngay khi cần.
 
 ## Đọc lý thuyết trước khi thực hành {#theory-before-practice}
 
@@ -96,5 +96,5 @@ Dự kiến 1 ngày cho lần thực hiện đầu tiên. Mỗi EKS Cluster thư
 - Chạy phần **Kiểm tra** cuối mỗi bước trước khi chuyển sang bước tiếp theo.
 
 :::warning Chi phí
-workshop tạo tài nguyên có tính phí: hai EKS control plane, EC2 node, NAT gateway, EFS, load balancer và S3. Thực hiện [cleanup](operations/lifecycle-and-cleanup) khi hoàn tất.
+Workshop tạo tài nguyên có tính phí: hai EKS control plane, EC2 node, NAT gateway, EFS, load balancer và S3. Thực hiện [cleanup](operations/lifecycle-and-cleanup) khi hoàn tất.
 :::

@@ -34,13 +34,13 @@ Grafana là nơi xem dữ liệu, không phải nơi Prometheus và Alloy trực
 
 Trên cluster 1, Prometheus scrape target rồi remote_write sang Mimir. Alloy đọc Pod logs và push sang Loki. Cả hai luồng đi qua internal ALB trên cluster 2, dùng private DNS và TLS.
 
-Labels như `cluster`, `namespace`, `pod` giúp chọn dữ liệu khi query. workshop dùng `cluster="eks-workload"` để xác định dữ liệu từ cluster 1. Mimir còn dùng tenant `eks-workload`; tenant header phục vụ phân chia dữ liệu, không tự thay thế authentication.
+Labels như `cluster`, `namespace`, `pod` giúp chọn dữ liệu khi query. Workshop dùng `cluster="eks-workload"` để xác định dữ liệu từ cluster 1. Mimir còn dùng tenant `eks-workload`; tenant header phục vụ phân chia dữ liệu, không tự thay thế authentication.
 
 ### Cách kiểm tra luồng đã hoạt động
 
 Pod receiver Ready hoặc Grafana mở được mới chỉ xác nhận một phần. Chúng ta cần tìm metric và log vừa tạo từ cluster 1 ở cluster 2. Điều này giúp phân biệt dữ liệu mới với dữ liệu cũ còn trong storage.
 
-workshop tập trung vào metrics và logs. Distributed tracing cần instrumentation cùng trace backend riêng; cài Grafana hoặc Alloy chưa tự tạo trace cho ShopNow.
+Workshop tập trung vào metrics và logs. Distributed tracing cần instrumentation cùng trace backend riêng; cài Grafana hoặc Alloy chưa tự tạo trace cho ShopNow.
 
 Đọc thêm: [Grafana Loki overview](https://grafana.com/docs/loki/latest/get-started/overview/).
 
