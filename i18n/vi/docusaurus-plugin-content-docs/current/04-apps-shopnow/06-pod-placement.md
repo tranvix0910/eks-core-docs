@@ -1,14 +1,13 @@
 ---
-title: "Bước 3.4 — Pod Placement"
-sidebar_label: "3.4 Pod Placement"
+title: "Bước 3.4 — Phân bổ Pod"
+sidebar_label: "3.4 Phân bổ Pod"
 ---
 
-# Bước 3.4 — Pod Placement {#step-34--spread-replicas-evenly-across-nodes-and-zones}
+# Bước 3.4 — Phân bổ Pod {#step-34--spread-replicas-evenly-across-nodes-and-zones}
 
-:::info Nội dung thực hiện
-**Mục tiêu:** kiểm tra replica của từng service được phân bổ đều trên worker node và Availability Zone.
-**Yêu cầu:** 5. **Thời gian:** khoảng 10 phút. **Chạy từ:** `$GITOPS_DIR`.
-:::
+Khi một service có nhiều replica, chúng ta cần tránh để tất cả Pod chạy trên cùng một node. Phần này kiểm tra cách ShopNow sử dụng topology spread constraints để phân bổ replica giữa các node và availability Zone.
+
+**Thời gian:** khoảng 10 phút. **Chạy từ:** `$GITOPS_DIR`.
 
 ## Cấu hình Topology Spread Constraints {#how-spreading-is-enforced}
 
@@ -44,9 +43,9 @@ topologySpreadConstraints:
 | `nodeAffinityPolicy` / `nodeTaintsPolicy: Honor` | Chỉ tính node pool 2; bỏ qua node infra, Spot và ARM64 |
 | `matchLabelKeys: [pod-template-hash]` | Khi rolling update, đếm riêng Pod phiên bản cũ và mới |
 
-**Topology Spread Constraints** cho phép chia 3 replica trên 2 node theo phân bố 2 + 1 và giữ `maxSkew: 1`. Required Pod Anti-Affinity theo hostname chỉ cho phép một replica mỗi node, nên cần thêm node khi tăng replica. Workshop dùng Topology Spread để giữ phân bố đều khi thay đổi số replica.
+Topology spread constraints cho phép phân bổ ba replica trên hai node theo cách 2 + 1, miễn là độ lệch không vượt `maxSkew: 1`. Nếu dùng required Pod anti-affinity theo hostname, mỗi replica phải có node riêng. Với workshop này, topology spread giúp tăng replica mà vẫn giữ phân bố đều.
 
-Karpenter dùng Scheduling Constraints để cấp node phù hợp, bao gồm zone cần thêm capacity. Việc cấp node còn phụ thuộc NodePool Limit và EC2 Capacity.
+Karpenter đọc các yêu cầu scheduling để tìm capacity phù hợp, kể cả AZ cần thêm node. Nếu Pod vẫn Pending, kiểm tra cả CPU limit của NodePool, subnet và EC2 capacity.
 
 ## 1. Kiểm tra Placement từng Service {#1-placement-of-every-service}
 
@@ -60,7 +59,7 @@ kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
 | sort | column -t | tee "$EVIDENCE_DIR/placement.txt"
 ```
 
-**Kết quả cần có:** với service có hai replica, hai Pod ở **node khác nhau** và **zone khác nhau**. Service một replica như Eureka và database xuất hiện một lần.
+**Kết quả:** với service có hai replica, hai Pod ở **node khác nhau** và **zone khác nhau**. Service một replica như Eureka và database xuất hiện một lần.
 
 ## 2. Kiểm tra Skew {#2-skew-per-service}
 
@@ -70,9 +69,9 @@ awk '{n[$1]++; host[$1" "$2]++} END {for (k in host) {split(k,a," "); c[a[1]]++;
   "$EVIDENCE_DIR/placement.txt" | sort
 ```
 
-**Kết quả cần có:** `max-per-node=1` cho mọi service có hai replica.
+**Kết quả:** `max-per-node=1` cho mọi service có hai replica.
 
-## 3. Kiểm tra 3 Replica của Workload Test {#3-three-replicas-on-the-proof-workload}
+## 3. Kiểm tra 3 replica của workload thực hành {#3-three-replicas-on-the-proof-workload}
 
 `workshop-proof` có ba replica và cùng quy tắc hostname bắt buộc, cho thấy cách phân bổ khi replica nhiều hơn node:
 
@@ -81,7 +80,7 @@ kubectl --context eks-workload get nodes -l workload=microservices --no-headers 
 kubectl --context eks-workload -n shopnow get pods -l app=workshop-proof -o wide
 ```
 
-Với hai node pool 2, kết quả là 2 + 1; với từ ba node trở lên, mỗi node một replica. Không node nào chứa nhiều hơn node khác hai replica.
+Nếu mixed pool có hai node đủ điều kiện, ba replica sẽ được phân bố 2 + 1. Nếu có từ ba node đủ điều kiện trở lên, mỗi node có thể nhận một replica. Cần đếm cả node chưa có Pod của service đó khi tính độ lệch.
 
 ## Xử lý Pod Pending {#if-a-replica-stays-pending}
 
@@ -89,6 +88,6 @@ Với hai node pool 2, kết quả là 2 + 1; với từ ba node trở lên, m�
 kubectl --context eks-workload -n shopnow describe pod <pending-pod> | grep -A3 Events
 ```
 
-Nếu gặp `didn't match pod topology spread constraints`, kiểm tra khả năng cấp node Mixed Pool ở zone khác: CPU Limit, Spot Capacity và Subnet. Giữ `DoNotSchedule` để bài test vẫn kiểm tra phân bố bắt buộc.
+Nếu gặp `didn't match pod topology spread constraints`, kiểm tra khả năng cấp node mixed pool ở zone khác: CPU limit, Spot capacity và subnet. Giữ `DoNotSchedule` để bài test vẫn kiểm tra phân bố bắt buộc.
 
 **Tiếp theo:** [3.5 PodDisruptionBudget](availability-and-pdb)

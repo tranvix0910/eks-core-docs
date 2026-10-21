@@ -5,14 +5,13 @@ sidebar_label: "0.1 Chuẩn bị và thiết lập"
 
 # Bước 0.1 — Chuẩn bị và thiết lập {#step-01--prerequisites-and-setup}
 
-:::info Nội dung thực hiện
-**Mục tiêu:** chuẩn bị Tools, AWS Account, 4 Repo và Backend Terraform.
+Đầu tiên, chúng ta cần chuẩn bị tài khoản AWS, cài các công cụ và clone repo. Sau khi hoàn tất phần này, bạn có thể dùng cùng một cấu hình môi trường để chạy các bước Terraform và Kubernetes phía sau.
+
 **Thời gian:** khoảng 20 phút. **Chạy từ:** thư mục bất kỳ.
-:::
 
-## 1. AWS Account {#1-aws-account}
+## 1. Tài khoản AWS {#1-aws-account}
 
-Chuẩn bị AWS Account hoặc IAM Role có quyền tạo VPC, EC2, EKS, IAM, EFS, ECR, S3, ELB, Route 53 và SQS.
+Bạn cần tài khoản AWS hoặc IAM role có quyền tạo VPC, EC2, EKS, IAM, EFS, ECR, S3, ELB, Route 53 và SQS. Nếu dùng tài khoản của công ty, kiểm tra thêm region được phép và các giới hạn của tổ chức.
 
 Kiểm tra Service Quotas tại region triển khai. Cấu hình mẫu dùng `ap-northeast-1`:
 
@@ -28,17 +27,17 @@ aws service-quotas list-service-quotas --service-code ec2 \
   --query 'Quotas[?contains(QuotaName, `vCPU`)].{Name:QuotaName,Value:Value}' --output table
 ```
 
-Nếu AWS Account thuộc Organization, kiểm tra SCP cho phép tạo EKS và EFS tại region đã chọn. Explicit Deny trong SCP vẫn chặn thao tác dù IAM Role có quyền Admin.
+Nếu tài khoản AWS thuộc Organization, kiểm tra SCP cho phép tạo EKS và EFS tại region đã chọn. Explicit Deny trong SCP vẫn chặn thao tác dù IAM Role có quyền Admin.
 
 ## 2. Tools {#2-tools}
 
 | Công cụ | Phiên bản | Dùng để |
 |---|---|---|
-| AWS CLI | v2 | Credentials, đăng nhập ECR, kiểm tra |
+| AWS CLI | v2 | credentials, đăng nhập ECR, kiểm tra |
 | Terraform | ≥ 1.10, < 2.0 | Tạo hạ tầng |
 | kubectl | Chênh tối đa một minor version so với EKS 1.34 | Truy cập cluster |
 | Helm | v3 | cert-manager, Alloy |
-| Docker có buildx | Phiên bản gần đây | Build image |
+| Docker có buildx | Phiên bản gần đây | build image |
 | argocd CLI | Tương ứng với server | `argocd app wait` |
 | git, jq, python3, curl, openssl | Phiên bản gần đây | Script và kiểm tra |
 
@@ -49,7 +48,7 @@ docker buildx version && argocd version --client && jq --version && python3 --ve
 
 ## 3. AWS profile {#3-aws-profile}
 
-Chọn AWS CLI Profile đang sử dụng trên máy. **`eks-core` là tên mẫu; workshop không tự tạo profile này.** Dùng cùng profile trong `workshop.env`, Terraform Provider và S3 Backend:
+Trước tiên, kiểm tra các AWS profile đã có trên máy và chọn profile sẽ dùng cho workshop. Tên `eks-core` trong ví dụ chỉ là tên mẫu. Bạn cần thay bằng profile thực tế và dùng cùng tên đó trong `workshop.env`, Terraform provider và S3 backend:
 
 ```bash
 aws configure list-profiles
@@ -57,7 +56,7 @@ export AWS_PROFILE=eks-core   # example: replace with an existing profile from t
 aws sts get-caller-identity --profile "$AWS_PROFILE"
 ```
 
-Nếu chưa có profile, đăng nhập theo phương thức của tổ chức. Với IAM Identity Center, chạy `aws configure sso --profile "$AWS_PROFILE"`, sau đó `aws sso login --profile "$AWS_PROFILE"` và kiểm tra lại identity. Nếu profile đã hoạt động, dùng lại profile đó. Không lưu Access Key trong repo.
+Nếu chưa có profile, đăng nhập theo cách tài khoản của bạn đang sử dụng. Với IAM Identity Center, cấu hình bằng `aws configure sso --profile "$AWS_PROFILE"`, sau đó chạy `aws sso login --profile "$AWS_PROFILE"`. Kiểm tra lại identity sau khi đăng nhập. Không lưu access key trong repo.
 
 ## 4. Clone 4 Repo {#4-clone-the-four-repositories-side-by-side}
 
@@ -73,9 +72,9 @@ git clone https://github.com/tranvix0910/eks-core-docs.git
 
 ArgoCD triển khai từ Git URL. Nếu cần sửa chart hoặc values, chẳng hạn ở [bước 3.4](../apps-shopnow/pod-placement), hãy **fork `eks-core-gitops`** và dùng URL của fork bên dưới.
 
-## 5. Setup Environment {#5-variables-used-in-every-step}
+## 5. Cấu hình môi trường {#5-variables-used-in-every-step}
 
-Tạo file `~/eks-core/workshop.env` để dùng chung biến cho các bước. **Sửa `AWS_PROFILE=eks-core` thành profile đã chọn ở bước 3**, rồi source file trong mỗi terminal mới. Giá trị trong file sẽ ghi đè biến đã export trước đó.
+Lưu các biến dùng chung vào `~/eks-core/workshop.env`. Trước khi source file, sửa `AWS_PROFILE=eks-core` thành profile vừa chọn. Mỗi terminal mới cần source lại file này. Nếu bạn đã export một profile khác, giá trị trong file vẫn sẽ ghi đè biến đó.
 
 ```bash
 # Where the repos live
@@ -112,20 +111,20 @@ mkdir -p "$PLAN_DIR" "$EVIDENCE_DIR"
 source ~/eks-core/workshop.env && printf '%s %s\n' "$AWS_ACCOUNT_ID" "$AWS_REGION"
 ```
 
-## 6. Setup Backend Terraform {#6-create-the-terraform-state-bucket}
+## 6. Cấu hình Terraform backend {#6-create-the-terraform-state-bucket}
 
-3 Terraform Layer lưu state vào S3 Bucket `eks-tfstate-<account-id>`, mỗi Layer dùng state key riêng. Tạo bucket một lần:
+3 Terraform layer lưu state vào S3 bucket `eks-tfstate-<account-id>`, mỗi layer dùng state key riêng. Tạo bucket một lần:
 
 ```bash
 AWS_REGION=$STATE_REGION bash "$TF_DIR/scripts/bootstrap-backend.sh"
 aws s3api get-bucket-versioning --bucket "eks-tfstate-$AWS_ACCOUNT_ID" --region "$STATE_REGION"
 ```
 
-**Kết quả cần có:** `"Status": "Enabled"`. Bucket chặn truy cập công khai và được mã hóa. Backend dùng S3 lock file (`use_lockfile = true`), nên không cần bảng DynamoDB.
+**Kết quả:** `"Status": "Enabled"`. Bucket chặn truy cập công khai và được mã hóa. Backend dùng S3 lock file (`use_lockfile = true`), nên không cần bảng DynamoDB.
 
-## 7. Setup AWS Account cho từng Layer {#7-give-each-layer-your-account-values}
+## 7. Cấu hình tài khoản AWS cho từng layer {#7-give-each-layer-your-account-values}
 
-Mỗi Layer đọc 2 file local đã được gitignore. Dùng các file này để cấu hình account và profile, không commit thông tin riêng vào Git:
+Mỗi layer đọc 2 file local đã được gitignore. Dùng các file này để cấu hình account và profile, không commit thông tin riêng vào Git:
 
 | File | Nội dung |
 |---|---|
@@ -159,11 +158,11 @@ PYCONFIG
 git -C "$TF_DIR" status --short   # must not list backend.hcl or account.auto.tfvars
 ```
 
-Nếu repo đã được setup, sửa `profile` trong `backend.hcl` và `aws_profile` trong `account.auto.tfvars` của từng Layer. Giữ account ID và bucket đang dùng. File `*.auto.tfvars` sẽ ghi đè profile mẫu trong `terraform.tfvars`. Sau khi đổi backend profile, chạy `terraform -chdir="$TF_DIR/<layer>" init -reconfigure -backend-config=backend.hcl` tại Layer đó. Thay CLI Profile không cần Apply hạ tầng.
+Nếu bạn đã làm workshop trước đó, chỉ cần sửa `profile` trong `backend.hcl` và `aws_profile` trong `account.auto.tfvars` của từng layer. Giữ account ID và bucket đang dùng. File `*.auto.tfvars` sẽ ghi đè profile mẫu trong `terraform.tfvars`. Sau khi đổi backend profile, chạy `terraform -chdir="$TF_DIR/<layer>" init -reconfigure -backend-config=backend.hcl` tại layer tương ứng. Việc đổi profile CLI không cần apply lại hạ tầng.
 
-Region, CIDR, kích thước node và phiên bản Kubernetes nằm trong `terraform.tfvars` của từng Layer. Sửa tại đó nếu dùng region khác.
+Region, CIDR, kích thước node và phiên bản Kubernetes nằm trong `terraform.tfvars` của từng layer. Sửa tại đó nếu dùng region khác.
 
-## Kiểm tra kết quả {#verify}
+## Kiểm tra {#verify}
 
 ```bash
 aws sts get-caller-identity --query Account --output text   # your account

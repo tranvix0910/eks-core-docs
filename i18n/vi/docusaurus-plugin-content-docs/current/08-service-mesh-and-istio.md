@@ -1,19 +1,19 @@
 ---
-title: "Mở rộng · Service Mesh và Istio"
+title: "Mở rộng · service mesh và Istio"
 ---
 
-# Đánh giá Service Mesh {#evaluate-istio-after-completing-the-workshop}
+# Đánh giá service mesh {#evaluate-istio-after-completing-the-workshop}
 
-Service Mesh là phần mở rộng. Hoàn tất Eureka, Spring Cloud Gateway, Karpenter, EFS, PDB và Telemetry trước khi test Istio.
+Istio là phần mở rộng của workshop. Trước khi cài, hãy kiểm tra ShopNow đang hoạt động với Eureka, Spring Cloud Gateway và luồng metrics, logs hiện tại. Sau đó chọn một mục tiêu cụ thể để thử service mesh, chẳng hạn mTLS giữa hai service.
 
-## Mục tiêu của Service Mesh {#define-the-benefit-before-installation}
+## Mục tiêu của service mesh {#define-the-benefit-before-installation}
 
 - mTLS và service identity cho yêu cầu bảo mật east-west.
 - Policy truy cập service-to-service ngoài logic gateway.
 - Chia traffic và phân tích canary khi blue-green chưa đủ.
 - Telemetry mạng nhất quán khi instrumentation ứng dụng chưa đồng đều.
 
-Chọn mục tiêu cần test trước khi cài, vì Mesh bổ sung Control Plane, Proxy, Certificate và Policy cần vận hành.
+Chọn một mục tiêu để thử trước, vì service mesh bổ sung control plane, proxy, certificate và policy cần quản lý. Ví dụ, bắt đầu bằng việc bật mTLS cho hai service rồi kiểm tra request và health check.
 
 ## Sidecar và Ambient {#compare-two-models}
 
@@ -22,15 +22,15 @@ Chọn mục tiêu cần test trước khi cài, vì Mesh bổ sung Control Plan
 | Sidecar | Một proxy mỗi Pod | Tài nguyên theo Pod, lifecycle và restart, thứ tự khởi động |
 | Ambient | Một ztunnel mỗi node, thêm waypoint cho L7 khi cần | Node lifecycle, CNI, waypoint policy, failure domain |
 
-Chọn phiên bản Istio, kiểm tra Support Matrix và Benchmark workload để so sánh latency, CPU, memory và tính năng cần dùng.
+Chọn phiên bản Istio, kiểm tra support matrix và benchmark workload để so sánh latency, CPU, memory và tính năng cần dùng.
 
 ## Tích hợp với EKS Workshop {#interactions-with-the-existing-platform}
 
-Eureka có thể đưa ứng dụng tới Pod IP thay Service DNS; kiểm tra policy định tuyến mesh hoạt động đúng mong muốn. Ban đầu giữ business routing và JWT trong gateway. ALB health check và Prometheus scrape có thể cần ngoại lệ policy khi áp dụng mTLS bắt buộc. Karpenter liên tục tạo node thay thế, nên CNI và ztunnel phải sẵn sàng đúng thứ tự. Metric/log cardinality tăng có thể đòi thêm capacity Mimir/Loki.
+Eureka có thể trả về Pod IP thay vì Service DNS, nên cần kiểm tra routing và policy của mesh trên đúng đường request. Ban đầu giữ routing nghiệp vụ và JWT trong gateway để dễ đối chiếu. Khi bật mTLS bắt buộc, thử lại ALB health check và Prometheus scrape. Nếu dùng ambient, kiểm tra CNI và ztunnel trên cả node Karpenter mới tạo. Theo dõi thêm lượng metrics, logs để biết Mimir/Loki có cần tăng capacity không.
 
-Giữ endpoint remote_write và log push nội bộ hiện có cho telemetry xuyên cluster. Multicluster mesh cần use case riêng.
+Tiếp tục gửi metrics và logs qua các endpoint nội bộ đã có. Chỉ triển khai multicluster mesh khi có yêu cầu kết nối service giữa các cluster cần thử riêng.
 
-## Các bước Test và Rollback {#trial-with-a-tested-rollback}
+## Các bước thử và rollback {#trial-with-a-tested-rollback}
 
 1. Chọn phiên bản và môi trường local hoặc namespace thử riêng; bắt đầu ngoài `shopnow`.
 2. Tạo hai service thử, đo latency, CPU và memory trước khi cài.
@@ -40,8 +40,8 @@ Giữ endpoint remote_write và log push nội bộ hiện có cho telemetry xuy
 6. Chỉ thêm L7 policy, waypoint hoặc canary routing cho use case rõ ràng sau khi kiểm tra trước đã đạt.
 7. Ghi quy trình rollback enrollment, policy và controller; đo lại kết nối sau rollback.
 
-## Điều kiện bổ sung vào Workshop {#criteria-for-inclusion-in-the-core-workshop}
+## Điều kiện bổ sung vào workshop {#criteria-for-inclusion-in-the-core-workshop}
 
-Chỉ bổ sung vào luồng chính khi có mục tiêu đo được, manifest và phiên bản cố định, Rollback đã test và toàn bộ checklist workshop vẫn đạt.
+Chỉ bổ sung vào luồng chính khi có mục tiêu đo được, manifest và phiên bản cố định, rollback đã test và toàn bộ checklist workshop vẫn đạt.
 
-Tham khảo: [Istio ambient getting started](https://istio.io/latest/docs/ambient/getting-started/). Với sidecar, dùng tài liệu cùng phiên bản, thử riêng health và startup. Giả định ambient không tự áp dụng cho sidecar.
+Tham khảo: [Istio ambient getting started](https://istio.io/latest/docs/ambient/getting-started/). Với sidecar, dùng tài liệu cùng phiên bản, thử riêng health và startup. Kiểm tra riêng hành vi của sidecar thay vì dùng nguyên cấu hình ambient.

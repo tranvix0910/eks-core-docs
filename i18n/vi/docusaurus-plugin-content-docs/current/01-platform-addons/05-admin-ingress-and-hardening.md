@@ -1,10 +1,10 @@
 ---
-title: "Truy cập Platform Tools"
+title: "Truy cập công cụ vận hành"
 ---
 
-# Truy cập UI trong Workshop {#open-workshop-tools}
+# Truy cập UI trong workshop {#open-workshop-tools}
 
-Dùng Port-forward để truy cập ArgoCD, Prometheus, JavaMelody và Grafana từ máy local. Khi cần truy cập qua ALB, cấu hình IP được phép và bảo vệ endpoint theo phần bên dưới.
+Trong workshop, chúng ta dùng port-forward để mở ArgoCD, Prometheus, JavaMelody và Grafana trên máy local. Nếu muốn truy cập qua ALB, cấu hình thêm Ingress và giới hạn IP được phép theo phần bên dưới.
 
 ## Port-forward {#access-terminals}
 
@@ -28,7 +28,7 @@ kubectl --context eks-observability -n monitoring port-forward svc/grafana 3000:
 
 Release ArgoCD hiện dùng `--insecure`; truy cập tại `http://localhost:8080`. Grafana tập trung ở `http://localhost:3000`. Nếu tên Service khác, xem `kubectl get svc` thay vì đoán.
 
-## Login Credentials {#login-credentials}
+## Login credentials {#login-credentials}
 
 ```bash
 kubectl --context eks-workload -n argocd get secret argocd-initial-admin-secret \
@@ -37,9 +37,9 @@ kubectl --context eks-observability -n monitoring get secret grafana \
   -o jsonpath='{.data.admin-password}' | base64 --decode
 ```
 
-Đọc credentials trong terminal cá nhân và không chụp vào báo cáo. Grafana trên Cluster Workload và Grafana tập trung dùng Secret riêng. Nếu ArgoCD Initial Admin Secret đã bị xóa sau khi đổi mật khẩu, dùng tài khoản đăng nhập hiện tại.
+Xem credentials trong terminal cá nhân và không chụp chúng vào báo cáo. Grafana trên hai cluster dùng Secret riêng. Nếu đã đổi mật khẩu ArgoCD và xóa Initial Admin Secret, đăng nhập bằng tài khoản hiện tại.
 
-## Truy cập qua Public ALB {#if-a-public-alb-is-required}
+## Truy cập qua public ALB {#if-a-public-alb-is-required}
 
 `admin-ingress.yaml` dùng chung group `eks-workload` trên cổng 80/9090/9093/8081. Trước khi apply:
 

@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const YAML = require('yaml');
+const concepts = require('./vi-workshop-concepts.json');
 
 const root = path.resolve(__dirname, '..');
 const docs = path.join(root, 'docs');
@@ -33,13 +34,39 @@ const destinations = (text) => [...text.replace(/^```[^\n]*\n[\s\S]*?^```[ \t]*$
 
 const sourceFiles = documentPaths(docs);
 assert.deepEqual(documentPaths(translated), sourceFiles, 'Every English document needs a Vietnamese counterpart.');
+
+// Vietnamese lessons add explanations and reading links before the existing labs.
+// Keep the English navigation intact, and permit only the declared additions.
+const extraLinks = new Map([
+  ['index.mdx', new Set()],
+  ['00-platform-overview-and-deployment.md', new Set()],
+]);
+for (const concept of concepts) {
+  assert(sourceFiles.includes(concept.file), `Unknown concept document: ${concept.file}`);
+  const content = fs.readFileSync(path.join(translated, concept.file), 'utf8');
+  assert(content.includes(`{#${concept.anchor}}`), `Missing theory section: ${concept.anchor}`);
+  assert(!extraLinks.has(concept.file), `Duplicate concept document: ${concept.file}`);
+  extraLinks.set(concept.file, new Set(concept.references));
+  extraLinks.get('index.mdx').add(`${concept.route}#${concept.anchor}`);
+  extraLinks.get('00-platform-overview-and-deployment.md').add(`${concept.file}#${concept.anchor}`);
+}
+const compareDestinations = (english, vietnamese, relative) => {
+  const remaining = destinations(english);
+  const allowed = extraLinks.get(relative) ?? new Set();
+  for (const destination of destinations(vietnamese)) {
+    const index = remaining.indexOf(destination);
+    if (index !== -1) remaining.splice(index, 1);
+    else assert(allowed.has(destination), `${relative}: unexpected link destination ${destination}`);
+  }
+  assert.deepEqual(remaining, [], `${relative}: English link destinations missing`);
+};
 let examples = 0;
 for (const relative of sourceFiles) {
   const english = fs.readFileSync(path.join(docs, relative), 'utf8');
   const vietnamese = fs.readFileSync(path.join(translated, relative), 'utf8');
   assert(!/\[\[\d+\]\]/.test(vietnamese), `${relative}: unresolved translation token`);
   assert.deepEqual(codeBlocks(vietnamese), codeBlocks(english), `${relative}: code examples changed`);
-  assert.deepEqual(destinations(vietnamese), destinations(english), `${relative}: link destinations changed`);
+  compareDestinations(english, vietnamese, relative);
   const sourceMeta = frontMatter(english);
   const targetMeta = frontMatter(vietnamese);
   for (const key of ['id', 'slug', 'draft', 'unlisted']) {
@@ -54,4 +81,4 @@ for (const relative of ['code.json', 'docusaurus-theme-classic/navbar.json']) {
   const read = (locale) => JSON.parse(fs.readFileSync(path.join(root, 'i18n', locale, relative), 'utf8'));
   assert.deepEqual(read('vi'), read('en'), `${relative}: shared UI must stay English in both locales`);
 }
-console.log(`i18n OK: ${sourceFiles.length} translated workshop files, ${examples} unchanged code blocks, shared UI in English.`);
+console.log(`i18n OK: ${sourceFiles.length} translated workshop files, ${concepts.length} theory sessions, ${examples} unchanged code blocks, shared UI in English.`);

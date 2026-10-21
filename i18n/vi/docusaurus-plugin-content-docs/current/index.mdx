@@ -6,61 +6,73 @@ sidebar_label: "Tổng quan workshop"
 
 # EKS Workshop
 
-Trong workshop này, chúng ta sẽ từng bước xây dựng nền tảng Kubernetes trên Amazon EKS theo hướng vận hành thực tế, bằng Terraform và GitOps:
+Trong workshop này, chúng ta sẽ triển khai ShopNow trên Amazon EKS bằng Terraform và ArgoCD. Bên cạnh việc đưa ứng dụng lên cluster, bạn sẽ thực hành cách cấp node bằng Karpenter, sử dụng EFS, phân bổ replica và theo dõi metrics, logs.
 
-- **Cluster 1 — Workload**: Managed Node Group cho các công cụ như ArgoCD, Karpenter và 3 Node Group Karpenter (Spot, mixed On-Demand/Spot 1:3, ARM64) và dự án Microservices ShopNow được triển khai với ArgoCD.
-- **Cluster 2 — Observability**: Centralized Observability (Prometheus, Grafana, Loki,...) - Triển khai Collect Metrics, Logs từ Cluster Workload sang Cluster Observability.
+Hệ thống gồm hai cluster:
 
-**[Bắt đầu Workshop →](./00-platform-overview-and-deployment.md)**
+- **Workload cluster** chạy ShopNow. Managed Node Group `infra` dành cho ArgoCD, Karpenter, Prometheus và các công cụ vận hành. Karpenter quản lý ba nhóm workload: Spot, mixed On-Demand/Spot và ARM64. Microservices chạy trên mixed pool.
+- **Observability cluster** chạy Mimir, Loki và Grafana để lưu, xem metrics và logs gửi từ workload cluster.
 
-<CardSection title="Phần 0 · Prepare" description="Tools, AWS Account, Repo Github và Overview Architects.">
-  <Card title="Chuẩn bị và thiết lập" to="/docs/architecture/organizational-constraints-and-prerequisites" description="Thiết lập các công cụ cần thiết, Clone Repo, Setup Environment và Backend Terraform." />
-  <Card title="Architects" to="/docs/architecture/architecture-overview" description="Tổng quan về các kiến trúc được thực hiện trong dự án." />
+Các phần bên dưới đi từ lý thuyết đến thực hành. Nếu đã quen với các thành phần này, bạn có thể bắt đầu từ bước chuẩn bị rồi làm lần lượt theo sidebar.
+
+**[Xem nội dung và lộ trình workshop →](./00-platform-overview-and-deployment.md)**
+
+<CardSection title="Kiến thức nền tảng" description="Tìm hiểu các thành phần trước khi cấu hình và triển khai.">
+  <Card title="Kubernetes và Amazon EKS" to="/docs/architecture/architecture-overview#kubernetes-and-eks" description="Control plane, worker node, Pod và vai trò của hai cluster." />
+  <Card title="VPC, subnet và Ingress" to="/docs/architecture/layer-10-network#network-basics" description="Public/private subnet, đường truy cập ứng dụng và kết nối giữa hai cluster." />
+  <Card title="Terraform, state và bootstrap" to="/docs/architecture/terraform-workflow#terraform-basics" description="Provider, module, state và lý do cần bootstrap trước khi full apply." />
+  <Card title="Karpenter và các loại node" to="/docs/karpenter/ec2nodeclass-and-nodepools-configuration#karpenter-basics" description="EC2NodeClass, NodePool, Spot, On-Demand và ARM64." />
+  <Card title="GitOps, Helm và ArgoCD" to="/docs/apps-shopnow/shopnow-end-to-end-deployment-guide#gitops-and-helm" description="Từ image trong ECR đến Helm chart và Application trên ArgoCD." />
+  <Card title="PV, PVC, EBS và EFS" to="/docs/apps-shopnow/efs-persistent-volumes#storage-basics" description="Cách cấp volume, dùng chung filesystem và giữ dữ liệu khi thay Pod." />
+  <Card title="Scheduling, replica và PDB" to="/docs/apps-shopnow/availability-and-pdb#availability-basics" description="Phân bổ replica và cách PDB kiểm soát eviction." />
+  <Card title="Metrics, logs và observability" to="/docs/observability/observability-architecture-overview#metrics-and-logs" description="Vai trò của Prometheus, Alloy, Mimir, Loki và Grafana." />
+  <Card title="IAM, Kubernetes RBAC và TLS" to="/docs/eks-security#aws-and-kubernetes-access" description="Quyền AWS, quyền Kubernetes, Secret và certificate." />
 </CardSection>
 
-<CardSection title="Phần 1 · Terraform" description="Network và EKS Cluster">
-  <Card title="Cấu trúc Terraform" to="/docs/architecture/terraform-workflow" description="Cấu trúc Terraform theo các Layer" />
-  <Card title="Network" to="/docs/architecture/layer-10-network" description="VPC và Network Layer" />
-  <Card title="Cluster 1 · Workload" to="/docs/architecture/layer-20-cluster-workload" description="EKS Cluster Workload" />
-  <Card title="Cluster 2 · Observability" to="/docs/architecture/layer-21-cluster-observability" description="EKS Cluster Observability" />
+<CardSection title="Phần 0 · Chuẩn bị" description="Cài công cụ, chọn tài khoản AWS và xem kiến trúc sẽ triển khai.">
+  <Card title="Chuẩn bị môi trường" to="/docs/architecture/organizational-constraints-and-prerequisites" description="AWS profile, công cụ CLI, bốn repo và Terraform backend." />
+  <Card title="Tổng quan kiến trúc" to="/docs/architecture/architecture-overview" description="Các thành phần của workload cluster và observability cluster." />
 </CardSection>
 
-<CardSection title="Phần 2 · Cluster 1 · Workload" description="Thiết lập hạ tầng trên Managed Node Group và Karpenter Node Groups.">
-  <Card title="Tools" to="/docs/platform-addons/gitops-bootstrap-order" description="Platform Add-ons." />
-  <Card title="Node Groups" to="/docs/karpenter/ec2nodeclass-and-nodepools-configuration" description="Spot, mixed On-Demand/Spot, ARM64." />
-  <Card title="Mixed Pool 1:3" to="/docs/karpenter/on-demand-spot-ratio-and-limits" description="On-Demand/Spot." />
-  <Card title="ARM64" to="/docs/karpenter/arm64-validation" description="Graviton." />
-  <Card title="Kite Dashboard" to="/docs/platform-addons/kite-dashboard" description="K8s Dashboard." />
+<CardSection title="Phần 1 · Hạ tầng với Terraform" description="Tạo network, hai EKS cluster và cài các công cụ do Terraform quản lý.">
+  <Card title="Cấu trúc Terraform" to="/docs/architecture/terraform-workflow" description="Các layer, state và thứ tự plan, apply." />
+  <Card title="Network" to="/docs/architecture/layer-10-network" description="Tạo VPC, subnet, route và các cấu hình mạng dùng chung." />
+  <Card title="Workload cluster" to="/docs/architecture/layer-20-cluster-workload" description="Tạo EKS, node group infra, EFS và ECR." />
+  <Card title="Observability cluster" to="/docs/architecture/layer-21-cluster-observability" description="Cài Mimir, Loki, Grafana rồi hoàn tất workload cluster." />
 </CardSection>
 
-<CardSection title="Phần 3 · Microservices" description="Build Image, Deploy ShopNow với ArgoCD, EFS, Pod Placement và PDB.">
-  <Card title="Build Image" to="/docs/apps-shopnow/docker-build-multi-arch-and-ci" description="Build Image ShopNow & Push ECR." />
-  <Card title="Deploy với ArgoCD" to="/docs/apps-shopnow/shopnow-end-to-end-deployment-guide" description="Database, Backend và Frontend trên Mixed Pool." />
-  <Card title="Persistent Volume EFS" to="/docs/apps-shopnow/efs-persistent-volumes" description="Shared Volume cho Microservices và kiểm tra dữ liệu sau khi thay Pod." />
-  <Card title="Pod Placement" to="/docs/apps-shopnow/pod-placement" description="Phân bổ replica trên các worker node và Availability Zone." />
-  <Card title="PodDisruptionBudget" to="/docs/apps-shopnow/availability-and-pdb" description="Test Eviction và Availability theo PDB Budget." />
+<CardSection title="Phần 2 · Cấu hình workload cluster" description="Kiểm tra các công cụ trên node infra và tạo ba nhóm workload Karpenter.">
+  <Card title="Các công cụ trên cluster" to="/docs/platform-addons/gitops-bootstrap-order" description="Kiểm tra ArgoCD, Karpenter, Prometheus; cài cert-manager, Rollouts và JavaMelody." />
+  <Card title="Karpenter NodePools" to="/docs/karpenter/ec2nodeclass-and-nodepools-configuration" description="Tạo EC2NodeClass, NodePool và chạy workload Spot." />
+  <Card title="Mixed pool 1:3" to="/docs/karpenter/on-demand-spot-ratio-and-limits" description="Hiểu CPU limit, weight và kiểm tra capacity On-Demand/Spot." />
+  <Card title="ARM64" to="/docs/karpenter/arm64-validation" description="Kiểm tra image và chạy container trên node Graviton." />
+  <Card title="Kite dashboard" to="/docs/platform-addons/kite-dashboard" description="Truy cập dashboard bằng port-forward hoặc hostname ALB." />
 </CardSection>
 
-<CardSection title="Phần 4 · Centralized Observability" description="Collect Metrics, Logs từ Cluster Workload sang Cluster Observability.">
-  <Card title="Private TLS và DNS" to="/docs/platform-addons/cert-manager-and-internal-tls" description="Setup Internal ALB, Private DNS và Certificate." />
-  <Card title="Metrics → Mimir" to="/docs/observability/mimir-metrics-pipeline" description="Prometheus remote_write từ Cluster Workload sang Mimir." />
-  <Card title="Logs → Loki" to="/docs/observability/loki-logging-pipeline" description="Alloy Collect Pod Logs và gửi sang Loki." />
-  <Card title="Grafana" to="/docs/observability/grafana-dashboards" description="Query Metrics, Logs và xem Dashboard tập trung." />
+<CardSection title="Phần 3 · Triển khai ShopNow" description="Build image, triển khai ứng dụng và kiểm tra storage, scheduling, availability.">
+  <Card title="Build image" to="/docs/apps-shopnow/docker-build-multi-arch-and-ci" description="Build frontend, backend và push bảy image lên ECR." />
+  <Card title="Triển khai với ArgoCD" to="/docs/apps-shopnow/shopnow-end-to-end-deployment-guide" description="Tạo Application và triển khai ShopNow theo thứ tự dependency." />
+  <Card title="EFS persistent volume" to="/docs/apps-shopnow/efs-persistent-volumes" description="Đọc, ghi file giữa các replica và kiểm tra sau khi thay Pod." />
+  <Card title="Phân bổ Pod" to="/docs/apps-shopnow/pod-placement" description="Kiểm tra replica trên các node và Availability Zone." />
+  <Card title="PodDisruptionBudget" to="/docs/apps-shopnow/availability-and-pdb" description="Thử eviction khi budget bằng 0 và 1; theo dõi API trong lúc thay Pod." />
 </CardSection>
 
-<CardSection title="Phần 5 · Kiểm tra và vận hành" description="Kiểm tra kết quả Workshop, quản lý thay đổi và Cleanup.">
-  <Card title="Checklist Workshop" to="/docs/operations/workshop-acceptance" description="Kiểm tra từng yêu cầu và lưu kết quả tương ứng." />
-  <Card title="Vận hành và cleanup" to="/docs/operations/lifecycle-and-cleanup" description="Cập nhật Terraform, GitOps, Rollback và Destroy môi trường." />
-  <Card title="Xử lý sự cố" to="/docs/operations/master-incident-catalogue" description="Các lỗi thường gặp, cách kiểm tra và xử lý." />
+<CardSection title="Phần 4 · Observability" description="Gửi metrics, logs từ workload cluster và xem dữ liệu ở cluster 2.">
+  <Card title="TLS và private DNS" to="/docs/platform-addons/cert-manager-and-internal-tls" description="Cấu hình certificate, ACM, internal ALB và private DNS." />
+  <Card title="Metrics với Mimir" to="/docs/observability/mimir-metrics-pipeline" description="Kiểm tra Prometheus remote_write và query dữ liệu trên Mimir." />
+  <Card title="Logs với Loki" to="/docs/observability/loki-logging-pipeline" description="Cài Alloy, tạo log mới và tìm lại trên Loki." />
+  <Card title="Grafana" to="/docs/observability/grafana-dashboards" description="Kiểm tra datasource, query và dashboard của workload cluster." />
 </CardSection>
 
-<CardSection
-  id="repositories"
-  title="Workshop Repos"
-  description="4 Repo được Clone trong cùng thư mục."
->
-  <Card title="eks-core-terraform" to="https://github.com/tranvix0910/eks-core-terraform" description="Network và 2 EKS Cluster, chia theo 3 Terraform Layer." />
-  <Card title="eks-core-gitops" to="https://github.com/tranvix0910/eks-core-gitops" description="Platform Manifest, Helm Values, ShopNow Chart và Lab Examples." />
-  <Card title="eks-core-apps" to="https://github.com/tranvix0910/eks-core-apps" description="Source Code ShopNow và Build Image Script." />
-  <Card title="eks-core-docs" to="https://github.com/tranvix0910/eks-core-docs" description="Website hướng dẫn Workshop." />
+<CardSection title="Phần 5 · Kiểm tra và vận hành" description="Kiểm tra lại kết quả, cập nhật cấu hình và dọn môi trường sau workshop.">
+  <Card title="Checklist workshop" to="/docs/operations/workshop-acceptance" description="Các nội dung cần kiểm tra và output tương ứng." />
+  <Card title="Vận hành và cleanup" to="/docs/operations/lifecycle-and-cleanup" description="Cập nhật Terraform, GitOps, rollback và xóa resource theo thứ tự." />
+  <Card title="Xử lý sự cố" to="/docs/operations/master-incident-catalogue" description="Tìm nguyên nhân theo Events, log và cấu hình của từng thành phần." />
+</CardSection>
+
+<CardSection id="repositories" title="Các repository" description="Clone bốn repo vào cùng thư mục cha để dùng các đường dẫn trong workshop.">
+  <Card title="eks-core-terraform" to="https://github.com/tranvix0910/eks-core-terraform" description="Network và hai EKS cluster, được chia thành ba Terraform layer." />
+  <Card title="eks-core-gitops" to="https://github.com/tranvix0910/eks-core-gitops" description="Manifest, Helm values, chart ShopNow và các workload thực hành." />
+  <Card title="eks-core-apps" to="https://github.com/tranvix0910/eks-core-apps" description="Mã nguồn ShopNow và script build image." />
+  <Card title="eks-core-docs" to="https://github.com/tranvix0910/eks-core-docs" description="Docs workshop." />
 </CardSection>

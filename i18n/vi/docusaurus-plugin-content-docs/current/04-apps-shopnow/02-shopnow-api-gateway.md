@@ -15,7 +15,7 @@ curl -i http://localhost:5860/actuator/health
 curl -i http://localhost:5860/product
 ```
 
-SecurityConfig cho phép GET `/product` không cần đăng nhập. Các thao tác ghi và Cart API cần JWT theo cấu hình demo. Database mới có thể trả danh sách rỗng `[]`. Nếu nhận HTML thay JSON, kiểm tra request có bị gửi tới Frontend/Nginx không.
+Theo SecurityConfig hiện tại, GET `/product` không cần đăng nhập. Các thao tác ghi và API giỏ hàng cần JWT. Với database mới, kết quả `[]` là bình thường. Nếu nhận HTML thay JSON, kiểm tra lại URL vì request có thể đang đi vào frontend/Nginx.
 
 ## 2. Gateway Routes {#2-understand-route-names}
 
@@ -25,7 +25,7 @@ SecurityConfig cho phép GET `/product` không cần đăng nhập. Các thao t�
 | `/shopping-cart/1` | `CART-SERVICE` qua production override | `/api/shopping-cart/1` |
 | `/user/signin` | `USER-SERVICE` | `/api/user/signin` |
 
-`PrefixPath=/api` thêm prefix trước khi gửi request tới Controller. Gọi Gateway bằng `/product`; gọi trực tiếp Backend bằng `/api/product`. Nếu dùng Postman Collection cũ có `/api/` trên Gateway URL, sửa lại path trước khi test.
+`PrefixPath=/api` thêm prefix trước khi gửi request tới controller. Gọi Gateway bằng `/product`; gọi trực tiếp backend bằng `/api/product`. Nếu dùng Postman Collection cũ có `/api/` trên Gateway URL, sửa lại path trước khi test.
 
 ## 3. Troubleshooting {#3-isolate-failures}
 
@@ -45,4 +45,4 @@ Kiểm tra cả cấu hình trong image và file override `/app/config-override/
 
 ## 4. Authentication trong Demo {#4-demo-authentication-limits}
 
-User Service kiểm tra user trong database, sau đó lấy token bằng `client_credentials`. Token này chưa đại diện đầy đủ cho từng người dùng cuối. Khi demo Login, kiểm tra riêng quyền truy cập Cart và phân biệt Application Authentication với quyền AWS/EKS.
+User service kiểm tra user trong database, sau đó lấy token bằng `client_credentials`. Đây là cấu hình đăng nhập dùng trong demo; token chưa đại diện đầy đủ cho từng người dùng. Khi kiểm tra API, thử riêng quyền truy cập giỏ hàng thay vì chỉ dựa vào việc login thành công.

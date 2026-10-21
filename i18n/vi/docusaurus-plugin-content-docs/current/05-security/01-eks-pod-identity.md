@@ -2,11 +2,11 @@
 title: "EKS Pod Identity"
 ---
 
-# Cấu hình AWS Permission cho Pod {#associate-aws-permissions-with-the-correct-serviceaccount}
+# Cấu hình AWS permission cho Pod {#associate-aws-permissions-with-the-correct-serviceaccount}
 
-Terraform tạo IAM Role, Policy và Pod Identity Association cho ServiceAccount. Pod Identity Agent cung cấp credentials để SDK trong Pod gọi AWS API. Khi thiếu quyền, kiểm tra association của Pod trước khi sửa Node Role.
+Pod Identity cho phép Pod gọi AWS API bằng quyền gắn với ServiceAccount. Terraform tạo IAM role, policy và association; Pod Identity Agent cung cấp credentials cho SDK trong Pod. Khi controller báo thiếu quyền, chúng ta sẽ kiểm tra các thành phần này trước.
 
-## 1. ServiceAccount và IAM Permission {#1-compare-mappings}
+## 1. ServiceAccount và IAM permission {#1-compare-mappings}
 
 | Cluster | Namespace/ServiceAccount | Quyền cần có |
 |---|---|---|
@@ -15,7 +15,7 @@ Terraform tạo IAM Role, Policy và Pod Identity Association cho ServiceAccount
 | Workload | `kube-system/ebs-csi-controller-sa` | Cấp EBS |
 | Workload | `kube-system/efs-csi-controller-sa` | Cấp EFS Access Point |
 | Observability | `kube-system/ebs-csi-controller-sa` | Cấp EBS |
-| Observability | `kube-system/aws-load-balancer-controller` | Load balancing |
+| Observability | `kube-system/aws-load-balancer-controller` | tải balancing |
 | Observability | `monitoring/mimir` | Truy cập đúng bucket Mimir |
 | Observability | `monitoring/loki` | Truy cập đúng bucket Loki |
 
@@ -43,9 +43,9 @@ Với cluster 2, dùng tên cluster sở hữu association đó. Không sao ché
 1. Xác nhận `serviceAccountName` của Pod.
 2. Kiểm tra cluster, namespace và ServiceAccount trong association.
 3. Xác nhận agent Ready trên node đó, network hoạt động và SDK hỗ trợ credential chain.
-4. Kiểm tra kết quả action/resource trong policy và region/tên bucket.
+4. Kiểm tra action/resource trong policy và region/tên bucket.
 5. Khi identity đã đúng, xem explicit deny trong SCP/bucket policy.
 
-Sau khi sửa Association, kiểm tra Pod mới và Controller log. Giữ credentials qua Pod Identity; không thêm Access Key tĩnh vào Helm values hoặc in credentials ra log để debug.
+Sau khi sửa association, tạo lại Pod khi cần và xem controller log để kiểm tra quyền đã được nhận. Không thêm access key vào Helm values để bỏ qua lỗi IAM, cũng không in credentials ra log.
 
 Tham khảo: [AWS EKS Pod Identity](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html).

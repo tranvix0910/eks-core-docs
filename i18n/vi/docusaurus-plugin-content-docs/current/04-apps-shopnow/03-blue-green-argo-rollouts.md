@@ -2,9 +2,9 @@
 title: "Mở rộng · Blue-Green Deployment"
 ---
 
-# Deploy Frontend với Argo Rollouts {#test-a-version-before-switching-users}
+# Deploy frontend với Argo Rollouts {#test-a-version-before-switching-users}
 
-ArgoCD Sync cấu hình từ Git; Argo Rollouts quản lý Active/Preview ReplicaSet và Promote phiên bản. Cài Rollouts Controller và CRD trước khi Sync Frontend.
+ArgoCD lấy cấu hình từ Git và tạo resource trong cluster. Argo Rollouts theo dõi các ReplicaSet active/preview, quản lý việc promote và chuyển phiên bản đang phục vụ người dùng. Trước khi sync frontend, cần cài controller và CRD của Rollouts.
 
 ## 1. Kiểm tra Rollout hiện tại {#1-inspect-the-current-rollout}
 
@@ -13,18 +13,18 @@ kubectl --context eks-workload -n shopnow get rollout shopnow-frontend-rollout -
 kubectl --context eks-workload -n shopnow get svc shopnow-frontend-service shopnow-frontend-preview-service -o yaml
 ```
 
-`activeService` phục vụ người dùng; `previewService` trỏ tới phiên bản đang thử. `autoPromotionEnabled=false` tạo điểm chờ phê duyệt thủ công. `scaleDownDelaySeconds=30` giữ phiên bản trước trong thời gian ngắn sau promote, không bảo đảm rollback tức thì vô thời hạn.
+`activeService` trỏ tới phiên bản đang phục vụ người dùng, còn `previewService` trỏ tới phiên bản mới để thử trước. Với `autoPromotionEnabled=false`, rollout chờ bạn promote. Sau khi chuyển, `scaleDownDelaySeconds=30` giữ phiên bản cũ thêm một khoảng ngắn trước khi scale down.
 
 ## 2. Deploy phiên bản mới {#2-deliver-a-new-version-through-argocd}
 
-Build và Push Frontend với Image Tag mới, cập nhật Application/values rồi ArgoCD Sync. Dùng tag riêng cho mỗi phiên bản để Kubernetes có thể phân biệt image.
+build và push frontend với image tag mới, cập nhật Application/values rồi ArgoCD sync. Dùng tag riêng cho mỗi phiên bản để Kubernetes có thể phân biệt image.
 
 ```bash
 argocd app get shopnow-frontend
 kubectl --context eks-workload -n shopnow get rollout shopnow-frontend-rollout -w
 ```
 
-## 3. Test Preview {#3-verify-preview}
+## 3. Test preview {#3-verify-preview}
 
 ```bash
 kubectl --context eks-workload -n shopnow port-forward svc/shopnow-frontend-preview-service 8083:80
@@ -32,7 +32,7 @@ kubectl --context eks-workload -n shopnow port-forward svc/shopnow-frontend-prev
 
 Mở `http://localhost:8083`, kiểm tra UI/API URL, danh sách sản phẩm, đăng nhập và giỏ hàng bằng dữ liệu giả lập. Port-forward preview không thay API URL đã được build vào image.
 
-## 4. Promote và Rollback {#4-promote-or-roll-back}
+## 4. Promote và rollback {#4-promote-or-roll-back}
 
 Với plugin `kubectl argo rollouts` tương thích:
 
@@ -43,6 +43,6 @@ kubectl --context eks-workload argo rollouts promote shopnow-frontend-rollout -n
 
 Có thể dùng action promote của ArgoCD nếu extension/controller hỗ trợ. Kiểm tra active selector và request thực tế sau promote.
 
-Để Rollback và giữ cấu hình sau đó, đưa Image Tag/commit trong Git về phiên bản trước rồi Sync. Nếu chỉ chạy `argo rollouts undo`, ArgoCD Self-heal có thể Deploy lại tag đang khai báo trong Git. Blue-Green chuyển toàn bộ Active Service sang phiên bản mới; bài này không dùng Weighted Canary 10/90.
+Để rollback và giữ cấu hình sau đó, đưa image tag/commit trong Git về phiên bản trước rồi sync. Nếu chỉ chạy `argo rollouts undo`, ArgoCD self-heal có thể deploy lại tag đang khai báo trong Git. Blue-Green chuyển toàn bộ Active Service sang phiên bản mới; bài này không dùng Weighted Canary 10/90.
 
-**Bằng chứng:** commit/tag trước và sau, preview hoạt động, active selector thay đổi sau promote và rollback thành công về phiên bản mong muốn.
+**Kết quả kiểm tra:** commit/tag trước và sau, preview hoạt động, active selector thay đổi sau promote và rollback thành công về phiên bản mong muốn.

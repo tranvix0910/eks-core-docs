@@ -1,18 +1,17 @@
 ---
-title: "Bước 2.1 — Platform Tools trên Managed Node Group"
-sidebar_label: "2.1 Platform Tools"
+title: "Bước 2.1 — Công cụ vận hành trên Managed Node Group"
+sidebar_label: "2.1 Các công cụ trên cluster"
 ---
 
-# Bước 2.1 — Platform Tools trên Managed Node Group {#step-21--platform-tools-on-the-managed-node-group}
+# Bước 2.1 — Công cụ vận hành trên Managed Node Group {#step-21--platform-tools-on-the-managed-node-group}
 
-:::info Nội dung thực hiện
-**Mục tiêu:** kiểm tra Prometheus, Karpenter, ArgoCD trên node `infra`; cài thêm cert-manager, Argo Rollouts và JavaMelody.
-**Yêu cầu:** 1. **Thời gian:** khoảng 15 phút. **Chạy từ:** `$GITOPS_DIR`.
-:::
+Ở bước 1.3, Terraform đã cài ArgoCD, Karpenter và Prometheus. Trong phần này, chúng ta sẽ kiểm tra các công cụ đó đang chạy trên node `infra`, rồi cài thêm cert-manager, Argo Rollouts và JavaMelody.
 
-## Node Selector cho Platform Tools {#how-the-tools-are-pinned-to-the-infra-nodes}
+**Thời gian:** khoảng 15 phút. **Chạy từ:** `$GITOPS_DIR`.
 
-Managed Node Group `infra` có label `role=infra`. Platform Tools dùng Node Selector sau trong Helm values:
+## Node selector cho công cụ vận hành {#how-the-tools-are-pinned-to-the-infra-nodes}
+
+Node trong group `infra` có label `role=infra`. Chúng ta dùng `nodeSelector` trong Helm values để các công cụ chạy trên nhóm node này:
 
 ```yaml
 nodeSelector:
@@ -24,13 +23,13 @@ nodeSelector:
 | Karpenter | Terraform (bước 1.3) | `platform/addons/karpenter/values.yaml` |
 | ArgoCD | Terraform (bước 1.3) | `platform/addons/argocd/values.yaml` |
 | Prometheus (kube-prometheus-stack) | Terraform (bước 1.3) | `platform/addons/prometheus/values.yaml` |
-| Metrics Server, Load Balancer Controller | Terraform (bước 1.3) | `platform/addons/metrics-server/values.yaml` |
+| Metrics Server, tải Balancer controller | Terraform (bước 1.3) | `platform/addons/metrics-server/values.yaml` |
 | cert-manager | Helm, tại bước này | `platform/addons/cert-manager/values.yaml` |
 | Argo Rollouts | Helm, tại bước này | `--set nodeSelector.role=infra` |
 | JavaMelody collector | kubectl, tại bước này | `platform/addons/javamelody/javamelody-collector.yaml` |
 | Kite dashboard | Terraform (bước 1.3) | values trong `20-cluster-workload/helm_releases.tf` — xem [bước 2.5](kite-dashboard) |
 
-Với chart do Terraform quản lý, sửa values rồi Plan và Apply lại Layer tương ứng. Giữ một công cụ quản lý cho mỗi release.
+Các release do Terraform cài vẫn được cập nhật bằng Terraform. Sửa values rồi plan và apply layer tương ứng, thay vì cài thêm một release bằng `helm install`.
 
 ## 1. Cài cert-manager {#1-install-cert-manager}
 
@@ -49,7 +48,7 @@ helm --kube-context eks-workload upgrade --install cert-manager jetstack/cert-ma
 
 ## 2. Cài Argo Rollouts {#2-install-argo-rollouts}
 
-Frontend ShopNow dùng Argo `Rollout` với chiến lược Blue-Green. Cài CRD và Rollouts Controller trước khi Deploy Frontend.
+frontend ShopNow dùng Argo `Rollout` với chiến lược Blue-Green. Cài CRD và Rollouts controller trước khi deploy frontend.
 
 ```bash
 helm repo add argo https://argoproj.github.io/argo-helm && helm repo update argo
@@ -63,16 +62,16 @@ kubectl --context eks-workload get crd rollouts.argoproj.io
 
 ## 3. Cài JavaMelody collector {#3-install-the-javamelody-collector}
 
-JavaMelody thu thập JVM, HTTP và JDBC metrics từ Spring Services. Collector dùng StatefulSet và PVC `gp3` riêng.
+JavaMelody collector đọc thống kê JVM, HTTP và JDBC từ các Spring service. Collector chạy dưới dạng StatefulSet và lưu dữ liệu trên PVC `gp3` riêng.
 
 ```bash
 kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/addons/javamelody/javamelody-collector.yaml"
 kubectl --context eks-workload -n javamelody rollout status statefulset/javamelody-collector --timeout=10m
 ```
 
-Collector chỉ có dữ liệu sau khi kết nối với các service đã Deploy ([JavaMelody](javamelody)).
+Collector chỉ có dữ liệu sau khi kết nối với các service đã deploy ([JavaMelody](javamelody)).
 
-## Kiểm tra Platform Tools trên node infra {#verify--every-tool-is-on-an-infra-node}
+## Kiểm tra công cụ vận hành trên node infra {#verify--every-tool-is-on-an-infra-node}
 
 ```bash
 for ns in kube-system argocd monitoring cert-manager argo-rollouts javamelody; do
@@ -85,11 +84,11 @@ done | grep -Ev 'aws-node|kube-proxy|ebs-csi-node|efs-csi-node|pod-identity|node
   | tee "$EVIDENCE_DIR/infra-placement.txt"
 ```
 
-**Kết quả cần có:** mọi dòng kết thúc bằng `role=infra`. DaemonSet như VPC CNI, kube-proxy, CSI node driver và node-exporter vốn chạy trên mọi node và được loại khỏi kết quả.
+**Kết quả:** mọi dòng kết thúc bằng `role=infra`. DaemonSet như VPC CNI, kube-proxy, CSI node driver và node-exporter vốn chạy trên mọi node và được loại khỏi kết quả.
 
-## Truy cập Platform Tools {#open-the-tools}
+## Truy cập công cụ vận hành {#open-the-tools}
 
-Dùng Port-forward để truy cập các UI trên máy local. Chạy mỗi lệnh trong một terminal riêng.
+Dùng port-forward để truy cập các UI trên máy local. Chạy mỗi lệnh trong một terminal riêng.
 
 | Công cụ | Lệnh | URL |
 |---|---|---|
@@ -104,4 +103,4 @@ kubectl --context eks-workload -n argocd get secret argocd-initial-admin-secret 
   -o jsonpath='{.data.password}' | base64 --decode; echo
 ```
 
-**Tiếp theo:** [2.2 3 nhóm NodePool](../karpenter/ec2nodeclass-and-nodepools-configuration)
+**Tiếp theo:** [2.2 Ba nhóm NodePool](../karpenter/ec2nodeclass-and-nodepools-configuration)

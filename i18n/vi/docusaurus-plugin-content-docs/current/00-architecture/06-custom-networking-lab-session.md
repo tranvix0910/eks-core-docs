@@ -4,13 +4,13 @@ title: "Mở rộng · VPC CNI Custom Networking"
 
 # Lab Custom Networking {#run-this-lab-after-completing-the-core-workshop}
 
-Custom Networking dùng Subnet riêng để cấp IP cho Pod. Thực hiện lab này sau phần workshop chính. Giữ Prefix Delegation hiện tại nếu chưa cần tách Pod CIDR.
+Custom Networking cho phép Pod lấy IP từ subnet riêng thay vì dùng chung subnet với node. Đây là bài mở rộng, thực hiện sau workshop chính. Nếu chưa cần tách Pod CIDR, tiếp tục dùng Prefix Delegation hiện tại.
 
 ## 1. Mục tiêu và phạm vi {#1-objective-and-scope}
 
-Trên Cluster Workload, thêm Secondary VPC CIDR và Pod Subnet, cấu hình ENIConfig theo AZ, rồi tạo Canary Node. Kiểm tra Pod nhận IP từ Pod Subnet, còn node vẫn dùng Node Subnet. Cluster Observability giữ cấu hình hiện tại.
+Chúng ta sẽ thêm secondary VPC CIDR và các subnet cho Pod trên workload cluster, cấu hình ENIConfig theo AZ rồi thử bằng một canary node. Kết quả cần kiểm tra là Pod dùng IP từ subnet mới trong khi node vẫn giữ IP ở subnet hiện tại. Observability cluster không đổi cấu hình.
 
-Thay đổi ảnh hưởng VPC dùng chung và cấu hình CNI toàn cluster. Dùng cửa sổ lab riêng, tách khỏi bài PDB/availability. Trước khi thực hiện, kiểm tra CIDR chồng lấn với on-premises, peering hoặc Transit Gateway; xác nhận quota subnet/ENI và chỉ định người rollback.
+Bài này thay đổi VPC dùng chung và cấu hình CNI của workload cluster. Trước khi làm, kiểm tra CIDR có chồng với mạng on-premises, VPC peering hoặc Transit Gateway không. Lưu cấu hình hiện tại để có thể rollback và không chạy cùng lúc với bài test PDB.
 
 ## 2. Lưu cấu hình trước khi thay đổi {#2-inventory-and-save-the-actual-configuration}
 
@@ -25,7 +25,7 @@ terraform -chdir="$TF_DIR/10-network" output -json
 
 File `labs/custom-networking/vpc-cni-configuration-before-custom-networking.json` trong checkout có thể trống. Chỉ dùng để rollback khi đã chứa cấu hình lưu cho phiên lab này.
 
-## 3. Chuẩn bị Network {#3-prepare-the-network-as-a-separate-change}
+## 3. Chuẩn bị network {#3-prepare-the-network-as-a-separate-change}
 
 Lập plan cho secondary CIDR, ba private Pod subnet cùng AZ với node subnet, route egress phù hợp và security group cho Pod ENI. Dùng subnet ID từ output thực tế. Thay ID riêng của môi trường trong `labs/custom-networking/eni-configs.yaml`.
 
@@ -50,9 +50,9 @@ Giữ configurationValues hiện có của add-on và thêm cấu hình:
 
 **Merge các key này vào cấu hình đã lưu.** Không thay toàn bộ configurationValues nếu môi trường có cấu hình khác. Cập nhật qua EKS managed add-on API hoặc IaC quản lý nó. Sửa trực tiếp DaemonSet có thể bị add-on reconcile ghi đè. Chờ add-on và aws-node Ready.
 
-## 5. Kiểm tra Canary Node và Pod {#5-canary-and-verification}
+## 5. Kiểm tra canary node và Pod {#5-canary-and-verification}
 
-Tăng capacity node group có kiểm soát và xác định node mới. Dùng workload cluster hiện tại. Label và taint canary bằng `lab.eks-core/custom-network=true` và `custom-network-lab=true:NoSchedule` theo manifest mẫu. Gắn taint sau khi node Ready tạo khoảng trống scheduling; ghi giới hạn đó hoặc cấu hình isolation ngay lúc bootstrap node.
+Tăng capacity node group để có node mới, rồi label và taint node đó bằng `lab.eks-core/custom-network=true` và `custom-network-lab=true:NoSchedule` theo manifest mẫu. Nếu chỉ gắn taint sau khi node Ready, Pod khác có thể đã được schedule lên node trong khoảng thời gian trước đó. Muốn tách node ngay từ đầu, cấu hình taint lúc bootstrap.
 
 ```bash
 kubectl --context eks-workload apply -f "$GITOPS_DIR"/labs/custom-networking/custom-network-test.yaml
@@ -60,10 +60,10 @@ kubectl --context eks-workload -n custom-network-lab get pods -o wide
 kubectl --context eks-workload -n kube-system logs -l k8s-app=aws-node -c aws-node --tail=50
 ```
 
-Kết quả cần có: Canary Pod nhận IP từ Pod Subnet; node giữ IP từ Primary Subnet; DNS, egress và kết nối Service hoạt động. Kiểm tra đủ các kết nối sau khi Pod có IP.
+Kết quả: Canary Pod nhận IP từ Pod subnet; node giữ IP từ primary subnet; DNS, egress và kết nối Service hoạt động. Kiểm tra đủ các kết nối sau khi Pod có IP.
 
 ## 6. Rollback {#6-ordered-rollback}
 
-Xóa workload thử, khôi phục chính xác configurationValues đã lưu và chờ CNI healthy. Đưa canary về trạng thái được duyệt, xử lý node theo quy trình bảo trì. Kiểm tra không còn Pod/ENI dùng secondary subnet trước khi xóa ENIConfig, security group, subnet hoặc CIDR. Không force-delete ENI hay sửa tài nguyên cluster 2.
+Xóa workload thử rồi khôi phục `configurationValues` đã lưu, chờ CNI healthy. Dọn canary node theo quy trình bảo trì. Trước khi xóa ENIConfig, security group, subnet hoặc CIDR, kiểm tra không còn Pod hay ENI đang dùng subnet mới. Giữ nguyên resource của cluster 2 và không force-delete ENI còn được sử dụng.
 
 Tham khảo: [AWS VPC CNI Custom Networking](https://docs.aws.amazon.com/eks/latest/userguide/cni-custom-network.html). Báo cáo riêng thay đổi VPC/CNI này với bài mixed pool.

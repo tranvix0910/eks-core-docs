@@ -1,13 +1,11 @@
 ---
-title: "Architecture Diagrams"
-sidebar_label: "0.3 Architecture Diagrams"
+title: "Sơ đồ kiến trúc"
+sidebar_label: "0.3 Sơ đồ kiến trúc"
 ---
 
-# Architecture Diagrams {#architecture-diagrams}
+# Sơ đồ kiến trúc {#architecture-diagrams}
 
-:::info File nguồn
-File draw.io gồm 9 tab kiến trúc: **[eks-core-architecture.drawio](https://github.com/tranvix0910/eks-core-docs/raw/main/static/diagrams/eks-core-architecture.drawio)**. Mở bằng [draw.io desktop](https://github.com/jgraph/drawio-desktop/releases) hoặc [app.diagrams.net](https://app.diagrams.net) để phóng to hoặc chỉnh sửa. Các ảnh bên dưới được export từ file này. Bấm vào ảnh để xem đầy đủ.
-:::
+Các sơ đồ được lưu trong một file draw.io gồm chín tab: **[eks-core-architecture.drawio](https://github.com/tranvix0910/eks-core-docs/raw/main/static/diagrams/eks-core-architecture.drawio)**. Bạn có thể mở bằng [draw.io desktop](https://github.com/jgraph/drawio-desktop/releases) hoặc [app.diagrams.net](https://app.diagrams.net). Bấm vào từng ảnh bên dưới để xem bản đầy đủ.
 
 | Tab | Nội dung |
 |---|---|
