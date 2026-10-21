@@ -1,16 +1,15 @@
 ---
-title: "Bước 2.3 — Mixed Pool 1:3"
+title: "Bước 2.3 — Mixed pool 1:3"
 sidebar_label: "2.3 Mixed pool 1:3"
 ---
 
-# Bước 2.3 — Mixed Pool 1:3 {#step-23--mixed-pool-configure-and-measure-the-13-ratio}
+# Bước 2.3 — Mixed pool 1:3 {#step-23--mixed-pool-configure-and-measure-the-13-ratio}
 
-:::info Nội dung thực hiện
-**Mục tiêu:** kiểm tra cấu hình Mixed Pool và chạy bài test 1 node On-Demand, 3 node Spot.
-**Yêu cầu:** 2 (mixed pool). **Thời gian:** khoảng 20 phút. **Chạy từ:** `$GITOPS_DIR`.
-:::
+mixed pool sử dụng hai NodePool là `ms-od` và `ms-spot`. Chúng ta sẽ xem cách cấu hình giới hạn capacity, sau đó chạy bài test với 1 node On-Demand và 3 node Spot.
 
-## Cấu hình Capacity 1:3 {#how-the-ratio-is-built}
+**Thời gian:** khoảng 20 phút. **Chạy từ:** `$GITOPS_DIR`.
+
+## Cấu hình capacity 1:3 {#how-the-ratio-is-built}
 
 ```mermaid
 flowchart LR
@@ -19,14 +18,13 @@ flowchart LR
   K -- "weight 10 · when ms-od is full" --> SP["ms-spot · Spot<br/>limit 72 vCPU"]
 ```
 
-- Hai NodePool gắn label `workload=microservices` và cùng taint cho node, nên Pod microservice có thể chạy trên cả hai.
-- Karpenter ưu tiên **weight** cao hơn, nên 24 vCPU đầu tiên đến từ On-Demand, tạo capacity nền ổn định.
-- Khi `ms-od` đạt **giới hạn CPU 24**, capacity mới đến từ `ms-spot`, tối đa **72 vCPU**.
-- Khi dùng hết ngân sách: 24 vCPU On-Demand : 72 vCPU Spot = **1 : 3**.
+Hai NodePool dùng chung label `workload=microservices` và cùng taint. Khi các điều kiện phù hợp, weight cao hơn khiến Karpenter ưu tiên `ms-od`. Giới hạn CPU của `ms-od` là 24 vCPU, còn `ms-spot` là 72 vCPU.
 
-Tỷ lệ 1:3 ở đây là **Capacity Budget** theo vCPU. Khi tải thấp, Mixed Pool có thể chỉ dùng On-Demand. Số node thực tế phụ thuộc instance size và nhu cầu workload. Khi báo cáo, ghi cả số node và vCPU của từng loại.
+Nếu dùng hết các limit này, capacity On-Demand : Spot là 24 : 72, tương ứng 1 : 3. Weight thể hiện mức ưu tiên; nó không chia số Pod hoặc số node theo phần trăm.
 
-## 1. Kiểm tra Capacity hiện tại {#1-measure-the-pool-at-any-time}
+Khi tải thấp, mixed pool có thể chỉ có node On-Demand. Ngoài ra, hai loại node có thể có số vCPU khác nhau. Vì vậy, khi kiểm tra hãy ghi cả số node lẫn tổng vCPU của từng capacity type, thay vì chỉ đếm node.
+
+## 1. Kiểm tra capacity hiện tại {#1-measure-the-pool-at-any-time}
 
 ```bash
 kubectl --context eks-workload get nodes -l workload=microservices \
@@ -40,9 +38,9 @@ kubectl --context eks-workload get nodes -l workload=microservices -o json | jq 
 
 ## 2. Test tỷ lệ 1:3 {#2-prove-1--3-with-a-controlled-test}
 
-Chạy bài test **trước khi Deploy ShopNow**, lúc Mixed Pool chưa có node. Bài test tạo 4 EC2 instance, mỗi instance 4 vCPU, và có phát sinh chi phí.
+Chạy bài test **trước khi deploy ShopNow**, lúc mixed pool chưa có node. Bài test tạo 4 EC2 instance, mỗi instance 4 vCPU, và có phát sinh chi phí.
 
-Tạm giới hạn instance size ở 4 vCPU và CPU limit của 2 pool ở 4:12. Mục tiêu là **1 node On-Demand + 3 node Spot**.
+Tạm giới hạn instance size ở 4 vCPU và CPU limit của hai pool ở 4:12. Mục tiêu là **1 node On-Demand + 3 node Spot**.
 
 ```bash
 kubectl --context eks-workload get nodes -l workload=microservices    # must be empty
@@ -67,7 +65,7 @@ kubectl --context eks-workload patch deployment workshop-ratio --type=merge \
 kubectl --context eks-workload rollout status deployment/workshop-ratio --timeout=10m
 ```
 
-## Kiểm tra kết quả {#verify}
+## Kiểm tra {#verify}
 
 ```bash
 kubectl --context eks-workload get nodes -l workload=microservices \
@@ -75,7 +73,7 @@ kubectl --context eks-workload get nodes -l workload=microservices \
   | tee "$EVIDENCE_DIR/pool2-ratio-test.txt"
 ```
 
-**Kết quả cần có:** 1 node từ `ms-od` (`on-demand`) và 3 node từ `ms-spot` (`spot`), mỗi node 4 vCPU, bốn Pod `Running`. Nếu không có capacity Spot, số node Spot ít hơn; ghi nhận kết quả thực tế thay vì sửa pool.
+**Kết quả:** 1 node từ `ms-od` (`on-demand`) và 3 node từ `ms-spot` (`spot`), mỗi node 4 vCPU, bốn Pod `Running`. Nếu không có capacity Spot, số node Spot ít hơn; ghi nhận kết quả thực tế thay vì sửa pool.
 
 ## 3. Khôi phục NodePool {#3-restore-the-pools}
 
@@ -86,6 +84,6 @@ kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/nodepools/nodepool
 kubectl --context eks-workload get nodepool ms-od ms-spot -o jsonpath='{range .items[*]}{.metadata.name}: {.spec.limits.cpu}{"\n"}{end}'
 ```
 
-**Kết quả cần có:** `ms-od: 24` và `ms-spot: 72`. Bốn node thử nghiệm được hợp nhất và xóa trong vài phút.
+**Kết quả:** `ms-od: 24` và `ms-spot: 72`. Bốn node thực hành được hợp nhất và xóa trong vài phút.
 
 **Tiếp theo:** [2.4 ARM64](arm64-validation)

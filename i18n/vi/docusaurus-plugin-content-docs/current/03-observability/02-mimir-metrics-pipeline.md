@@ -1,14 +1,13 @@
 ---
-title: "Bước 4.2 — Collect Metrics với Prometheus và Mimir"
+title: "Bước 4.2 — Gửi metrics với Prometheus và Mimir"
 sidebar_label: "4.2 Metrics → Mimir"
 ---
 
-# Bước 4.2 — Collect Metrics với Prometheus và Mimir {#step-42--ship-metrics-to-mimir}
+# Bước 4.2 — Gửi metrics với Prometheus và Mimir {#step-42--ship-metrics-to-mimir}
 
-:::info Nội dung thực hiện
-**Mục tiêu:** kiểm tra Prometheus remote_write và query metrics của Cluster Workload tại Mimir.
-**Yêu cầu:** 9. **Thời gian:** khoảng 10 phút. **Chạy từ:** thư mục bất kỳ.
-:::
+Sau khi cấu hình TLS và private DNS, chúng ta sẽ kiểm tra Prometheus có gửi được metrics sang Mimir hay chưa. Bắt đầu từ dữ liệu trên Prometheus, sau đó kiểm tra remote_write và query Mimir.
+
+**Thời gian:** khoảng 10 phút. **Chạy từ:** thư mục bất kỳ.
 
 ## Cấu hình Prometheus remote_write {#how-it-is-configured}
 
@@ -27,7 +26,7 @@ prometheus:
           caFile: /etc/prometheus/secrets/observability-alb-tls/ca.crt
 ```
 
-Prometheus scrape metrics trong Cluster Workload, lưu cục bộ và gửi samples sang Mimir bằng remote_write.
+Prometheus scrape các target trong workload cluster, lưu dữ liệu cục bộ rồi gửi samples sang Mimir bằng remote_write. Vì vậy, cần kiểm tra Prometheus đã scrape được dữ liệu trước khi tìm lỗi ở Mimir.
 
 ## 1. Prometheus scrape cluster 1 {#1-prometheus-scrapes-cluster-1}
 
@@ -36,7 +35,7 @@ kubectl --context eks-workload -n monitoring port-forward svc/prometheus-kube-pr
 curl -fsSG http://localhost:9090/api/v1/query --data-urlencode 'query=count(up==1)' | jq '.data.result[0].value[1]'
 ```
 
-**Kết quả cần có:** số lớn hơn 0. Nếu Prometheus cục bộ không có dữ liệu, sửa scraping trước; remote_write không thể gửi dữ liệu chưa được scrape.
+**Kết quả:** số lớn hơn 0. Nếu Prometheus cục bộ không có dữ liệu, sửa scraping trước; remote_write không thể gửi dữ liệu chưa được scrape.
 
 ## 2. Kiểm tra remote_write {#2-remote_write-is-healthy}
 
@@ -47,9 +46,9 @@ curl -fsSG http://localhost:9090/api/v1/query \
   --data-urlencode 'query=rate(prometheus_remote_storage_samples_failed_total[5m])' | jq '.data.result[].value[1]'
 ```
 
-**Kết quả cần có:** số sample gửi mỗi giây lớn hơn 0, số lỗi gần 0. Log Prometheus thường hiển thị `x509` khi lỗi CA, `401/403` khi lỗi tenant hoặc `429` khi vượt giới hạn Mimir.
+**Kết quả:** số sample gửi mỗi giây lớn hơn 0, số lỗi gần 0. Log Prometheus thường hiển thị `x509` khi lỗi CA, `401/403` khi lỗi tenant hoặc `429` khi vượt giới hạn Mimir.
 
-## Query Metrics trực tiếp từ Mimir {#verify--query-mimir-directly}
+## Query metrics trực tiếp từ Mimir {#verify--query-mimir-directly}
 
 ```bash
 kubectl --context eks-observability -n monitoring port-forward svc/mimir-gateway 19009:80   # terminal 2
@@ -59,14 +58,14 @@ curl -fsSG http://localhost:19009/prometheus/api/v1/query -H 'X-Scope-OrgID: eks
   | jq -r '.data.result[] | "\(.metric.namespace) \(.value[1])"' | tee "$EVIDENCE_DIR/mimir-query.txt"
 ```
 
-**Kết quả cần có:** mỗi namespace cluster 1 có một dòng, bao gồm `shopnow`, được đếm từ dữ liệu đi qua remote_write.
+**Kết quả:** mỗi namespace cluster 1 có một dòng, bao gồm `shopnow`, được đếm từ dữ liệu đi qua remote_write.
 
-## 3. Kiểm tra S3 Storage {#3-data-reaches-s3}
+## 3. Kiểm tra S3 storage {#3-data-reaches-s3}
 
 ```bash
 aws s3 ls "s3://$(terraform -chdir="$TF_DIR/21-cluster-observability" output -raw mimir_bucket_name)/" --recursive | head
 ```
 
-Mimir upload block lên S3 theo chu kỳ, thường khoảng 2 giờ, nên bucket có thể chưa có dữ liệu ngay sau Deploy. Nếu Ingester hoặc Compactor báo `AccessDenied`, kiểm tra Pod Identity Association và quyền S3.
+Mimir upload block lên S3 theo chu kỳ, thường khoảng hai giờ. Bucket có thể chưa có block ngay sau khi deploy. Nếu ingester hoặc compactor báo `AccessDenied`, kiểm tra Pod Identity association và quyền truy cập bucket.
 
 **Tiếp theo:** [4.3 Logs → Loki](loki-logging-pipeline)

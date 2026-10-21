@@ -5,29 +5,56 @@ sidebar_label: "3.5 PodDisruptionBudget"
 
 # Bước 3.5 — PodDisruptionBudget {#step-35--poddisruptionbudget-and-availability}
 
-:::info Nội dung thực hiện
-**Mục tiêu:** test eviction khi PDB budget bằng 0 và 1, đồng thời kiểm tra API trong lúc thay Pod.
-**Yêu cầu:** 6. **Thời gian:** khoảng 20 phút. **Chạy từ:** `$GITOPS_DIR`.
-:::
+Trong phần này, chúng ta sẽ tìm hiểu PDB kiểm soát eviction như thế nào, rồi thử hai trường hợp: eviction bị chặn và eviction được phép. Sau đó, gọi API trong lúc thay Pod để quan sát ảnh hưởng thực tế.
+
+**Thời gian:** khoảng 20 phút. **Chạy từ:** `$GITOPS_DIR`.
+
+## Scheduling, replica và PDB {#availability-basics}
+
+### Nhiều replica đã đủ chưa?
+
+Nếu hai replica cùng chạy trên một node, mất node đó vẫn làm cả hai Pod ngừng phục vụ. Chúng ta cần xem cả số replica lẫn nơi các Pod đang chạy. Service và readiness probe giúp điều phối request tới Pod sẵn sàng, còn scheduling quyết định các Pod nằm trên node nào.
+
+Node selector chọn các node có label phù hợp. Taint hạn chế Pod vào node; toleration cho phép Pod chấp nhận taint đó. Các điều kiện này đưa backend ShopNow vào mixed pool, nhưng bản thân chúng chưa phân bổ replica đều.
+
+### Topology spread và Pod anti-affinity
+
+Topology spread constraints đếm Pod theo các domain như hostname hoặc AZ và giới hạn độ lệch qua `maxSkew`. Ví dụ, ba replica trên hai node có thể phân bố 2 + 1. Với `DoNotSchedule`, Pod chưa có vị trí thỏa điều kiện sẽ tiếp tục Pending.
+
+Pod anti-affinity mô tả các Pod không nên hoặc không được ở cùng domain. Quy tắc required mỗi node một replica cần thêm node khi tăng replica. Trong workshop, topology spread được dùng để giữ phân bố tương đối đều khi số replica thay đổi.
+
+Các phép đếm chỉ có ý nghĩa khi biết label selector và các node đủ điều kiện. Cần tính cả domain chưa có Pod, không chỉ đếm các node đang xuất hiện trong danh sách Pod.
+
+### PDB kiểm soát việc nào?
+
+PDB đặt mức availability cần giữ khi có request eviction tự nguyện. Ví dụ, `workshop-proof` có ba replica và `minAvailable: 2`. Khi cả ba Ready, budget cho phép evict một Pod. Nếu một Pod đã Unready, eviction thêm một Pod healthy có thể bị từ chối.
+
+PDB không tạo thêm replica. Nó cũng không chặn node crash, AWS thu hồi Spot hoặc lệnh xóa Pod trực tiếp. Trong rolling update, Deployment controller dùng các tham số rollout của Deployment để quyết định số Pod được thay. Vì vậy không thể xem PDB là bảo đảm HA cho toàn ứng dụng.
+
+### Chúng ta sẽ quan sát gì trong lab?
+
+Đầu tiên làm một Pod `workshop-proof` Unready để budget về 0 và gửi request eviction. Tiếp theo khôi phục Pod, chờ budget về 1 rồi thử lại. Cuối cùng, gọi API trong lúc evict một Product Pod để ghi lại kết quả thực tế, kể cả request lỗi nếu có.
+
+Đọc thêm: [Pod disruptions và PDB](https://kubernetes.io/docs/concepts/workloads/pods/disruptions/), [topology spread constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/).
 
 ## Cách PDB hoạt động {#what-a-pdb-does}
 
-PodDisruptionBudget kiểm soát **Voluntary Eviction** như khi `kubectl drain` hoặc Karpenter Consolidation. Kubernetes kiểm tra số Pod Healthy trước khi cho eviction. Nếu thao tác vi phạm budget, API từ chối với HTTP `429`.
+PDB được kiểm tra khi có yêu cầu eviction, chẳng hạn trong `kubectl drain` hoặc Karpenter consolidation. Kubernetes từ chối request bằng HTTP `429` nếu việc evict Pod làm vi phạm budget. Vì vậy, chúng ta cần thử bằng eviction API để quan sát đúng hành vi của PDB.
 
 | Workload | PDB | Khi có 2 replica Ready |
 |---|---|---|
 | Từng backend, trừ Eureka | `maxUnavailable: 1` | Mỗi lần được evict một Pod |
 | `workshop-proof` (3 replica) | `minAvailable: 2` | Cho phép một eviction; không cho phép nếu đã có Pod unready |
 
-PDB **không** ngăn `kubectl delete pod` trực tiếp, node crash hoặc Spot bị thu hồi. Tính sẵn sàng trước các sự kiện đó đến từ nhiều replica phân bổ qua node và zone ([bước 3.4](pod-placement)).
+PDB không chặn lệnh xóa Pod trực tiếp và không ngăn node bị crash hoặc Spot instance bị thu hồi. Các trường hợp này vẫn cần replica được phân bổ qua nhiều node và AZ như [bước 3.4](pod-placement).
 
 ```bash
 kubectl --context eks-workload -n shopnow get pdb
 ```
 
-**Kết quả cần có:** mỗi backend trừ Eureka có một PDB với `ALLOWED DISRUPTIONS 1`; `workshop-proof` có `MIN AVAILABLE 2`.
+**Kết quả:** mỗi backend trừ Eureka có một PDB với `ALLOWED DISRUPTIONS 1`; `workshop-proof` có `MIN AVAILABLE 2`.
 
-## 1. Test Eviction với Budget 0 {#1-an-eviction-is-refused-when-the-budget-is-0}
+## 1. Eviction với budget 0 {#1-an-eviction-is-refused-when-the-budget-is-0}
 
 Làm một Pod `workshop-proof` Unready qua file mà Readiness Probe kiểm tra trên EFS. Khi còn 2/3 Pod Healthy, budget giảm về 0:
 
@@ -50,9 +77,9 @@ JSON
 evict "$VICTIM" 2>&1 | tee "$EVIDENCE_DIR/pdb-refused.txt"
 ```
 
-**Kết quả cần có:** `Cannot evict pod as it would violate the pod's disruption budget` (HTTP 429); Pod vẫn đang chạy.
+**Kết quả:** `Cannot evict pod as it would violate the pod's disruption budget` (HTTP 429); Pod vẫn đang chạy.
 
-## 2. Test Eviction với Budget 1 {#2-an-eviction-is-allowed-when-the-budget-is-1}
+## 2. Eviction với budget 1 {#2-an-eviction-is-allowed-when-the-budget-is-1}
 
 Khôi phục Pod unready, chờ budget trở lại 1 rồi lặp lại:
 
@@ -66,7 +93,7 @@ evict "$VICTIM" | tee "$EVIDENCE_DIR/pdb-allowed.txt"
 "${P[@]}" get pods -l app=workshop-proof -o wide
 ```
 
-**Kết quả cần có:** eviction thành công, Deployment tạo Pod thay thế và cả ba Pod trở lại Ready.
+**Kết quả:** eviction thành công, Deployment tạo Pod thay thế và cả ba Pod trở lại Ready.
 
 ## 3. Kiểm tra API khi Evict Pod {#3-the-api-stays-up-during-an-eviction}
 
@@ -85,9 +112,9 @@ Trong terminal khác, evict một product Pod thông qua budget:
 evict "$("${P[@]}" get pods -l app=shopnow-product-service -o jsonpath='{.items[0].metadata.name}')"
 ```
 
-**Kết quả cần có:** eviction được chấp nhận vì budget bằng 1; các request đều trả `200`, hoặc chỉ gián đoạn ngắn khi gateway cập nhật Eureka. Đếm và báo cáo số dòng khác 200.
+**Kết quả:** eviction được chấp nhận khi budget bằng 1. Theo dõi HTTP status trong lúc Product Pod được thay, đếm số request khác `200` và ghi thời gian lỗi nếu có. Gateway cập nhật thông tin từ Eureka có thể ảnh hưởng kết quả trong khoảng chuyển tiếp.
 
-## 4. Test Node Drain (tùy chọn) {#4-a-real-drain-optional}
+## 4. Thử drain node (tùy chọn) {#4-a-real-drain-optional}
 
 `kubectl drain` evict mọi Pod trên node qua cùng các budget. Thử trên node pool 2 không chứa database:
 

@@ -1,15 +1,15 @@
 ---
-title: "Karpenter · 3 nhóm NodePool"
+title: "Karpenter · Ba nhóm NodePool"
 ---
 
 # Karpenter NodePools {#from-pod-resource-requirements-to-ec2-nodes}
 
-Karpenter cấp EC2 cho Pod chưa có node phù hợp và thu hồi capacity dư theo policy. Workshop dùng 3 nhóm NodePool: Spot, Mixed On-Demand/Spot và ARM64.
+Karpenter theo dõi Pod chưa có node phù hợp và tạo EC2 theo cấu hình NodePool. Khi workload giảm, controller có thể thu hồi node theo policy. Trong workshop, chúng ta sử dụng ba nhóm: Spot, mixed On-Demand/Spot và ARM64.
 
 | Nhóm trong đề bài | Đối tượng Kubernetes | Workload |
 |---|---|---|
 | 1. Spot | `batch-spot` | Bài thử Spot/batch |
-| 2. Kết hợp On-Demand và Spot | `ms-od` + `ms-spot` | Backend ShopNow và bài thử EFS/availability |
+| 2. Kết hợp On-Demand và Spot | `ms-od` + `ms-spot` | backend ShopNow và bài test EFS/availability |
 | 3. ARM64 | `arm64` | Bài thử image ARM64 |
 
 Managed Node Group `infra` tách khỏi ba nhóm Karpenter, giữ controller hoạt động khi các pool động trống.
@@ -17,9 +17,9 @@ Managed Node Group `infra` tách khỏi ba nhóm Karpenter, giữ controller ho�
 ## Các bước thực hiện {#lab-sequence}
 
 1. [Hiểu tài nguyên AWS và controller](02-karpenter/01-karpenter-two-halves-architecture.md).
-2. [Apply EC2NodeClass và NodePool](02-karpenter/02-ec2nodeclass-and-nodepools-configuration.md).
+2. [apply EC2NodeClass và NodePool](02-karpenter/02-ec2nodeclass-and-nodepools-configuration.md).
 3. [Đo tỷ lệ 1:3 và giới hạn của cách triển khai hiện tại](02-karpenter/03-on-demand-spot-ratio-and-limits.md).
 4. [Kiểm tra disruption và xử lý Spot interruption](02-karpenter/04-disruption-and-spot-interruption.md).
 5. [Chạy container ARM64](02-karpenter/05-arm64-validation.md).
 
-Chạy ít nhất 1 Pod trên mỗi nhóm để kiểm tra Capacity Type và Architecture. Với Mixed Pool, lưu cả số node và vCPU On-Demand/Spot để đối chiếu tỷ lệ.
+Chạy ít nhất 1 Pod trên mỗi nhóm để kiểm tra capacity type và architecture. Với mixed pool, lưu cả số node và vCPU On-Demand/Spot để đối chiếu tỷ lệ.

@@ -1,0 +1,84 @@
+[
+  {
+    "file": "00-architecture/01-architecture-overview.md",
+    "route": "/docs/architecture/architecture-overview",
+    "anchor": "kubernetes-and-eks",
+    "title": "Kubernetes và Amazon EKS",
+    "references": [
+      "https://docs.aws.amazon.com/eks/latest/userguide/what-is-eks.html"
+    ]
+  },
+  {
+    "file": "00-architecture/03-layer-10-network.md",
+    "route": "/docs/architecture/layer-10-network",
+    "anchor": "network-basics",
+    "title": "VPC, subnet và Ingress",
+    "references": [
+      "https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html"
+    ]
+  },
+  {
+    "file": "00-architecture/00-terraform-workflow.md",
+    "route": "/docs/architecture/terraform-workflow",
+    "anchor": "terraform-basics",
+    "title": "Terraform, state và bootstrap",
+    "references": [
+      "https://developer.hashicorp.com/terraform/language/state"
+    ]
+  },
+  {
+    "file": "02-karpenter/02-ec2nodeclass-and-nodepools-configuration.md",
+    "route": "/docs/karpenter/ec2nodeclass-and-nodepools-configuration",
+    "anchor": "karpenter-basics",
+    "title": "Karpenter và các loại node",
+    "references": [
+      "https://karpenter.sh/docs/concepts/nodepools/"
+    ]
+  },
+  {
+    "file": "04-apps-shopnow/00-shopnow-end-to-end-deployment-guide.md",
+    "route": "/docs/apps-shopnow/shopnow-end-to-end-deployment-guide",
+    "anchor": "gitops-and-helm",
+    "title": "GitOps, Helm và ArgoCD",
+    "references": [
+      "https://argo-cd.readthedocs.io/en/stable/user-guide/helm/"
+    ]
+  },
+  {
+    "file": "04-apps-shopnow/05-efs-persistent-volumes.md",
+    "route": "/docs/apps-shopnow/efs-persistent-volumes",
+    "anchor": "storage-basics",
+    "title": "PV, PVC, EBS và EFS",
+    "references": [
+      "https://kubernetes.io/docs/concepts/storage/persistent-volumes/"
+    ]
+  },
+  {
+    "file": "04-apps-shopnow/07-availability-and-pdb.md",
+    "route": "/docs/apps-shopnow/availability-and-pdb",
+    "anchor": "availability-basics",
+    "title": "Scheduling, replica và PDB",
+    "references": [
+      "https://kubernetes.io/docs/concepts/workloads/pods/disruptions/",
+      "https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/"
+    ]
+  },
+  {
+    "file": "03-observability/01-observability-architecture-overview.md",
+    "route": "/docs/observability/observability-architecture-overview",
+    "anchor": "metrics-and-logs",
+    "title": "Metrics, logs và observability",
+    "references": [
+      "https://grafana.com/docs/loki/latest/get-started/overview/"
+    ]
+  },
+  {
+    "file": "01-eks-security.md",
+    "route": "/docs/eks-security",
+    "anchor": "aws-and-kubernetes-access",
+    "title": "IAM, Kubernetes RBAC và TLS",
+    "references": [
+      "https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html"
+    ]
+  }
+]

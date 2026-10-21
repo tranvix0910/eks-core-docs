@@ -1,10 +1,10 @@
 ---
-title: "Mở rộng · Workload Autoscaling"
+title: "Mở rộng · workload autoscaling"
 ---
 
 # HPA, CPA, KEDA và Karpenter {#separate-replica-scaling-from-node-provisioning}
 
-HPA, CPA và KEDA điều chỉnh số replica; Karpenter cấp EC2 khi Pod cần thêm capacity. Nếu node hiện tại còn tài nguyên, tăng replica chưa cần tạo node mới.
+Có hai việc khác nhau khi scale ứng dụng: tăng replica và thêm node để chạy các replica đó. HPA, CPA, KEDA điều chỉnh replica theo tín hiệu đã cấu hình; Karpenter cấp node khi Pod cần thêm capacity.
 
 | Cơ chế | Đầu vào | Target | Khi phù hợp |
 |---|---|---|---|
@@ -15,10 +15,9 @@ HPA, CPA và KEDA điều chỉnh số replica; Karpenter cấp EC2 khi Pod cầ
 
 ## Cấu hình hiện tại {#current-implementation}
 
-- Metrics Server do Terraform cài tại Layer 20 và được gán vào node infra.
-- Có template HPA backend, mặc định tắt. Sửa tên target trước khi bật.
-- Có manifest CPA và KEDA ScaledObject. File tồn tại không chứng minh đã triển khai.
-- KEDA hiện kết hợp cron với query CPU usage Prometheus, không query HTTP RPS từ Mimir như một số hướng dẫn cũ.
+Metrics Server đã được Terraform cài ở layer 20 và chạy trên node `infra`. Các backend chart có template HPA nhưng mặc định tắt; cần sửa đúng tên target trước khi bật.
+
+Repo cũng có manifest CPA và KEDA ScaledObject để làm bài mở rộng. Kiểm tra operator và các resource đã được cài trên cluster trước khi apply. ScaledObject hiện dùng cron cùng CPU usage từ Prometheus.
 
 ## Thực hiện Autoscaling Lab {#choose-a-mechanism-for-the-workshop}
 

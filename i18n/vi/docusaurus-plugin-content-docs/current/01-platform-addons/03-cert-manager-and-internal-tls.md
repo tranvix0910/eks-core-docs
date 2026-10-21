@@ -1,14 +1,13 @@
 ---
-title: "Bước 4.1 — Setup Private TLS và DNS"
+title: "Bước 4.1 — Cấu hình Private TLS và DNS"
 sidebar_label: "4.1 TLS và DNS nội bộ"
 ---
 
-# Bước 4.1 — Setup Private TLS và DNS {#step-41--connect-the-clusters-private-tls-and-dns}
+# Bước 4.1 — Cấu hình Private TLS và DNS {#step-41--connect-the-clusters-private-tls-and-dns}
 
-:::info Nội dung thực hiện
-**Mục tiêu:** tạo 2 endpoint HTTPS nội bộ cho Mimir và Loki để Cluster Workload gửi metrics, logs sang Cluster Observability.
-**Yêu cầu:** 9 (chuyển telemetry sang cluster 2). **Thời gian:** khoảng 20 phút. **Chạy từ:** `$GITOPS_DIR`.
-:::
+Để gửi metrics và logs giữa hai cluster, chúng ta sẽ tạo endpoint HTTPS nội bộ cho Mimir và Loki. Phần này gồm cấp certificate, import vào ACM, tạo internal ALB và cấu hình private DNS.
+
+**Thời gian:** khoảng 20 phút. **Chạy từ:** `$GITOPS_DIR`.
 
 ## Luồng kết nối {#the-path-you-are-building}
 
@@ -33,13 +32,11 @@ flowchart LR
   ALB -- ":3100" --> LG
 ```
 
-1. cert-manager trên cluster 1 tạo private CA và chứng chỉ cho cả hai hostname.
-2. Chứng chỉ được import vào **ACM**, vì ALB chỉ dùng được chứng chỉ ACM.
-3. ALB **nội bộ** trong cluster 2 kết thúc TLS và chuyển tiếp tới gateway Mimir/Loki.
-4. Route 53 tạo alias hai hostname tới ALB bên trong VPC.
-5. Prometheus và Alloy chỉ nhận chứng chỉ CA để xác minh ALB.
+cert-manager trên cluster 1 tạo CA và certificate cho hai hostname. Sau đó, chúng ta import certificate vào ACM để gắn với listener của internal ALB trên cluster 2.
 
-## 1. Tạo CA và Certificate {#1-issue-the-ca-and-certificate}
+Route 53 trỏ các hostname tới ALB. Prometheus và Alloy dùng CA certificate để xác minh endpoint trước khi gửi dữ liệu. Private key không cần đưa sang các Pod gửi metrics và logs.
+
+## 1. Tạo CA và certificate {#1-issue-the-ca-and-certificate}
 
 ```bash
 kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/observability/tls/ca-issuer.yaml"
@@ -48,9 +45,9 @@ kubectl --context eks-workload apply -f "$GITOPS_DIR/platform/observability/tls/
 kubectl --context eks-workload -n cert-manager wait certificate/observability-alb-tls --for=condition=Ready --timeout=3m
 ```
 
-## 2. Import Certificate vào ACM {#2-import-the-certificate-into-acm}
+## 2. Import certificate vào ACM {#2-import-the-certificate-into-acm}
 
-Xuất Private Key vào thư mục tạm, giới hạn quyền đọc cho user hiện tại. Không lưu key trong repo.
+Xuất private key vào thư mục tạm, giới hạn quyền đọc cho user hiện tại. Không lưu key trong repo.
 
 ```bash
 umask 077
@@ -67,11 +64,11 @@ export CERT_ARN=$(aws acm import-certificate --region "$AWS_REGION" \
 echo "$CERT_ARN"
 ```
 
-**Kết quả cần có:** SAN có cả hai hostname `observability.internal` và bạn nhận được ACM ARN.
+**Kết quả:** SAN có cả hai hostname `observability.internal` và bạn nhận được ACM ARN.
 
 ## 3. Tạo ALB nội bộ {#3-create-the-internal-alb}
 
-Thay Certificate ARN trong Ingress mẫu, rồi Apply vào Cluster Observability:
+Thay certificate ARN trong Ingress mẫu, rồi apply vào observability cluster:
 
 ```bash
 mkdir -p "$GITOPS_DIR/.workshop"
@@ -81,9 +78,9 @@ kubectl --context eks-observability apply -f "$GITOPS_DIR/.workshop/internal-ing
 kubectl --context eks-observability -n monitoring get ingress mimir loki -w    # wait for ADDRESS, then Ctrl+C
 ```
 
-Load Balancer Controller tạo một ALB nội bộ; hai Ingress dùng chung group `eks-observability-internal` và security group `eks-observability-internal-alb` do Terraform tạo.
+tải Balancer controller tạo một ALB nội bộ; hai Ingress dùng chung group `eks-observability-internal` và security group `eks-observability-internal-alb` do Terraform tạo.
 
-## 4. Tạo Private DNS Record cho ALB {#4-point-the-private-dns-names-at-the-alb}
+## 4. Tạo private DNS Record cho ALB {#4-point-the-private-dns-names-at-the-alb}
 
 ```bash
 ALB_DNS=$(kubectl --context eks-observability -n monitoring get ingress mimir -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
@@ -96,7 +93,7 @@ Thêm **tên ALB** vừa lấy vào `$TF_DIR/21-cluster-observability/terraform.
 internal_observability_alb_name = "k8s-eksobservabilityin-…"
 ```
 
-Sau đó apply Layer 21 để tạo hai alias record:
+Sau đó apply layer 21 để tạo hai alias record:
 
 ```bash
 L=21-cluster-observability
@@ -106,7 +103,7 @@ terraform -chdir="$TF_DIR/$L" apply "$PLAN_DIR/$L-dns.tfplan"
 
 ## 5. Cấu hình CA cho Prometheus và Alloy {#5-give-the-senders-the-ca}
 
-Prometheus và Alloy đọc CA từ Secret `observability-alb-tls`, namespace `monitoring` trên Cluster Workload. Secret phía gửi chỉ cần CA Certificate:
+Prometheus và Alloy đọc CA từ Secret `observability-alb-tls` trong namespace `monitoring` của workload cluster. Tạo Secret chứa CA certificate như sau:
 
 ```bash
 kubectl --context eks-workload -n monitoring create secret generic observability-alb-tls \
@@ -115,9 +112,9 @@ kubectl --context eks-workload -n monitoring create secret generic observability
 kubectl --context eks-workload -n monitoring rollout restart statefulset prometheus-prometheus-kube-prometheus-prometheus
 ```
 
-## Kiểm tra kết quả {#verify}
+## Kiểm tra {#verify}
 
-Từ Pod trên Cluster Workload, gọi 2 endpoint và dùng CA để kiểm tra Certificate:
+Từ Pod trên workload cluster, gọi 2 endpoint và dùng CA để kiểm tra certificate:
 
 ```bash
 kubectl --context eks-workload -n monitoring run tls-check --rm -i --restart=Never \
@@ -129,7 +126,7 @@ kubectl --context eks-workload -n monitoring run tls-check --rm -i --restart=Nev
     done'
 ```
 
-**Kết quả cần có:** hai dòng có địa chỉ riêng `10.20.x.x` và HTTP `200`. Lỗi chứng chỉ cho thấy SAN hoặc CA không khớp. Tiếp tục kiểm tra các thành phần gửi thực tế:
+**Kết quả:** hai dòng có địa chỉ riêng `10.20.x.x` và HTTP `200`. Lỗi chứng chỉ cho thấy SAN hoặc CA không khớp. Tiếp tục kiểm tra các thành phần gửi thực tế:
 
 ```bash
 kubectl --context eks-workload -n monitoring logs prometheus-prometheus-kube-prometheus-prometheus-0 -c prometheus --since=5m | grep -i remote

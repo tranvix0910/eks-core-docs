@@ -4,23 +4,23 @@
     "description": "The label for version current"
   },
   "sidebar.guides.category.0 · Before you start": {
-    "message": "0 · Prepare",
+    "message": "0 · Chuẩn bị",
     "description": "The label for category '0 · Before you start' in sidebar 'guides'"
   },
   "sidebar.guides.category.1 · Infrastructure with Terraform": {
-    "message": "1 · Terraform",
+    "message": "1 · Hạ tầng với Terraform",
     "description": "The label for category '1 · Infrastructure with Terraform' in sidebar 'guides'"
   },
   "sidebar.guides.category.2 · Platform on cluster 1": {
-    "message": "2 · Cluster 1 · Workload",
+    "message": "2 · Cấu hình workload cluster",
     "description": "The label for category '2 · Platform on cluster 1' in sidebar 'guides'"
   },
   "sidebar.guides.category.3 · Microservices": {
-    "message": "3 · Microservices",
+    "message": "3 · Triển khai ShopNow",
     "description": "The label for category '3 · Microservices' in sidebar 'guides'"
   },
   "sidebar.guides.category.4 · Centralized observability": {
-    "message": "4 · Centralized Observability",
+    "message": "4 · Observability",
     "description": "The label for category '4 · Centralized observability' in sidebar 'guides'"
   },
   "sidebar.guides.category.5 · Accept and operate": {
@@ -44,7 +44,7 @@
     "description": "The label for the doc item 'Diagnostics commands' in sidebar 'guides', linking to the doc operations/system-verification-and-diagnostics"
   },
   "sidebar.guides.doc.ShopNow services and ports": {
-    "message": "ShopNow Services và Ports",
+    "message": "Các service và port của ShopNow",
     "description": "The label for the doc item 'ShopNow services and ports' in sidebar 'guides', linking to the doc apps-shopnow/shopnow-microservices-architecture"
   },
   "sidebar.guides.doc.API gateway checks": {
@@ -60,7 +60,7 @@
     "description": "The label for the doc item 'Karpenter concepts' in sidebar 'guides', linking to the doc karpenter-autoscaling-nodepools"
   },
   "sidebar.guides.doc.Karpenter: AWS side vs controller": {
-    "message": "Karpenter · AWS Resources và Controller",
+    "message": "Các thành phần của Karpenter",
     "description": "The label for the doc item 'Karpenter: AWS side vs controller' in sidebar 'guides', linking to the doc karpenter/karpenter-two-halves-architecture"
   },
   "sidebar.guides.doc.Consolidation and Spot interruption": {
@@ -72,15 +72,15 @@
     "description": "The label for the doc item 'Autoscaling: HPA, CPA, KEDA' in sidebar 'guides', linking to the doc workload-autoscaling-hpa-cpa-keda"
   },
   "sidebar.guides.doc.Autoscaling lab": {
-    "message": "Autoscaling Lab",
+    "message": "Thực hành autoscaling",
     "description": "The label for the doc item 'Autoscaling lab' in sidebar 'guides', linking to the doc operations/workload-autoscaling-implementation-and-testing"
   },
   "sidebar.guides.doc.Release strategies": {
-    "message": "Deployment và Rollback",
+    "message": "Triển khai và rollback",
     "description": "The label for the doc item 'Release strategies' in sidebar 'guides', linking to the doc blue-green-deployment-argo-rollouts"
   },
   "sidebar.guides.doc.Blue-green frontend": {
-    "message": "Blue-Green Frontend",
+    "message": "Blue-green cho frontend",
     "description": "The label for the doc item 'Blue-green frontend' in sidebar 'guides', linking to the doc apps-shopnow/blue-green-argo-rollouts"
   },
   "sidebar.guides.doc.Load Balancer Controller": {
@@ -88,11 +88,11 @@
     "description": "The label for the doc item 'Load Balancer Controller' in sidebar 'guides', linking to the doc platform-addons/aws-load-balancer-controller"
   },
   "sidebar.guides.doc.Public admin ingress": {
-    "message": "Public Admin Ingress",
+    "message": "Ingress cho công cụ quản trị",
     "description": "The label for the doc item 'Public admin ingress' in sidebar 'guides', linking to the doc platform-addons/admin-ingress-and-hardening"
   },
   "sidebar.guides.doc.Security overview": {
-    "message": "Security Overview",
+    "message": "Quyền truy cập và bảo mật",
     "description": "The label for the doc item 'Security overview' in sidebar 'guides', linking to the doc eks-security"
   },
   "sidebar.guides.doc.Pod Identity": {
@@ -108,7 +108,7 @@
     "description": "The label for the doc item 'Secrets' in sidebar 'guides', linking to the doc security/secrets-management-and-rotation"
   },
   "sidebar.guides.doc.Certificate renewal": {
-    "message": "Renew Certificate",
+    "message": "Gia hạn certificate",
     "description": "The label for the doc item 'Certificate renewal' in sidebar 'guides', linking to the doc security/tls-certificate-lifecycle"
   },
   "sidebar.guides.doc.Rancher": {

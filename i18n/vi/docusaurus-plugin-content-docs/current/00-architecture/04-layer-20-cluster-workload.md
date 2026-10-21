@@ -1,44 +1,43 @@
 ---
-title: "Bước 1.2 — Setup Cluster 1 · Workload"
+title: "Bước 1.2 — Tạo workload cluster"
 sidebar_label: "1.2 Cluster 1 · Workload"
 ---
 
-# Bước 1.2 — Setup Cluster 1 · Workload {#step-12--create-cluster-1-workload}
+# Bước 1.2 — Tạo workload cluster {#step-12--create-cluster-1-workload}
 
-:::info Nội dung thực hiện
-**Mục tiêu:** tạo EKS Cluster Workload, Managed Node Group `infra`, IAM cho Karpenter, EFS và ECR.
-**Yêu cầu:** 1 (Managed Node Group), 4 (EFS). **Thời gian:** khoảng 20 phút. **Chạy từ:** `$TF_DIR/20-cluster-workload`.
-:::
+Sau khi có network, chúng ta sẽ tạo cluster `eks-workload`, Managed Node Group `infra`, EFS và các ECR repository cho ShopNow. Các công cụ chạy bên trong cluster sẽ được cài ở cuối bước 1.3.
 
-## Resource của Layer {#what-this-layer-creates}
+**Thời gian:** khoảng 20 phút. **Chạy từ:** `$TF_DIR/20-cluster-workload`.
+
+## Resource được tạo {#what-this-layer-creates}
 
 | Tài nguyên | Chi tiết |
 |---|---|
 | EKS `eks-workload` | Kubernetes 1.34, public endpoint, control-plane log gửi CloudWatch và lưu 7 ngày |
-| Managed Node Group `infra` | 3 × `t3.large` On-Demand, AL2023, label `role=infra` — chạy Platform Tools |
+| Managed Node Group `infra` | 3 × `t3.large` On-Demand, AL2023, label `role=infra` — chạy công cụ vận hành |
 | EKS add-on | VPC CNI, CoreDNS, kube-proxy, EBS CSI, EFS CSI, Pod Identity Agent |
 | Phần AWS của Karpenter | Node IAM role, controller IAM (Pod Identity), SQS interruption queue, EventBridge rule |
 | EFS | File system có mount target trong từng workload subnet; cho phép NFS (2049) từ node |
 | ECR | Bảy repository `shopnow/*` lưu image ShopNow |
-| Pod Identity association | EBS CSI, EFS CSI, Load Balancer Controller, Karpenter |
+| Pod Identity association | EBS CSI, EFS CSI, tải Balancer controller, Karpenter |
 
-Layer này cũng quản lý LBC, Karpenter, ArgoCD, Prometheus, Metrics Server và StorageClass `gp3`, `efs-sc`. Các thành phần này cần EKS hoạt động trước, nên sẽ Apply ở cuối [bước 1.3](05-layer-21-cluster-observability.md#6-finish-cluster-1).
+layer này cũng quản lý LBC, Karpenter, ArgoCD, Prometheus, Metrics Server và StorageClass `gp3`, `efs-sc`. Các thành phần này cần EKS hoạt động trước, nên sẽ apply ở cuối [bước 1.3](05-layer-21-cluster-observability.md#6-finish-cluster-1).
 
-## 1. Kiểm tra Terraform Variables {#1-review-the-inputs}
+## 1. Kiểm tra biến Terraform {#1-review-the-inputs}
 
 ```bash
 grep -E 'kubernetes_version|nodegroup_|efs_create|ecr_repository' -A0 "$TF_DIR/20-cluster-workload/terraform.tfvars"
 ```
 
-Giữ `efs_create = true` và 7 ECR Repository cho ShopNow. Đặt `eks_nodegroup_min_size` từ 2 trở lên để Platform Tools có node dự phòng khi một infra node gặp sự cố.
+Giữ `efs_create = true` và bảy ECR repository cho ShopNow. Đặt `eks_nodegroup_min_size` từ 2 trở lên để công cụ vận hành có node dự phòng khi một infra node gặp sự cố.
 
-[![Terraform Init Workload Layer kết nối S3 Backend và cài EKS Module, Provider](/img/workshop/terraform/workload-init.png)](/img/workshop/terraform/workload-init.png)
+[![Terraform Init Workload layer kết nối S3 backend và cài EKS Module, Provider](/img/workshop/terraform/workload-init.png)](/img/workshop/terraform/workload-init.png)
 
-*Workload Layer Init thành công. Các ảnh capture dùng account và state của môi trường thực hành; làm theo lệnh bootstrap bên dưới cho lần triển khai mới. Bấm vào ảnh để xem đầy đủ.*
+*Workload layer Init thành công. Các ảnh capture dùng account và state của môi trường thực hành; làm theo lệnh bootstrap bên dưới cho lần triển khai mới. Bấm vào ảnh để xem đầy đủ.*
 
-## 2. Apply AWS Foundation lần đầu {#2-apply-the-foundation-first-time-only}
+## 2. Apply hạ tầng AWS lần đầu {#2-apply-the-foundation-first-time-only}
 
-Lần đầu triển khai, Cluster Observability chưa có state và Helm chưa thể kết nối tới EKS đang được tạo. Apply phần AWS Foundation trước; các `-target` bên dưới thuộc **cùng một lệnh Plan**, dấu `\` chỉ dùng để xuống dòng:
+Ở lần triển khai đầu, observability cluster chưa có state và Kubernetes API của workload cluster cũng chưa sẵn sàng cho Helm. Chúng ta sẽ tạo EKS cùng các AWS resource trước. Các `-target` dưới đây nằm trong cùng một lệnh plan; dấu `\` chỉ để viết lệnh trên nhiều dòng:
 
 ```bash
 L=20-cluster-workload
@@ -56,20 +55,20 @@ terraform -chdir="$TF_DIR/$L" plan \
 terraform -chdir="$TF_DIR/$L" apply "$PLAN_DIR/$L-foundation.tfplan"
 ```
 
-Cảnh báo `-target` là bình thường trong lượt bootstrap này. Chờ EKS tạo xong, thường khoảng 15 phút. Sau bước 1.3, chạy full Plan và Apply cho Layer 20 để hoàn tất các resource còn lại.
+Terraform sẽ cảnh báo về `-target` vì plan này chỉ chọn một phần cấu hình. Dùng cách này cho lượt bootstrap, chờ EKS tạo xong, rồi tiếp tục bước 1.3. Sau đó quay lại chạy full plan và apply layer 20 để cài các công cụ còn lại. Thời gian tạo EKS thường khoảng 15 phút.
 
-[![Terraform Workload Plan hiển thị output Cluster Endpoint, ECR Repository, EFS và Karpenter](/img/workshop/terraform/workload-plan-outputs.png)](/img/workshop/terraform/workload-plan-outputs.png)
+[![Terraform Workload plan hiển thị output Cluster endpoint, ECR Repository, EFS và Karpenter](/img/workshop/terraform/workload-plan-outputs.png)](/img/workshop/terraform/workload-plan-outputs.png)
 
-*Output dự kiến của Workload Layer. Ảnh được chụp ở một lượt Plan khác, không dùng để đối chiếu số resource của foundation plan. Bấm vào ảnh để xem đầy đủ.*
+*Output dự kiến của Workload layer. Ảnh được chụp ở một lượt plan khác, không dùng để đối chiếu số resource của foundation plan. Bấm vào ảnh để xem đầy đủ.*
 
-## 3. Setup Kubeconfig {#3-connect-kubectl}
+## 3. Cấu hình kubeconfig {#3-connect-kubectl}
 
 ```bash
 aws eks update-kubeconfig --name eks-workload --region "$AWS_REGION" --alias eks-workload
 kubectl --context eks-workload get nodes -L role,node.kubernetes.io/instance-type,topology.kubernetes.io/zone
 ```
 
-## Kiểm tra kết quả {#verify}
+## Kiểm tra {#verify}
 
 ```bash
 kubectl --context eks-workload get nodes -l role=infra
@@ -79,7 +78,7 @@ terraform -chdir="$TF_DIR/20-cluster-workload" output -json ecr_repository_urls 
 terraform -chdir="$TF_DIR/20-cluster-workload" output -raw karpenter_node_iam_role_name; echo
 ```
 
-**Kết quả cần có:**
+**Kết quả:**
 
 - Ba node `Ready` có label `role=infra`, mỗi AZ một node.
 - Pod CoreDNS, VPC CNI, EBS CSI và EFS CSI `Running` trong `kube-system`.
@@ -87,4 +86,4 @@ terraform -chdir="$TF_DIR/20-cluster-workload" output -raw karpenter_node_iam_ro
 
 Nếu node còn `NotReady`, kiểm tra VPC CNI trước (`kubectl -n kube-system logs -l k8s-app=aws-node`).
 
-**Tiếp theo:** [1.3 Cluster 2 — Observability](05-layer-21-cluster-observability.md). Bạn sẽ hoàn tất Layer này ở cuối bước đó.
+**Tiếp theo:** [1.3 Cluster 2 — Observability](05-layer-21-cluster-observability.md). Bạn sẽ hoàn tất layer này ở cuối bước đó.
