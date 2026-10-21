@@ -16,7 +16,7 @@ Vì vậy, chạy được `aws sts get-caller-identity` chưa đủ để kết
 
 ### Pod lấy quyền AWS bằng cách nào?
 
-Mimir cần ghi S3, EFS CSI cần tạo Access Point và Load Balancer Controller cần gọi ELB/EC2 API. workshop dùng EKS Pod Identity để liên kết IAM role với ServiceAccount trong đúng namespace và cluster. SDK trong Pod lấy credentials qua cơ chế này thay vì gắn access key vào image hoặc values.
+Mimir cần ghi S3, EFS CSI cần tạo Access Point và Load Balancer Controller cần gọi ELB/EC2 API. Workshop dùng EKS Pod Identity để liên kết IAM role với ServiceAccount trong đúng namespace và cluster. SDK trong Pod lấy credentials qua cơ chế này thay vì gắn access key vào image hoặc values.
 
 Kubernetes RBAC và IAM phục vụ hai phía khác nhau. ServiceAccount có quyền đọc Pod trong Kubernetes không có nghĩa nó tự được quyền ghi S3. Ngược lại, IAM role có quyền S3 không tự cấp quyền sửa Deployment.
 

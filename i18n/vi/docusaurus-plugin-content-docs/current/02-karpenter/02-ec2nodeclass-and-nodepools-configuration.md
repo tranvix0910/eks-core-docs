@@ -31,7 +31,7 @@ Bạn sẽ khai báo EC2NodeClass và NodePool. Controller tạo NodeClaim khi c
 
 On-Demand phù hợp với phần capacity cần duy trì mà không phụ thuộc cơ chế thu hồi Spot. Spot sử dụng capacity sẵn có của EC2 và có thể bị AWS thu hồi, vì vậy ứng dụng cần xử lý việc thay Pod hoặc node. ARM64 là kiến trúc CPU, không phải một loại hình mua instance: node ARM64 vẫn có thể dùng On-Demand hoặc Spot.
 
-workshop có ba nhóm workload nhưng dùng bốn NodePool. Spot dùng `batch-spot`; mixed pool dùng `ms-od` và `ms-spot`; ARM64 dùng `arm64`. Hai NodePool của mixed pool có cùng label và taint để nhận microservices.
+Workshop có ba nhóm workload nhưng dùng bốn NodePool. Spot dùng `batch-spot`; mixed pool dùng `ms-od` và `ms-spot`; ARM64 dùng `arm64`. Hai NodePool của mixed pool có cùng label và taint để nhận microservices.
 
 ### Tỷ lệ 1:3 được hiểu như thế nào?
 

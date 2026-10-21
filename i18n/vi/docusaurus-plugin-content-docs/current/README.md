@@ -2,7 +2,7 @@
 
 Website workshop: **https://tranvix0910.github.io/eks-core-docs/**. Mở website và chọn ngôn ngữ để thực hiện các bước.
 
-workshop hướng dẫn tạo hai EKS cluster và triển khai ShopNow bằng Terraform, Karpenter và ArgoCD. Phần lý thuyết giải thích các thành phần sẽ sử dụng; phần thực hành đi từ network, cluster đến ứng dụng, observability và cleanup.
+Workshop hướng dẫn tạo hai EKS cluster và triển khai ShopNow bằng Terraform, Karpenter và ArgoCD. Phần lý thuyết giải thích các thành phần sẽ sử dụng; phần thực hành đi từ network, cluster đến ứng dụng, observability và cleanup.
 
 - **workload cluster**: Managed Node Group cho công cụ vận hành; 3 nhóm Karpenter Spot, Mixed On-Demand/Spot 1:3 và ARM64; deploy ShopNow qua ArgoCD, sử dụng EFS, Topology Spread và PDB.
 - **observability cluster**: Mimir, Loki và Grafana để Gửi metrics, Logs từ workload cluster.

@@ -26,7 +26,7 @@ Trong Kubernetes, ứng dụng yêu cầu storage bằng PVC. PV thể hiện vo
 
 ### EBS và EFS được dùng ở đâu?
 
-EBS cung cấp block storage gắn với EC2 trong một AZ. workshop dùng volume `gp3` cho PostgreSQL, MySQL và một số công cụ lưu dữ liệu cục bộ. Với `ReadWriteOnce`, volume được mount đọc/ghi từ một node tại một thời điểm; access mode này không có nghĩa chỉ được phép có một Pod trên node đó.
+EBS cung cấp block storage gắn với EC2 trong một AZ. Workshop dùng volume `gp3` cho PostgreSQL, MySQL và một số công cụ lưu dữ liệu cục bộ. Với `ReadWriteOnce`, volume được mount đọc/ghi từ một node tại một thời điểm; access mode này không có nghĩa chỉ được phép có một Pod trên node đó.
 
 EFS cung cấp filesystem có thể được mount từ nhiều node. Với `ReadWriteMany`, các replica của một service có thể đọc, ghi cùng thư mục dù nằm trên node khác nhau. Vì vậy EFS được dùng cho yêu cầu shared volume của microservices.
 

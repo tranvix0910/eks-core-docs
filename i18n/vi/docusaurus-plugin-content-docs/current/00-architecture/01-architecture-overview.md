@@ -31,7 +31,7 @@ Chẳng hạn, bạn khai báo Product Service cần hai replica. Deployment con
 
 Amazon EKS cung cấp Kubernetes control plane do AWS quản lý. Trong mô hình sử dụng ở workshop này, chúng ta vẫn chọn cấu hình worker node, cài add-on và quản lý ứng dụng. Việc tạo được EKS cluster chưa có nghĩa ShopNow đã được triển khai hoặc có HA.
 
-Managed Node Group là nhóm EC2 node được EKS hỗ trợ quản lý vòng đời. workshop dùng node group `infra` cho ArgoCD, Karpenter, Prometheus và các công cụ vận hành. Karpenter tạo thêm node cho ứng dụng theo nhu cầu của Pod.
+Managed Node Group là nhóm EC2 node được EKS hỗ trợ quản lý vòng đời. Workshop dùng node group `infra` cho ArgoCD, Karpenter, Prometheus và các công cụ vận hành. Karpenter tạo thêm node cho ứng dụng theo nhu cầu của Pod.
 
 ### Vì sao sử dụng hai cluster?
 

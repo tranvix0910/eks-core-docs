@@ -21,7 +21,7 @@ Provider thực hiện thao tác với hệ thống đích, chẳng hạn AWS AP
 
 State lưu mối liên hệ giữa địa chỉ resource trong Terraform và resource thật. Ví dụ, `module.eks` trong cấu hình cần được đối chiếu với đúng EKS cluster của môi trường đang quản lý. Repo có code giống nhau nhưng dùng state khác nhau có thể quản lý hai môi trường khác nhau.
 
-workshop lưu state trên S3. Mỗi layer dùng một key riêng, còn S3 lock file hỗ trợ tránh các lượt ghi state đồng thời. State có thể chứa dữ liệu nhạy cảm, nên không commit file này hoặc bản sao của nó lên Git.
+Workshop lưu state trên S3. Mỗi layer dùng một key riêng, còn S3 lock file hỗ trợ tránh các lượt ghi state đồng thời. State có thể chứa dữ liệu nhạy cảm, nên không commit file này hoặc bản sao của nó lên Git.
 
 ### Init, plan và apply khác nhau thế nào?
 

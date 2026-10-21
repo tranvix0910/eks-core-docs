@@ -31,7 +31,7 @@ Domain riêng giúp truy cập bằng tên dễ nhớ và cấu hình TLS theo d
 
 Hai cluster dùng chung VPC nên có thể kết nối bằng địa chỉ riêng khi route và security group cho phép. Mimir và Loki được đặt sau internal ALB, với hostname trong private hosted zone `observability.internal`.
 
-NAT Gateway phục vụ đường kết nối ra ngoài, không phải đường bắt buộc để metrics và logs đi từ cluster 1 sang cluster 2 trong cùng VPC. workshop dùng một NAT Gateway để giảm số resource; đây là lựa chọn cho lab, không cung cấp dự phòng NAT theo AZ.
+NAT Gateway phục vụ đường kết nối ra ngoài, không phải đường bắt buộc để metrics và logs đi từ cluster 1 sang cluster 2 trong cùng VPC. Workshop dùng một NAT Gateway để giảm số resource; đây là lựa chọn cho lab, không cung cấp dự phòng NAT theo AZ.
 
 Đọc thêm: [VPC và subnet](https://docs.aws.amazon.com/vpc/latest/userguide/how-it-works.html).
 
