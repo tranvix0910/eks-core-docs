@@ -32,7 +32,7 @@ Mark each row **Pass**, **Fail** or **Not tested**. A configuration file alone i
 
 1. Show the architecture diagram: two clusters, infra node group, three pools.
 2. `kubectl get nodes -L role,karpenter.sh/nodepool,karpenter.sh/capacity-type,kubernetes.io/arch` — infra nodes and Karpenter nodes side by side.
-3. ArgoCD UI: every ShopNow Application green.
+3. ArgoCD UI: every application Synced and Healthy.
 4. EFS: write a file in one Pod, read it in another.
 5. Placement table: replicas on different nodes and zones.
 6. PDB: an eviction refused, then allowed.

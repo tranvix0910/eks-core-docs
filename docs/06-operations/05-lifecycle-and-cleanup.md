@@ -16,8 +16,8 @@ sidebar_label: "5.2 Day-2 and cleanup"
 | Network, EKS version, node group size, IAM, EFS, ECR, S3 | `eks-core-terraform/<layer>/*.tf` or `terraform.tfvars` | plan → review → apply that layer |
 | A platform chart (Karpenter, ArgoCD, Prometheus, Mimir, Loki, Grafana) | its values file in `eks-core-gitops/platform/…` | plan → apply the layer that installs it (20 or 21) |
 | Node pools | `eks-core-gitops/platform/nodepools/*.yaml` | `kubectl apply` |
-| A ShopNow service (replicas, resources, PDB, spread) | chart or values in `eks-core-gitops/apps/…` | commit + push → ArgoCD syncs |
-| A ShopNow image | code in `eks-core-apps` | new `IMAGE_TAG` → build → render → apply the Application |
+| A microservice (replicas, resources, PDB, spread) | chart or values in `eks-core-gitops/apps/…` | commit + push → ArgoCD syncs |
+| An application image | code in `eks-core-apps` | new `IMAGE_TAG` → build → render → apply the Application |
 
 ## Example 1 — resize the infra node group (Terraform)
 

@@ -1,9 +1,9 @@
 ---
-title: "Step 3.1 — Build the ShopNow images and push them to ECR"
+title: "Step 3.1 — Build the application images and push them to ECR"
 sidebar_label: "3.1 Build images"
 ---
 
-# Step 3.1 — Build the ShopNow images and push them to ECR
+# Step 3.1 — Build the application images and push them to ECR {#step-31--build-the-shopnow-images-and-push-them-to-ecr}
 
 :::info Step summary
 **Goal:** seven images in ECR, all tagged `$IMAGE_TAG`.

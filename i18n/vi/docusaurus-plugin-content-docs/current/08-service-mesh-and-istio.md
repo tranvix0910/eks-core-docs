@@ -4,7 +4,7 @@ title: "Mở rộng · service mesh và Istio"
 
 # Đánh giá service mesh {#evaluate-istio-after-completing-the-workshop}
 
-Istio là phần mở rộng của workshop. Trước khi cài, hãy kiểm tra ShopNow đang hoạt động với Eureka, Spring Cloud Gateway và luồng metrics, logs hiện tại. Sau đó chọn một mục tiêu cụ thể để thử service mesh, chẳng hạn mTLS giữa hai service.
+Istio là phần mở rộng của workshop. Trước khi cài, hãy kiểm tra ứng dụng đang hoạt động với Eureka, Spring Cloud Gateway và luồng metrics, logs hiện tại. Sau đó chọn một mục tiêu cụ thể để thử service mesh, chẳng hạn mTLS giữa hai service.
 
 ## Mục tiêu của service mesh {#define-the-benefit-before-installation}
 

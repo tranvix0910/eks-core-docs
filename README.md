@@ -22,5 +22,5 @@ Drop a Markdown file into the matching `docs/NN-section/` folder; the sidebar pi
 |---|---|
 | **eks-core-docs** | This repository |
 | [eks-core-terraform](https://github.com/tranvix0910/eks-core-terraform) | Network and EKS clusters |
-| [eks-core-gitops](https://github.com/tranvix0910/eks-core-gitops) | ArgoCD, add-ons, Karpenter node pools, ShopNow Helm charts |
-| [eks-core-apps](https://github.com/tranvix0910/eks-core-apps) | ShopNow service source code and image build script |
+| [eks-core-gitops](https://github.com/tranvix0910/eks-core-gitops) | ArgoCD, add-ons, Karpenter node pools, microservices Helm charts |
+| [eks-core-apps](https://github.com/tranvix0910/eks-core-apps) | Microservices source code and image build script |

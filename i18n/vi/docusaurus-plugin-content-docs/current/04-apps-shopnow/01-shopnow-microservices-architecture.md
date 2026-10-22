@@ -1,10 +1,10 @@
 ---
-title: "ShopNow · microservices architecture"
+title: "Kiến trúc microservices"
 ---
 
-# Tổng quan ShopNow {#the-application-used-to-validate-the-platform}
+# Tổng quan microservices {#the-application-used-to-validate-the-platform}
 
-ShopNow là ứng dụng được dùng xuyên suốt workshop. Frontend viết bằng React, các backend sử dụng Spring Boot và giao tiếp qua API gateway cùng Eureka. Chúng ta sẽ dùng ứng dụng này để thử cách deploy bằng ArgoCD, mount EFS, phân bổ Pod và thu thập metrics, logs.
+Project app trong workshop gồm frontend viết bằng React và các backend service sử dụng Spring Boot, giao tiếp qua API gateway cùng Eureka. Chúng ta sẽ dùng ứng dụng này để thực hành deploy bằng ArgoCD, mount EFS, phân bổ Pod và thu thập metrics, logs. Các lệnh bên dưới giữ tên resource đang dùng trong `eks-core-apps` và `eks-core-gitops`, bao gồm namespace `shopnow`.
 
 | Thành phần | Mã nguồn | Service/cổng trong cluster | Mục đích |
 |---|---|---|---|

@@ -19,7 +19,7 @@ sidebar_label: "1.2 Cluster 1 · Workload"
 | EKS add-ons | VPC CNI, CoreDNS, kube-proxy, EBS CSI, EFS CSI, Pod Identity Agent |
 | Karpenter AWS side | Node IAM role, controller IAM (Pod Identity), SQS interruption queue, EventBridge rules |
 | EFS | File system with a mount target in each workload subnet; NFS (2049) allowed from the nodes |
-| ECR | Seven repositories `shopnow/*` for the ShopNow images |
+| ECR | Seven repositories `shopnow/*` for the application images |
 | Pod Identity associations | EBS CSI, EFS CSI, Load Balancer Controller, Karpenter |
 
 The same layer also installs Helm releases (LBC, Karpenter, ArgoCD, Prometheus, Metrics Server) and the StorageClasses `gp3` and `efs-sc`. Those need a running cluster, so they are applied later in [step 1.3](05-layer-21-cluster-observability.md#6-finish-cluster-1).

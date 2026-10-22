@@ -128,6 +128,6 @@ kubectl --context eks-workload get nodeclaims -w
 | Có NodeClaim nhưng node không join | Node IAM role và EKS access entry; route subnet |
 | `InsufficientInstanceCapacity` với Spot | capacity Spot trong AZ; mở rộng họ instance, không đổi pool sang On-Demand |
 
-Pool 2 được thử khi triển khai ShopNow ([bước 3.2](../apps-shopnow/shopnow-end-to-end-deployment-guide)) và đo tại [bước 2.3](on-demand-spot-ratio-and-limits). Pool 3 được thử tại [bước 2.4](arm64-validation).
+Pool 2 được thử khi triển khai ứng dụng ([bước 3.2](../apps-shopnow/shopnow-end-to-end-deployment-guide)) và đo tại [bước 2.3](on-demand-spot-ratio-and-limits). Pool 3 được thử tại [bước 2.4](arm64-validation).
 
 **Tiếp theo:** [2.3 mixed pool 1:3](on-demand-spot-ratio-and-limits)

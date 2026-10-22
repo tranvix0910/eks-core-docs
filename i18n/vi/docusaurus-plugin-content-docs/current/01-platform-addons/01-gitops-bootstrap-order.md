@@ -48,7 +48,7 @@ helm --kube-context eks-workload upgrade --install cert-manager jetstack/cert-ma
 
 ## 2. Cài Argo Rollouts {#2-install-argo-rollouts}
 
-frontend ShopNow dùng Argo `Rollout` với chiến lược Blue-Green. Cài CRD và Rollouts controller trước khi deploy frontend.
+Frontend của ứng dụng dùng Argo `Rollout` với chiến lược Blue-Green. Cài CRD và Rollouts controller trước khi deploy frontend.
 
 ```bash
 helm repo add argo https://argoproj.github.io/argo-helm && helm repo update argo

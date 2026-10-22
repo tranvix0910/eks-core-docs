@@ -739,7 +739,7 @@
         <mxCell id="c13" value="family m/c/r · generation ≥ 6 · no nano/micro/small · expireAfter 720h · WhenEmptyOrUnderutilized" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=10;fontStyle=0;fontColor=#545B64;" vertex="1" parent="c10">
           <mxGeometry x="20" y="180" width="360" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="c14" value="ShopNow backends (first 24 vCPU)" style="aspect=fixed;sketch=0;html=1;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];shape=mxgraph.kubernetes.icon2;prIcon=pod;fontSize=10;fontColor=#232F3E;html=1;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelPosition=center;" vertex="1" parent="c10">
+        <mxCell id="c14" value="Application backends (first 24 vCPU)" style="aspect=fixed;sketch=0;html=1;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];shape=mxgraph.kubernetes.icon2;prIcon=pod;fontSize=10;fontColor=#232F3E;html=1;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelPosition=center;" vertex="1" parent="c10">
           <mxGeometry x="170" y="240" width="40" height="38" as="geometry" />
         </mxCell>
         <mxCell id="e15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#545B64;strokeWidth=1.5;fontSize=10;fontColor=#545B64;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;exitX=0.375;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="c3" target="c10">
@@ -757,7 +757,7 @@
         <mxCell id="c19" value="family m/c/r · generation ≥ 6 · no nano/micro/small · expireAfter 720h · WhenEmptyOrUnderutilized" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=10;fontStyle=0;fontColor=#545B64;" vertex="1" parent="c16">
           <mxGeometry x="20" y="180" width="360" height="40" as="geometry" />
         </mxCell>
-        <mxCell id="c20" value="ShopNow backends (overflow, up to 72 vCPU)" style="aspect=fixed;sketch=0;html=1;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];shape=mxgraph.kubernetes.icon2;prIcon=pod;fontSize=10;fontColor=#232F3E;html=1;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelPosition=center;" vertex="1" parent="c16">
+        <mxCell id="c20" value="Application backends (overflow, up to 72 vCPU)" style="aspect=fixed;sketch=0;html=1;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;fillColor=#2875E2;strokeColor=#ffffff;points=[[0.005,0.63,0],[0.1,0.2,0],[0.9,0.2,0],[0.5,0,0],[0.995,0.63,0],[0.72,0.99,0],[0.5,1,0],[0.28,0.99,0]];shape=mxgraph.kubernetes.icon2;prIcon=pod;fontSize=10;fontColor=#232F3E;html=1;verticalLabelPosition=bottom;verticalAlign=top;align=center;labelPosition=center;" vertex="1" parent="c16">
           <mxGeometry x="170" y="240" width="40" height="38" as="geometry" />
         </mxCell>
         <mxCell id="e21" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#545B64;strokeWidth=1.5;fontSize=10;fontColor=#545B64;labelBackgroundColor=#ffffff;endArrow=block;endFill=1;exitX=0.625;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="c3" target="c16">
@@ -1211,12 +1211,12 @@
       </root>
     </mxGraphModel>
   </diagram>
-  <diagram name="7. ShopNow application" id="84568056">
+  <diagram name="7. Microservices application" id="84568056">
     <mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1800" pageHeight="1000" background="#ffffff" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
-        <mxCell id="c1" value="ShopNow — the microservices deployed by ArgoCD on pool 2" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#232F3E;" vertex="1" parent="1">
+        <mxCell id="c1" value="Microservices — deployed by ArgoCD on pool 2" style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=22;fontStyle=1;fontColor=#232F3E;" vertex="1" parent="1">
           <mxGeometry x="20" y="10" width="1760" height="34" as="geometry" />
         </mxCell>
         <mxCell id="c2" value="Namespace shopnow. Six Spring backends + a React frontend, two databases and Keycloak. Every backend mounts its own EFS volume." style="text;html=1;whiteSpace=wrap;align=left;verticalAlign=middle;fontSize=13;fontStyle=0;fontColor=#545B64;" vertex="1" parent="1">

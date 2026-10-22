@@ -97,6 +97,6 @@ kubectl --context eks-workload get nodeclaims -w
 | NodeClaim created but node never joins | Node IAM role and EKS access entry; subnet routing |
 | `InsufficientInstanceCapacity` for Spot | Spot capacity in that AZ; widen instance families — do not switch the pool to On-Demand |
 
-Pool 2 is tested when ShopNow is deployed ([step 3.2](../apps-shopnow/shopnow-end-to-end-deployment-guide)) and measured in [step 2.3](on-demand-spot-ratio-and-limits). Pool 3 is tested in [step 2.4](arm64-validation).
+Pool 2 is tested when the microservices are deployed ([step 3.2](../apps-shopnow/shopnow-end-to-end-deployment-guide)) and measured in [step 2.3](on-demand-spot-ratio-and-limits). Pool 3 is tested in [step 2.4](arm64-validation).
 
 **Next:** [2.3 Mixed pool 1:3](on-demand-spot-ratio-and-limits)

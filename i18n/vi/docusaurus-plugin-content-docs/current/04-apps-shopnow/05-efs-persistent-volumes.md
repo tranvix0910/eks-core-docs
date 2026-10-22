@@ -61,7 +61,7 @@ flowchart LR
 | StorageClass `efs-sc` | Terraform | `provisioningMode: efs-ap`, `uid/gid 10001`, `basePath /dynamic` |
 | PVC `<service>-efs` | Từng backend chart (`pvc-efs.yaml`) | `ReadWriteMany`, mount tại `/data` |
 
-Với `ReadWriteMany`, các replica của một service có thể mount cùng thư mục dù chạy trên node hoặc AZ khác nhau. Database của ShopNow vẫn dùng volume EBS `gp3` riêng.
+Với `ReadWriteMany`, các replica của một service có thể mount cùng thư mục dù chạy trên node hoặc AZ khác nhau. Database của project app vẫn dùng volume EBS `gp3` riêng.
 
 ## 1. Kiểm tra EFS và PVC {#1-check-the-storage-layer}
 
@@ -108,7 +108,7 @@ kubectl --context eks-workload -n shopnow exec "$NEW" -- rm /data/efs-test.txt
 
 ## 4. Tạo workload thực hành {#4-deploy-the-proof-workload}
 
-Hai bài tiếp theo dùng thêm `workshop-proof` để thử placement và eviction trước khi thao tác trên ShopNow. Workload này có ba replica dùng chung một PVC EFS, với PDB đặt `minAvailable: 2`.
+Hai bài tiếp theo dùng thêm `workshop-proof` để thử placement và eviction trước khi thao tác trên ứng dụng. Workload này có ba replica dùng chung một PVC EFS, với PDB đặt `minAvailable: 2`.
 
 ```bash
 kubectl --context eks-workload apply -f "$GITOPS_DIR/.workshop/applications/workshop-proof.json"

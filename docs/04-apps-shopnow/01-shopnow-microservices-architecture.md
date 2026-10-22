@@ -1,10 +1,10 @@
 ---
-title: "ShopNow - Services, ports, and dependencies"
+title: "Microservices — Services, ports, and dependencies"
 ---
 
 # The application used to validate the platform
 
-ShopNow is a reference application for deployment, storage, scheduling, and telemetry tests. It is not a complete commerce implementation with production authorization or availability guarantees.
+The project app contains a React frontend and Spring Boot backend services. You use it to practice deployment, storage, scheduling, and telemetry collection. The examples below use the existing resource names from `eks-core-apps` and `eks-core-gitops`, including the `shopnow` namespace.
 
 | Component | Source | In-cluster Service/port | Purpose |
 |---|---|---|---|

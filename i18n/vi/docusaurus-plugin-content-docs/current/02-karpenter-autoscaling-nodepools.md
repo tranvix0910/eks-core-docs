@@ -9,7 +9,7 @@ Karpenter theo dõi Pod chưa có node phù hợp và tạo EC2 theo cấu hình
 | Nhóm trong đề bài | Đối tượng Kubernetes | Workload |
 |---|---|---|
 | 1. Spot | `batch-spot` | Bài thử Spot/batch |
-| 2. Kết hợp On-Demand và Spot | `ms-od` + `ms-spot` | backend ShopNow và bài test EFS/availability |
+| 2. Kết hợp On-Demand và Spot | `ms-od` + `ms-spot` | backend của ứng dụng và bài test EFS/availability |
 | 3. ARM64 | `arm64` | Bài thử image ARM64 |
 
 Managed Node Group `infra` tách khỏi ba nhóm Karpenter, giữ controller hoạt động khi các pool động trống.

@@ -56,6 +56,6 @@ kubectl --context eks-workload logs deployment/workshop-arm64 | tee "$EVIDENCE_D
 kubectl --context eks-workload delete -f "$GITOPS_DIR/examples/workshop/arm64-proof.yaml"
 ```
 
-Để chuyển service thực tế sang ARM64, build cho cả hai nền tảng (`WORKSHOP_PLATFORMS=linux/amd64,linux/arm64` tại [bước 3.1](../apps-shopnow/docker-build-multi-arch-and-ci)), rồi cấu hình selector và toleration như trên. ShopNow vẫn ở pool 2 theo đề bài.
+Để chuyển service thực tế sang ARM64, build cho cả hai nền tảng (`WORKSHOP_PLATFORMS=linux/amd64,linux/arm64` tại [bước 3.1](../apps-shopnow/docker-build-multi-arch-and-ci)), rồi cấu hình selector và toleration như trên. Ứng dụng vẫn ở pool 2 theo đề bài.
 
 **Tiếp theo:** [2.5 Kite dashboard](../platform-addons/kite-dashboard)

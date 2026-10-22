@@ -5,7 +5,7 @@ sidebar_label: "Nội dung và lộ trình"
 
 # Nội dung workshop {#workshop-roadmap}
 
-Workshop hướng dẫn tạo hai EKS cluster và triển khai ShopNow bằng Terraform, Karpenter, ArgoCD. Chúng ta sẽ đi từ cách các thành phần hoạt động đến cấu hình và kiểm tra kết quả. Các bài lý thuyết được đặt trước phần thực hành liên quan để bạn có thể đọc lại ngay khi cần.
+Workshop hướng dẫn tạo hai EKS cluster và triển khai ứng dụng bằng Terraform, Karpenter, ArgoCD. Chúng ta sẽ đi từ cách các thành phần hoạt động đến cấu hình và kiểm tra kết quả. Các bài lý thuyết được đặt trước phần thực hành liên quan để bạn có thể đọc lại ngay khi cần.
 
 ## Đọc lý thuyết trước khi thực hành {#theory-before-practice}
 

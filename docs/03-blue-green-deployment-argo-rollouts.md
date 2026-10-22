@@ -9,7 +9,7 @@ The core assignment deploys microservices through ArgoCD, mounts EFS, distribute
 | Task | Guide |
 |---|---|
 | Build/push a new image tag | [Build and CI](04-apps-shopnow/04-docker-build-multi-arch-and-ci.md) |
-| Create Applications for every service | [Deploy ShopNow](04-apps-shopnow/00-shopnow-end-to-end-deployment-guide.md) |
+| Create Applications for every service | [Deploy microservices](04-apps-shopnow/00-shopnow-end-to-end-deployment-guide.md) |
 | Test preview and promote the frontend | [Blue-green](04-apps-shopnow/03-blue-green-argo-rollouts.md) |
 | Restore earlier configuration and inspect drift | [Operations](06-operations/05-lifecycle-and-cleanup.md) |
 

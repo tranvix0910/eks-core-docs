@@ -36,12 +36,12 @@ To add or change a datasource, edit that values file and re-apply layer 21; chan
 In **Explore**, choose **Mimir**:
 
 ```promql
-# CPU per ShopNow Pod (cores)
+# CPU per application Pod (cores)
 sum by (pod) (rate(container_cpu_usage_seconds_total{cluster="eks-workload", namespace="shopnow", container!=""}[5m]))
 ```
 
 ```promql
-# Memory per ShopNow Pod
+# Memory per application Pod
 sum by (pod) (container_memory_working_set_bytes{cluster="eks-workload", namespace="shopnow", container!=""})
 ```
 

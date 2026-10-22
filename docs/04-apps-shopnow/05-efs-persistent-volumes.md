@@ -74,7 +74,7 @@ kubectl --context eks-workload -n shopnow exec "$NEW" -- rm /data/efs-test.txt
 
 ## 4. Deploy the proof workload
 
-The next two steps use `workshop-proof`: three replicas sharing one EFS claim, with a 2-of-3 PDB. It lets you test placement and evictions without disturbing ShopNow.
+The next two steps use `workshop-proof`: three replicas sharing one EFS claim, with a 2-of-3 PDB. It lets you test placement and evictions without disturbing the application.
 
 ```bash
 kubectl --context eks-workload apply -f "$GITOPS_DIR/.workshop/applications/workshop-proof.json"

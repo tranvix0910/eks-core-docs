@@ -38,7 +38,7 @@ kubectl --context eks-workload get nodes -l workload=microservices -o json | jq 
 
 ## 2. Test tỷ lệ 1:3 {#2-prove-1--3-with-a-controlled-test}
 
-Chạy bài test **trước khi deploy ShopNow**, lúc mixed pool chưa có node. Bài test tạo 4 EC2 instance, mỗi instance 4 vCPU, và có phát sinh chi phí.
+Chạy bài test **trước khi deploy ứng dụng**, lúc mixed pool chưa có node. Bài test tạo 4 EC2 instance, mỗi instance 4 vCPU, và có phát sinh chi phí.
 
 Tạm giới hạn instance size ở 4 vCPU và CPU limit của hai pool ở 4:12. Mục tiêu là **1 node On-Demand + 3 node Spot**.
 

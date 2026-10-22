@@ -107,9 +107,9 @@ def karpenter():
         ('Pool 1 · NodePool batch-spot', 'spot', ['capacity-type: spot', 'arch: amd64, arm64', 'label workload=batch, capacity=spot',
                                                  'taint workload=batch:NoSchedule', 'limit cpu 48 · weight 50', 'consolidate after 30s'], 'workshop-spot proof Pod'),
         ('Pool 2a · NodePool ms-od', 'ec2', ['capacity-type: on-demand', 'arch: amd64', 'label workload=microservices, capacity=on-demand',
-                                             'taint workload=microservices:NoSchedule', 'limit cpu 24 · weight 100', 'consolidate after 1m'], 'ShopNow backends (first 24 vCPU)'),
+                                             'taint workload=microservices:NoSchedule', 'limit cpu 24 · weight 100', 'consolidate after 1m'], 'Application backends (first 24 vCPU)'),
         ('Pool 2b · NodePool ms-spot', 'spot', ['capacity-type: spot', 'arch: amd64', 'label workload=microservices, capacity=spot',
-                                                'taint workload=microservices:NoSchedule', 'limit cpu 72 · weight 10', 'consolidate after 1m'], 'ShopNow backends (overflow, up to 72 vCPU)'),
+                                                'taint workload=microservices:NoSchedule', 'limit cpu 72 · weight 10', 'consolidate after 1m'], 'Application backends (overflow, up to 72 vCPU)'),
         ('Pool 3 · NodePool arm64', 'ec2', ['capacity-type: on-demand or spot', 'arch: arm64 (Graviton)', 'label arch=arm64',
                                             'taint arch=arm64:NoSchedule', 'limit cpu 48 · weight 50', 'consolidate after 1m'], 'workshop-arm64 proof Pod'),
     ]
@@ -269,8 +269,8 @@ def telemetry():
 
 
 def shopnow():
-    p = Page('7. ShopNow application', 1800, 1000)
-    p.title('ShopNow — the microservices deployed by ArgoCD on pool 2',
+    p = Page('7. Microservices application', 1800, 1000)
+    p.title('Microservices — deployed by ArgoCD on pool 2',
             'Namespace shopnow. Six Spring backends + a React frontend, two databases and Keycloak. Every backend mounts its own EFS volume.')
     user = p.icon('user', 'Browser<br>(port-forward)', 40, 300, size=56, font=10)
     ns_ = p.frame('namespace shopnow · nodes of pool 2 (workload=microservices) across AZs', 180, 90, 1380, 720, 'green', font=12)

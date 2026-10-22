@@ -1,5 +1,5 @@
 ---
-title: "ShopNow API Gateway"
+title: "API Gateway"
 ---
 
 # Kiểm tra Request Flow {#check-the-api-one-hop-at-a-time}

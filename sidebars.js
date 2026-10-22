@@ -68,7 +68,7 @@ module.exports = {
       collapsed: true,
       className: 'sb-divider',
       items: [
-        doc('apps-shopnow/shopnow-microservices-architecture', 'ShopNow services and ports'),
+        doc('apps-shopnow/shopnow-microservices-architecture', 'Microservices and ports'),
         doc('apps-shopnow/shopnow-api-gateway', 'API gateway checks'),
         doc('platform-addons/javamelody', 'Connect JavaMelody'),
         doc('karpenter-autoscaling-nodepools', 'Karpenter concepts'),

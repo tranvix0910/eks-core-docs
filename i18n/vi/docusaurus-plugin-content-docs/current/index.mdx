@@ -6,11 +6,11 @@ sidebar_label: "Tổng quan workshop"
 
 # EKS Workshop
 
-Trong workshop này, chúng ta sẽ triển khai ShopNow trên Amazon EKS bằng Terraform và ArgoCD. Bên cạnh việc đưa ứng dụng lên cluster, bạn sẽ thực hành cách cấp node bằng Karpenter, sử dụng EFS, phân bổ replica và theo dõi metrics, logs.
+Trong workshop này, chúng ta sẽ triển khai microservices trên Amazon EKS bằng Terraform và ArgoCD. Bên cạnh việc đưa ứng dụng lên cluster, bạn sẽ thực hành cách cấp node bằng Karpenter, sử dụng EFS, phân bổ replica và theo dõi metrics, logs.
 
 Hệ thống gồm hai cluster:
 
-- **Workload cluster** chạy ShopNow. Managed Node Group `infra` dành cho ArgoCD, Karpenter, Prometheus và các công cụ vận hành. Karpenter quản lý ba nhóm workload: Spot, mixed On-Demand/Spot và ARM64. Microservices chạy trên mixed pool.
+- **Workload cluster** chạy ứng dụng. Managed Node Group `infra` dành cho ArgoCD, Karpenter, Prometheus và các công cụ vận hành. Karpenter quản lý ba nhóm workload: Spot, mixed On-Demand/Spot và ARM64. Microservices chạy trên mixed pool.
 - **Observability cluster** chạy Mimir, Loki và Grafana để lưu, xem metrics và logs gửi từ workload cluster.
 
 Các phần bên dưới đi từ lý thuyết đến thực hành. Nếu đã quen với các thành phần này, bạn có thể bắt đầu từ bước chuẩn bị rồi làm lần lượt theo sidebar.
@@ -49,9 +49,9 @@ Các phần bên dưới đi từ lý thuyết đến thực hành. Nếu đã q
   <Card title="Kite dashboard" to="/docs/platform-addons/kite-dashboard" description="Truy cập dashboard bằng port-forward hoặc hostname ALB." />
 </CardSection>
 
-<CardSection title="Phần 3 · Triển khai ShopNow" description="Build image, triển khai ứng dụng và kiểm tra storage, scheduling, availability.">
+<CardSection title="Phần 3 · Triển khai microservices" description="Build image, triển khai ứng dụng và kiểm tra storage, scheduling, availability.">
   <Card title="Build image" to="/docs/apps-shopnow/docker-build-multi-arch-and-ci" description="Build frontend, backend và push bảy image lên ECR." />
-  <Card title="Triển khai với ArgoCD" to="/docs/apps-shopnow/shopnow-end-to-end-deployment-guide" description="Tạo Application và triển khai ShopNow theo thứ tự dependency." />
+  <Card title="Triển khai với ArgoCD" to="/docs/apps-shopnow/shopnow-end-to-end-deployment-guide" description="Tạo Application và triển khai ứng dụng theo thứ tự dependency." />
   <Card title="EFS persistent volume" to="/docs/apps-shopnow/efs-persistent-volumes" description="Đọc, ghi file giữa các replica và kiểm tra sau khi thay Pod." />
   <Card title="Phân bổ Pod" to="/docs/apps-shopnow/pod-placement" description="Kiểm tra replica trên các node và Availability Zone." />
   <Card title="PodDisruptionBudget" to="/docs/apps-shopnow/availability-and-pdb" description="Thử eviction khi budget bằng 0 và 1; theo dõi API trong lúc thay Pod." />
@@ -72,7 +72,7 @@ Các phần bên dưới đi từ lý thuyết đến thực hành. Nếu đã q
 
 <CardSection id="repositories" title="Các repository" description="Clone bốn repo vào cùng thư mục cha để dùng các đường dẫn trong workshop.">
   <Card title="eks-core-terraform" to="https://github.com/tranvix0910/eks-core-terraform" description="Network và hai EKS cluster, được chia thành ba Terraform layer." />
-  <Card title="eks-core-gitops" to="https://github.com/tranvix0910/eks-core-gitops" description="Manifest, Helm values, chart ShopNow và các workload thực hành." />
-  <Card title="eks-core-apps" to="https://github.com/tranvix0910/eks-core-apps" description="Mã nguồn ShopNow và script build image." />
+  <Card title="eks-core-gitops" to="https://github.com/tranvix0910/eks-core-gitops" description="Manifest, Helm values, chart ứng dụng và các workload thực hành." />
+  <Card title="eks-core-apps" to="https://github.com/tranvix0910/eks-core-apps" description="Mã nguồn ứng dụng và script build image." />
   <Card title="eks-core-docs" to="https://github.com/tranvix0910/eks-core-docs" description="Docs workshop." />
 </CardSection>
