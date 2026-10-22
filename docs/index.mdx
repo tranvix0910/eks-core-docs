@@ -8,7 +8,7 @@ sidebar_label: "Workshop overview"
 
 In this workshop you build a production-style Kubernetes platform on Amazon EKS, step by step, with Terraform and GitOps:
 
-- **Cluster 1 — Workload**: a Managed Node Group for platform tools, three Karpenter node pools (Spot, mixed On-Demand/Spot 1:3, ARM64), and the ShopNow microservices deployed by ArgoCD on EFS storage, spread evenly across nodes and protected by PodDisruptionBudgets.
+- **Cluster 1 — Workload**: a Managed Node Group for platform tools, three Karpenter node pools (Spot, mixed On-Demand/Spot 1:3, ARM64), and the microservices deployed by ArgoCD on EFS storage, spread evenly across nodes and protected by PodDisruptionBudgets.
 - **Cluster 2 — Observability**: Prometheus-compatible metrics (Mimir), logs (Loki) and Grafana that receive everything shipped from cluster 1.
 
 Every step ends with a check you can run, so at the end you have a working platform **and** the evidence that each requirement is met.
@@ -36,7 +36,7 @@ Every step ends with a check you can run, so at the end you have a working platf
 </CardSection>
 
 <CardSection title="Module 3 · Microservices" description="Build, deploy through ArgoCD, and prove storage, spreading and availability.">
-  <Card title="Build images" to="/docs/apps-shopnow/docker-build-multi-arch-and-ci" description="Build the seven ShopNow images and push them to ECR." />
+  <Card title="Build images" to="/docs/apps-shopnow/docker-build-multi-arch-and-ci" description="Build the seven application images and push them to ECR." />
   <Card title="Deploy with ArgoCD" to="/docs/apps-shopnow/shopnow-end-to-end-deployment-guide" description="Databases, backends and frontend on the mixed pool." />
   <Card title="EFS persistent volumes" to="/docs/apps-shopnow/efs-persistent-volumes" description="Shared ReadWriteMany storage that survives Pod replacement." />
   <Card title="Even distribution" to="/docs/apps-shopnow/pod-placement" description="Topology spread constraints across nodes and zones." />
@@ -62,7 +62,7 @@ Every step ends with a check you can run, so at the end you have a working platf
   description="The workshop code is split into four repositories, cloned side by side."
 >
   <Card title="eks-core-terraform" to="https://github.com/tranvix0910/eks-core-terraform" description="Network and the two EKS clusters, in three Terraform layers." />
-  <Card title="eks-core-gitops" to="https://github.com/tranvix0910/eks-core-gitops" description="Platform manifests, Helm values, ShopNow charts and workshop examples." />
-  <Card title="eks-core-apps" to="https://github.com/tranvix0910/eks-core-apps" description="ShopNow source code and the image build script." />
+  <Card title="eks-core-gitops" to="https://github.com/tranvix0910/eks-core-gitops" description="Platform manifests, Helm values, microservices charts and workshop examples." />
+  <Card title="eks-core-apps" to="https://github.com/tranvix0910/eks-core-apps" description="Microservices source code and the image build script." />
   <Card title="eks-core-docs" to="https://github.com/tranvix0910/eks-core-docs" description="This documentation site." />
 </CardSection>

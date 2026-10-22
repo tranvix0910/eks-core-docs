@@ -16,7 +16,7 @@
     "description": "The label for category '2 · Platform on cluster 1' in sidebar 'guides'"
   },
   "sidebar.guides.category.3 · Microservices": {
-    "message": "3 · Triển khai ShopNow",
+    "message": "3 · Triển khai microservices",
     "description": "The label for category '3 · Microservices' in sidebar 'guides'"
   },
   "sidebar.guides.category.4 · Centralized observability": {
@@ -43,9 +43,9 @@
     "message": "Lệnh kiểm tra hệ thống",
     "description": "The label for the doc item 'Diagnostics commands' in sidebar 'guides', linking to the doc operations/system-verification-and-diagnostics"
   },
-  "sidebar.guides.doc.ShopNow services and ports": {
-    "message": "Các service và port của ShopNow",
-    "description": "The label for the doc item 'ShopNow services and ports' in sidebar 'guides', linking to the doc apps-shopnow/shopnow-microservices-architecture"
+  "sidebar.guides.doc.Microservices and ports": {
+    "message": "Các service và port của microservices",
+    "description": "The label for the doc item 'Microservices and ports' in sidebar 'guides', linking to the doc apps-shopnow/shopnow-microservices-architecture"
   },
   "sidebar.guides.doc.API gateway checks": {
     "message": "Kiểm tra API Gateway",

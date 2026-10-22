@@ -6,7 +6,7 @@ sidebar_label: "3.2 Deploy with ArgoCD"
 # Step 3.2 — Deploy the microservices with ArgoCD
 
 :::info Step summary
-**Goal:** ShopNow running on pool 2, every service deployed and kept in sync by ArgoCD.
+**Goal:** microservices run on pool 2, with every service deployed and kept in sync by ArgoCD.
 **Requirements:** 3 (microservices on pool 2), 7 (ArgoCD). **Time:** about 30 minutes. **Run from:** `$GITOPS_DIR`.
 :::
 

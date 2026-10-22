@@ -11,3 +11,8 @@
 - Introduce theory before the related lab. Use concrete examples from this repository instead of generic product praise or repeated claims about proving requirements.
 - Check implementation details against the current Terraform, GitOps and apps repositories. The reference workshop is a writing reference; do not copy its different tools or architecture into this workshop.
 - Preserve working commands, resource identifiers, routes and screenshots. Keep the existing English docs and shared homepage, navbar and footer unchanged when the task concerns Vietnamese workshop content.
+
+## Application naming
+
+- Refer to the deployed application as microservices, the project app, or ứng dụng in visible workshop text, navigation and architecture diagrams. Avoid application product branding.
+- Keep existing namespace, image repository, resource and path identifiers in executable examples aligned with the implementation repositories. A display-name change must not silently rename deployed resources.

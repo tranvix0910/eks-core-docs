@@ -29,13 +29,13 @@ Chẳng hạn, bạn khai báo Product Service cần hai replica. Deployment con
 
 ### Amazon EKS đảm nhiệm phần nào?
 
-Amazon EKS cung cấp Kubernetes control plane do AWS quản lý. Trong mô hình sử dụng ở workshop này, chúng ta vẫn chọn cấu hình worker node, cài add-on và quản lý ứng dụng. Việc tạo được EKS cluster chưa có nghĩa ShopNow đã được triển khai hoặc có HA.
+Amazon EKS cung cấp Kubernetes control plane do AWS quản lý. Trong mô hình sử dụng ở workshop này, chúng ta vẫn chọn cấu hình worker node, cài add-on và quản lý ứng dụng. Việc tạo được EKS cluster chưa có nghĩa ứng dụng đã được triển khai hoặc có HA.
 
 Managed Node Group là nhóm EC2 node được EKS hỗ trợ quản lý vòng đời. Workshop dùng node group `infra` cho ArgoCD, Karpenter, Prometheus và các công cụ vận hành. Karpenter tạo thêm node cho ứng dụng theo nhu cầu của Pod.
 
 ### Vì sao sử dụng hai cluster?
 
-Workload cluster chạy ShopNow. Observability cluster nhận metrics, logs và cung cấp Grafana. Cách tách này giúp chúng ta thực hành luồng gửi dữ liệu giữa hai cluster và giữ dữ liệu đã thu thập riêng với workload.
+Workload cluster chạy ứng dụng. Observability cluster nhận metrics, logs và cung cấp Grafana. Cách tách này giúp chúng ta thực hành luồng gửi dữ liệu giữa hai cluster và giữ dữ liệu đã thu thập riêng với workload.
 
 Hai cluster vẫn dùng chung VPC. Chúng ta sẽ tách subnet, security group và Kubernetes context, rồi cấu hình internal ALB để kết nối luồng telemetry. Sơ đồ bên dưới cho biết từng thành phần nằm ở đâu.
 
@@ -45,7 +45,7 @@ Hai cluster vẫn dùng chung VPC. Chúng ta sẽ tách subnet, security group v
 
 [![Tổng quan kiến trúc](/img/architecture/01-overview.png)](/img/architecture/01-overview.png)
 
-Xem 9 sơ đồ về Network, EKS, Karpenter, Telemetry, ShopNow, GitOps và Terraform tại [Sơ đồ kiến trúc](07-architecture-diagrams.md). Luồng tổng quan:
+Xem 9 sơ đồ về Network, EKS, Karpenter, Telemetry, ứng dụng, GitOps và Terraform tại [Sơ đồ kiến trúc](07-architecture-diagrams.md). Luồng tổng quan:
 
 ```mermaid
 flowchart LR
@@ -63,7 +63,7 @@ flowchart LR
       M["Pool 2 · ms-od + ms-spot<br/>On-Demand : Spot = 1 : 3"]
       A["Pool 3 · arm64<br/>Graviton"]
     end
-    App["ShopNow microservices"]
+    App["Microservices"]
     Alloy["Alloy (DaemonSet, every node)"]
     Argo -- deploys --> App
     App -- runs on --> M
@@ -94,7 +94,7 @@ Hai cluster nằm trong cùng một VPC nhưng sử dụng subnet và security g
 | NodePool `batch-spot` | EC2 Spot | Pool 1 — workload Spot |
 | NodePool `ms-od` + `ms-spot` | EC2 On-Demand + Spot | Pool 2 — microservices, 1:3 |
 | NodePool `arm64` | EC2 Graviton | Pool 3 — workload ARM64 |
-| ShopNow (6 backend + frontend) | Pool 2 | Các microservice dùng trong bài kiểm thử |
+| Microservices (6 backend + frontend) | Pool 2 | Các service dùng trong bài thực hành |
 | EFS + EFS CSI driver + StorageClass `efs-sc` | — | Persistent volume dùng chung |
 | Alloy | Mọi node | Thu thập log Pod |
 
@@ -111,7 +111,7 @@ Hai cluster nằm trong cùng một VPC nhưng sử dụng subnet và security g
 
 ## Quản lý resource {#who-owns-what}
 
-Mỗi resource được cập nhật bằng công cụ đang quản lý nó. Ví dụ, thay đổi replica của ShopNow trong Git để ArgoCD sync; thay kích thước Managed Node Group trong Terraform rồi plan và apply.
+Mỗi resource được cập nhật bằng công cụ đang quản lý nó. Ví dụ, thay đổi replica của ứng dụng trong Git để ArgoCD sync; thay kích thước Managed Node Group trong Terraform rồi plan và apply.
 
 | Tài nguyên | Công cụ quản lý | Cách thay đổi |
 |---|---|---|
@@ -119,12 +119,12 @@ Mỗi resource được cập nhật bằng công cụ đang quản lý nó. Ví
 | LBC, Karpenter, ArgoCD, Prometheus, Metrics Server (cluster 1); Mimir, Loki, Grafana (cluster 2) | Terraform `helm_releases.tf`, values từ `eks-core-gitops` | sửa values → `plan` → `apply` |
 | StorageClass `gp3`, `efs-sc` | Terraform | `apply` |
 | EC2NodeClass và NodePool | Manifest tại `eks-core-gitops/platform/nodepools` | `kubectl apply` |
-| Deployment, PVC, PDB, Service của ShopNow | ArgoCD, từ `eks-core-gitops/apps` | commit → ArgoCD sync |
+| Deployment, PVC, PDB, Service của ứng dụng | ArgoCD, từ `eks-core-gitops/apps` | commit → ArgoCD sync |
 | cert-manager, Alloy, JavaMelody | Helm / manifest được apply trong từng bước | `helm upgrade` / `kubectl apply` |
 
 ## Các điểm chính trong kiến trúc {#design-decisions}
 
-Managed Node Group `infra` giữ ArgoCD, Karpenter và các công cụ vận hành hoạt động ngay cả khi chưa có node Karpenter nào. ShopNow chạy ở mixed pool, gồm `ms-od` và `ms-spot`. Hai NodePool này dùng chung label và taint, có CPU limit lần lượt 24 và 72 vCPU. Cách đo tỷ lệ được trình bày ở [bước 2.3](../karpenter/on-demand-spot-ratio-and-limits).
+Managed Node Group `infra` giữ ArgoCD, Karpenter và các công cụ vận hành hoạt động ngay cả khi chưa có node Karpenter nào. Microservices chạy ở mixed pool, gồm `ms-od` và `ms-spot`. Hai NodePool này dùng chung label và taint, có CPU limit lần lượt 24 và 72 vCPU. Cách đo tỷ lệ được trình bày ở [bước 2.3](../karpenter/on-demand-spot-ratio-and-limits).
 
 Các backend mount EFS để thực hành shared storage; PostgreSQL và MySQL sử dụng EBS `gp3`. Metrics và logs đã gửi sang cluster 2 được lưu riêng với workload cluster.
 

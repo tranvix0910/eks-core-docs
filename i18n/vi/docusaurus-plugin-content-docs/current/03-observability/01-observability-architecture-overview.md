@@ -40,7 +40,7 @@ Labels như `cluster`, `namespace`, `pod` giúp chọn dữ liệu khi query. Wo
 
 Pod receiver Ready hoặc Grafana mở được mới chỉ xác nhận một phần. Chúng ta cần tìm metric và log vừa tạo từ cluster 1 ở cluster 2. Điều này giúp phân biệt dữ liệu mới với dữ liệu cũ còn trong storage.
 
-Workshop tập trung vào metrics và logs. Distributed tracing cần instrumentation cùng trace backend riêng; cài Grafana hoặc Alloy chưa tự tạo trace cho ShopNow.
+Workshop tập trung vào metrics và logs. Distributed tracing cần instrumentation cùng trace backend riêng; cài Grafana hoặc Alloy chưa tự tạo trace cho ứng dụng.
 
 Đọc thêm: [Grafana Loki overview](https://grafana.com/docs/loki/latest/get-started/overview/).
 

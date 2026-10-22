@@ -1,15 +1,15 @@
 ---
-title: "Bước 3.1 — Build image ShopNow và push lên ECR"
+title: "Bước 3.1 — Build image và push lên ECR"
 sidebar_label: "3.1 Build image"
 ---
 
-# Bước 3.1 — Build image ShopNow và push lên ECR {#step-31--build-the-shopnow-images-and-push-them-to-ecr}
+# Bước 3.1 — Build image và push lên ECR {#step-31--build-the-shopnow-images-and-push-them-to-ecr}
 
-Trước khi triển khai ShopNow, chúng ta cần build image cho frontend và sáu backend service, sau đó push lên ECR. Các image trong lần triển khai này sử dụng cùng một tag để dễ theo dõi.
+Trước khi triển khai ứng dụng, chúng ta cần build image cho frontend và sáu backend service, sau đó push lên ECR. Các image trong lần triển khai này sử dụng cùng một tag để dễ theo dõi.
 
 **Thời gian:** khoảng 20 phút (build Maven và npm). **Chạy từ:** `$APPS_DIR` (`eks-core-apps`).
 
-## ShopNow Images {#what-gets-built}
+## Các image cần build {#what-gets-built}
 
 | image (`shopnow/…`) | Thư mục mã nguồn | Công nghệ |
 |---|---|---|

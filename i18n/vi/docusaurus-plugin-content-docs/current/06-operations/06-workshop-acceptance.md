@@ -31,7 +31,7 @@ Chạy các bài kiểm tra rồi đánh dấu **Đạt**, **Không đạt** ho�
 
 1. Trình bày sơ đồ kiến trúc: hai cluster, infra node group, ba pool.
 2. `kubectl get nodes -L role,karpenter.sh/nodepool,karpenter.sh/capacity-type,kubernetes.io/arch` — xem node infra và Karpenter cạnh nhau.
-3. UI ArgoCD: mọi Application ShopNow xanh.
+3. UI ArgoCD: mọi Application của ứng dụng đều Synced và Healthy.
 4. EFS: ghi file trong một Pod, đọc trong Pod khác.
 5. Bảng placement: replica ở node và zone khác nhau.
 6. PDB: eviction bị từ chối, sau đó được phép.

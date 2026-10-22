@@ -1,6 +1,6 @@
 # Architecture diagrams
 
-`eks-core-architecture.drawio` — nine tabs: overview, network, cluster 1, Karpenter node pools, cluster 2, telemetry flow, ShopNow, GitOps & delivery, Terraform layers.
+`eks-core-architecture.drawio` — nine tabs: overview, network, cluster 1, Karpenter node pools, cluster 2, telemetry flow, microservices, GitOps & delivery, Terraform layers.
 
 It is generated, not hand-drawn:
 

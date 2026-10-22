@@ -14,7 +14,7 @@ Sau khi thêm dependency, build và push image mới rồi deploy lại service.
 
 ## 2. Cấu hình Collector {#2-connect-the-collector}
 
-Sau khi ShopNow Ready, cập nhật `-Djavamelody.urls` trong manifest Collector bằng endpoint nội bộ của service. Ví dụ:
+Sau khi các Pod của ứng dụng Ready, cập nhật `-Djavamelody.urls` trong manifest Collector bằng endpoint nội bộ của service. Ví dụ:
 
 ```text
 -Djavamelody.urls=http://shopnow-product-service-service.shopnow.svc:5861/monitoring

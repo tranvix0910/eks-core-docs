@@ -57,6 +57,6 @@ kubectl --context eks-workload logs deployment/workshop-arm64 | tee "$EVIDENCE_D
 kubectl --context eks-workload delete -f "$GITOPS_DIR/examples/workshop/arm64-proof.yaml"
 ```
 
-To move a real service to ARM64, build it for both platforms (`WORKSHOP_PLATFORMS=linux/amd64,linux/arm64` in [step 3.1](../apps-shopnow/docker-build-multi-arch-and-ci)) and give it the selector and toleration above. ShopNow itself stays on pool 2, as the assignment requires.
+To move a real service to ARM64, build it for both platforms (`WORKSHOP_PLATFORMS=linux/amd64,linux/arm64` in [step 3.1](../apps-shopnow/docker-build-multi-arch-and-ci)) and give it the selector and toleration above. The project app stays on pool 2, as the assignment requires.
 
 **Next:** [2.5 Kite dashboard](../platform-addons/kite-dashboard)

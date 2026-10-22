@@ -40,7 +40,7 @@ kubectl --context eks-workload get nodes -l workload=microservices -o json | jq 
 
 ## 2. Prove 1 : 3 with a controlled test
 
-Run this **before** deploying ShopNow, while pool 2 has no nodes. It launches four 4-vCPU nodes (billable).
+Run this **before** deploying microservices, while pool 2 has no nodes. It launches four 4-vCPU nodes (billable).
 
 The test temporarily limits both pools to 4-vCPU instances and scales the budget down to 4 : 12, so the expected end state is exactly **1 On-Demand + 3 Spot** nodes.
 

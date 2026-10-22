@@ -14,7 +14,7 @@ sidebar_label: "0.2 Architecture"
 
 [![Architecture overview](/img/architecture/01-overview.png)](/img/architecture/01-overview.png)
 
-Nine detailed views — network, each cluster, Karpenter, telemetry, ShopNow, delivery, Terraform — are on [Architecture diagrams](07-architecture-diagrams.md). The logical view:
+Nine detailed views — network, each cluster, Karpenter, telemetry, microservices, delivery, Terraform — are on [Architecture diagrams](07-architecture-diagrams.md). The logical view:
 
 ```mermaid
 flowchart LR
@@ -32,7 +32,7 @@ flowchart LR
       M["Pool 2 · ms-od + ms-spot<br/>On-Demand : Spot = 1 : 3"]
       A["Pool 3 · arm64<br/>Graviton"]
     end
-    App["ShopNow microservices"]
+    App["Microservices"]
     Alloy["Alloy (DaemonSet, every node)"]
     Argo -- deploys --> App
     App -- runs on --> M
@@ -63,7 +63,7 @@ Both clusters live in **one VPC** with separate subnets and security groups. Tel
 | NodePool `batch-spot` | Spot EC2 | Pool 1 — Spot workloads |
 | NodePools `ms-od` + `ms-spot` | On-Demand + Spot EC2 | Pool 2 — microservices, 1:3 |
 | NodePool `arm64` | Graviton EC2 | Pool 3 — ARM64 workloads |
-| ShopNow (6 backends + frontend) | Pool 2 | The microservices under test |
+| Microservices (6 backends + frontend) | Pool 2 | The application used in the labs |
 | EFS + EFS CSI driver + StorageClass `efs-sc` | — | Shared persistent volumes |
 | Alloy | every node | Collects Pod logs |
 
@@ -88,7 +88,7 @@ Every resource has exactly one owner. Change it only through that owner, otherwi
 | LBC, Karpenter, ArgoCD, Prometheus, Metrics Server (cluster 1); Mimir, Loki, Grafana (cluster 2) | Terraform `helm_releases.tf`, values from `eks-core-gitops` | edit values → `plan` → `apply` |
 | StorageClasses `gp3`, `efs-sc` | Terraform | `apply` |
 | EC2NodeClass and NodePools | Manifests in `eks-core-gitops/platform/nodepools` | `kubectl apply` |
-| ShopNow Deployments, PVCs, PDBs, Services | ArgoCD, from `eks-core-gitops/apps` | commit → ArgoCD sync |
+| Application Deployments, PVCs, PDBs, Services | ArgoCD, from `eks-core-gitops/apps` | commit → ArgoCD sync |
 | cert-manager, Alloy, JavaMelody | Helm / manifests applied in the steps | `helm upgrade` / `kubectl apply` |
 
 ## Design decisions

@@ -15,7 +15,7 @@ Trong phần này, chúng ta sẽ tìm hiểu PDB kiểm soát eviction như th�
 
 Nếu hai replica cùng chạy trên một node, mất node đó vẫn làm cả hai Pod ngừng phục vụ. Chúng ta cần xem cả số replica lẫn nơi các Pod đang chạy. Service và readiness probe giúp điều phối request tới Pod sẵn sàng, còn scheduling quyết định các Pod nằm trên node nào.
 
-Node selector chọn các node có label phù hợp. Taint hạn chế Pod vào node; toleration cho phép Pod chấp nhận taint đó. Các điều kiện này đưa backend ShopNow vào mixed pool, nhưng bản thân chúng chưa phân bổ replica đều.
+Node selector chọn các node có label phù hợp. Taint hạn chế Pod vào node; toleration cho phép Pod chấp nhận taint đó. Các điều kiện này đưa backend của ứng dụng vào mixed pool, nhưng bản thân chúng chưa phân bổ replica đều.
 
 ### Topology spread và Pod anti-affinity
 

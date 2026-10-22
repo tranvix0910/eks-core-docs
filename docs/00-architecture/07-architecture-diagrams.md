@@ -13,11 +13,11 @@ All diagrams come from one draw.io file with nine tabs: **[eks-core-architecture
 |---|---|
 | [1. Overview](#1-overview) | Both clusters, the VPC, the AWS services they use, GitHub and the state bucket |
 | [2. Network](#2-network) | VPC, three AZs, nine subnets, NAT, endpoints, route tables, discovery tags |
-| [3. Cluster 1 · Workload](#3-cluster-1--workload) | Every namespace on the infra node group, the three Karpenter pools, ShopNow |
+| [3. Cluster 1 · Workload](#3-cluster-1--workload) | Every namespace on the infra node group, the three Karpenter pools, microservices |
 | [4. Karpenter node pools](#4-karpenter-node-pools) | EC2NodeClass, the four NodePools with labels, taints, limits, weights; Spot interruption |
 | [5. Cluster 2 · Observability](#5-cluster-2--observability) | Mimir components, Loki, Grafana, internal ALB, S3, DNS, ACM |
 | [6. Telemetry flow](#6-telemetry-flow) | Metrics and logs from cluster 1 to cluster 2, and the TLS chain |
-| [7. ShopNow application](#7-shopnow-application) | Services, ports, databases, Keycloak, EFS, spread and PDB rules |
+| [7. Microservices application](#7-shopnow-application) | Services, ports, databases, Keycloak, EFS, spread and PDB rules |
 | [8. GitOps and delivery](#8-gitops-and-delivery) | How the four repositories reach AWS, ECR, ArgoCD and GitHub Pages |
 | [9. Terraform layers](#9-terraform-layers) | Three layers, their states and dependencies, and the first-time apply order |
 
@@ -45,9 +45,9 @@ All diagrams come from one draw.io file with nine tabs: **[eks-core-architecture
 
 [![Telemetry flow](/img/architecture/06-telemetry-flow.png)](/img/architecture/06-telemetry-flow.png)
 
-## 7. ShopNow application
+## 7. Microservices application {#7-shopnow-application}
 
-[![ShopNow](/img/architecture/07-shopnow-application.png)](/img/architecture/07-shopnow-application.png)
+[![Microservices](/img/architecture/07-shopnow-application.png)](/img/architecture/07-shopnow-application.png)
 
 ## 8. GitOps and delivery
 

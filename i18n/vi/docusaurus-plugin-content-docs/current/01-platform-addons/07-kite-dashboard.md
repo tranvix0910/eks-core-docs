@@ -335,7 +335,7 @@ Với cài đặt mới, thực hiện Initial Cấu hình:
 ### Kiểm tra {#verify}
 
 - Màn hình workload liệt kê `argocd`, `monitoring`, `shopnow`, `kite-system`.
-- Một Pod ShopNow hiển thị log liên tục và biểu đồ CPU, memory.
+- Một Pod của ứng dụng hiển thị log liên tục và biểu đồ CPU, memory.
 - Khởi động lại Pod (`kubectl --context eks-workload -n kite-system rollout restart deploy/kite`) rồi đăng nhập lại bằng đúng tài khoản cũ: dữ liệu nằm trên PVC.
 
 [![Kite Overview hiển thị Node, Pod, Namespace, Service, CPU, Memory và Recent Events](/img/workshop/platform/kite-overview.png)](/img/workshop/platform/kite-overview.png)

@@ -34,7 +34,7 @@ def overview():
     pool2 = p.frame('Pool 2 · ms-od + ms-spot · On-Demand : Spot = 1 : 3', 210, 230, 370, 250, 'white', c1, font=11)
     p.icon('ec2', 'ms-od · On-Demand · 24 vCPU', 50, 36, size=44, parent=pool2, font=10)
     p.icon('spot', 'ms-spot · Spot · 72 vCPU', 240, 36, size=44, parent=pool2, font=10)
-    shop = p.box('<b>ShopNow microservices</b><br>6 backends + frontend · deployed by ArgoCD<br>EFS volumes · spread over nodes/AZs · PDBs',
+    shop = p.box('<b>Microservices</b><br>6 backends + frontend · deployed by ArgoCD<br>EFS volumes · spread over nodes/AZs · PDBs',
                  20, 140, 330, 90, 'green', pool2, font=11)
     alloy = p.box('Alloy DaemonSet on every node · ships Pod logs', 20, 498, 560, 28, 'purple', c1, font=11)
 

@@ -5,7 +5,7 @@ sidebar_label: "1.2 Cluster 1 · Workload"
 
 # Bước 1.2 — Tạo workload cluster {#step-12--create-cluster-1-workload}
 
-Sau khi có network, chúng ta sẽ tạo cluster `eks-workload`, Managed Node Group `infra`, EFS và các ECR repository cho ShopNow. Các công cụ chạy bên trong cluster sẽ được cài ở cuối bước 1.3.
+Sau khi có network, chúng ta sẽ tạo cluster `eks-workload`, Managed Node Group `infra`, EFS và các ECR repository cho ứng dụng. Các công cụ chạy bên trong cluster sẽ được cài ở cuối bước 1.3.
 
 **Thời gian:** khoảng 20 phút. **Chạy từ:** `$TF_DIR/20-cluster-workload`.
 
@@ -18,7 +18,7 @@ Sau khi có network, chúng ta sẽ tạo cluster `eks-workload`, Managed Node G
 | EKS add-on | VPC CNI, CoreDNS, kube-proxy, EBS CSI, EFS CSI, Pod Identity Agent |
 | Phần AWS của Karpenter | Node IAM role, controller IAM (Pod Identity), SQS interruption queue, EventBridge rule |
 | EFS | File system có mount target trong từng workload subnet; cho phép NFS (2049) từ node |
-| ECR | Bảy repository `shopnow/*` lưu image ShopNow |
+| ECR | Bảy repository `shopnow/*` lưu image ứng dụng |
 | Pod Identity association | EBS CSI, EFS CSI, tải Balancer controller, Karpenter |
 
 layer này cũng quản lý LBC, Karpenter, ArgoCD, Prometheus, Metrics Server và StorageClass `gp3`, `efs-sc`. Các thành phần này cần EKS hoạt động trước, nên sẽ apply ở cuối [bước 1.3](05-layer-21-cluster-observability.md#6-finish-cluster-1).
@@ -29,7 +29,7 @@ layer này cũng quản lý LBC, Karpenter, ArgoCD, Prometheus, Metrics Server v
 grep -E 'kubernetes_version|nodegroup_|efs_create|ecr_repository' -A0 "$TF_DIR/20-cluster-workload/terraform.tfvars"
 ```
 
-Giữ `efs_create = true` và bảy ECR repository cho ShopNow. Đặt `eks_nodegroup_min_size` từ 2 trở lên để công cụ vận hành có node dự phòng khi một infra node gặp sự cố.
+Giữ `efs_create = true` và bảy ECR repository cho ứng dụng. Đặt `eks_nodegroup_min_size` từ 2 trở lên để công cụ vận hành có node dự phòng khi một infra node gặp sự cố.
 
 [![Terraform Init Workload layer kết nối S3 backend và cài EKS Module, Provider](/img/workshop/terraform/workload-init.png)](/img/workshop/terraform/workload-init.png)
 

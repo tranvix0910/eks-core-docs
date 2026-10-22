@@ -9,7 +9,7 @@ Karpenter provisions EC2 capacity when no suitable node can host a Pod, then rem
 | Assignment group | Kubernetes object | Workload |
 |---|---|---|
 | 1. Spot | `batch-spot` | Spot/batch test |
-| 2. Mixed On-Demand and Spot | `ms-od` + `ms-spot` | ShopNow backends and EFS/availability tests |
+| 2. Mixed On-Demand and Spot | `ms-od` + `ms-spot` | Backend services and EFS/availability tests |
 | 3. ARM64 | `arm64` | ARM64 image test |
 
 The `infra` Managed Node Group is separate from the three Karpenter groups. It keeps controllers running when dynamic pools are empty.

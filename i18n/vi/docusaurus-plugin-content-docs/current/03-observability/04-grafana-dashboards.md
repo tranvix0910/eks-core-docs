@@ -5,7 +5,7 @@ sidebar_label: "4.4 Grafana"
 
 # Bước 4.4 — Query metrics và logs trên Grafana {#step-44--observe-cluster-1-from-grafana}
 
-Mimir và Loki đã nhận dữ liệu từ workload cluster. Bây giờ chúng ta sẽ mở Grafana trên observability cluster, kiểm tra datasource và xem metrics, logs của ShopNow.
+Mimir và Loki đã nhận dữ liệu từ workload cluster. Bây giờ chúng ta sẽ mở Grafana trên observability cluster, kiểm tra datasource và xem metrics, logs của ứng dụng.
 
 **Thời gian:** khoảng 10 phút.
 
@@ -35,12 +35,12 @@ Terraform tạo datasource từ `platform/observability/grafana/values.yaml`:
 Trong **Explore**, chọn **Mimir**:
 
 ```promql
-# CPU per ShopNow Pod (cores)
+# CPU per application Pod (cores)
 sum by (pod) (rate(container_cpu_usage_seconds_total{cluster="eks-workload", namespace="shopnow", container!=""}[5m]))
 ```
 
 ```promql
-# Memory per ShopNow Pod
+# Memory per application Pod
 sum by (pod) (container_memory_working_set_bytes{cluster="eks-workload", namespace="shopnow", container!=""})
 ```
 

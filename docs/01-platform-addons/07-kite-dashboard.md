@@ -320,7 +320,7 @@ The first time Kite opens it has no users:
 ### Verify {#verify}
 
 - The workloads view lists `argocd`, `monitoring`, `shopnow`, `kite-system`.
-- A ShopNow Pod shows streaming logs and CPU and memory charts.
+- An application Pod shows streaming logs and CPU and memory charts.
 - Restart the Pod (`kubectl --context eks-workload -n kite-system rollout restart deploy/kite`) and sign in again with the same account: the data is on the PVC.
 
 ## Part 4 — Hardening (recommended outside a lab) {#part-4--hardening-recommended-outside-a-lab}

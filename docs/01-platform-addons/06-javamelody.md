@@ -14,7 +14,7 @@ Rebuild images after adding a dependency. Editing a manifest cannot add a Java l
 
 ## 2. Connect the collector
 
-After ShopNow is Ready, update `-Djavamelody.urls` in the collector manifest to the internal application endpoint, for example:
+After the application Pods are Ready, update `-Djavamelody.urls` in the collector manifest to the internal application endpoint, for example:
 
 ```text
 -Djavamelody.urls=http://shopnow-product-service-service.shopnow.svc:5861/monitoring

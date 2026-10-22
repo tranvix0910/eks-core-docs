@@ -1,11 +1,11 @@
 ---
-title: "Bước 3.2 — Deploy ShopNow với ArgoCD"
+title: "Bước 3.2 — Deploy microservices với ArgoCD"
 sidebar_label: "3.2 Triển khai với ArgoCD"
 ---
 
-# Bước 3.2 — Deploy ShopNow với ArgoCD {#step-32--deploy-the-microservices-with-argocd}
+# Bước 3.2 — Deploy microservices với ArgoCD {#step-32--deploy-the-microservices-with-argocd}
 
-Sau khi build image và chuẩn bị các NodePool, chúng ta sẽ triển khai ShopNow bằng ArgoCD. Database được triển khai trước, tiếp theo là các backend service và frontend.
+Sau khi build image và chuẩn bị các NodePool, chúng ta sẽ triển khai ứng dụng bằng ArgoCD. Database được triển khai trước, tiếp theo là các backend service và frontend.
 
 **Thời gian:** khoảng 30 phút. **Chạy từ:** `$GITOPS_DIR`.
 
@@ -25,7 +25,7 @@ Khi dùng chart trong ArgoCD, ArgoCD sử dụng Helm để render manifest rồ
 
 ### Application và AppProject
 
-Một ArgoCD Application chỉ ra repo, revision, đường dẫn chart, values và cluster/namespace đích. Trong ShopNow, mỗi service có một Application riêng để theo dõi quá trình triển khai.
+Một ArgoCD Application chỉ ra repo, revision, đường dẫn chart, values và cluster/namespace đích. Trong ứng dụng, mỗi service có một Application riêng để theo dõi quá trình triển khai.
 
 AppProject giới hạn phạm vi của các Application, chẳng hạn repo được đọc và namespace được triển khai. Project `shopnow` được dùng cho các ứng dụng trong namespace `shopnow`.
 
@@ -35,7 +35,7 @@ Hai trạng thái cần phân biệt là `Synced` và `Healthy`. `Synced` cho bi
 
 Khi có image mới, cập nhật image tag trong cấu hình Application/values. Việc chỉ push image lên ECR chưa làm ArgoCD đổi Deployment nếu desired state trong Git hoặc Application chưa đổi.
 
-Với `selfHeal`, thay đổi trực tiếp trên resource có thể bị khôi phục theo cấu hình nguồn. Vì vậy, khi muốn giữ một thay đổi hoặc rollback, cập nhật nguồn cấu hình rồi sync. Các bước tiếp theo sẽ render Application và triển khai theo thứ tự dependency của ShopNow.
+Với `selfHeal`, thay đổi trực tiếp trên resource có thể bị khôi phục theo cấu hình nguồn. Vì vậy, khi muốn giữ một thay đổi hoặc rollback, cập nhật nguồn cấu hình rồi sync. Các bước tiếp theo sẽ render Application và triển khai theo thứ tự dependency của ứng dụng.
 
 Đọc thêm: [Helm trong ArgoCD](https://argo-cd.readthedocs.io/en/stable/user-guide/helm/).
 
@@ -155,7 +155,7 @@ kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
 
 **Kết quả:** mọi backend Pod hiển thị `ms-od/on-demand` hoặc `ms-spot/spot`. Không Pod nào chạy trên node `infra`, `batch-spot` hoặc `arm64`.
 
-## Kiểm tra ShopNow {#verify--the-application-works}
+## Kiểm tra ứng dụng {#verify--the-application-works}
 
 ```bash
 kubectl --context eks-workload -n shopnow port-forward svc/shopnow-api-gateway-service 5860:5860   # terminal 1

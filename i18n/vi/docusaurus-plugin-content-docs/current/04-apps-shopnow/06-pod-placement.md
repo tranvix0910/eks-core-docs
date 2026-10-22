@@ -5,7 +5,7 @@ sidebar_label: "3.4 Phân bổ Pod"
 
 # Bước 3.4 — Phân bổ Pod {#step-34--spread-replicas-evenly-across-nodes-and-zones}
 
-Khi một service có nhiều replica, chúng ta cần tránh để tất cả Pod chạy trên cùng một node. Phần này kiểm tra cách ShopNow sử dụng topology spread constraints để phân bổ replica giữa các node và availability Zone.
+Khi một service có nhiều replica, chúng ta cần tránh để tất cả Pod chạy trên cùng một node. Phần này kiểm tra cách ứng dụng sử dụng topology spread constraints để phân bổ replica giữa các node và availability Zone.
 
 **Thời gian:** khoảng 10 phút. **Chạy từ:** `$GITOPS_DIR`.
 

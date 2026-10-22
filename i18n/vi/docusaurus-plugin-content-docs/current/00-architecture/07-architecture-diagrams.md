@@ -11,11 +11,11 @@ Các sơ đồ được lưu trong một file draw.io gồm chín tab: **[eks-co
 |---|---|
 | [1. Tổng quan](#1-overview) | Hai cluster, VPC, các dịch vụ AWS sử dụng, GitHub và bucket state |
 | [2. Mạng](#2-network) | VPC, ba AZ, chín subnet, NAT, endpoint, route table, tag discovery |
-| [3. Cluster 1 · Workload](#3-cluster-1--workload) | Các namespace trên node group infra, ba pool Karpenter, ShopNow |
+| [3. Cluster 1 · Workload](#3-cluster-1--workload) | Các namespace trên node group infra, ba pool Karpenter, ứng dụng |
 | [4. Node pool Karpenter](#4-karpenter-node-pools) | EC2NodeClass, bốn NodePool với label, taint, limit, weight; xử lý Spot interruption |
 | [5. Cluster 2 · Observability](#5-cluster-2--observability) | Các thành phần Mimir, Loki, Grafana, ALB nội bộ, S3, DNS, ACM |
 | [6. Luồng telemetry](#6-telemetry-flow) | Metrics và logs từ cluster 1 sang cluster 2, chuỗi TLS |
-| [7. Ứng dụng ShopNow](#7-shopnow-application) | Service, port, database, Keycloak, EFS, quy tắc spread và PDB |
+| [7. Kiến trúc microservices](#7-shopnow-application) | Service, port, database, Keycloak, EFS, quy tắc spread và PDB |
 | [8. GitOps và Deployment](#8-gitops-and-delivery) | Bốn repository đi tới AWS, ECR, ArgoCD và GitHub Pages như thế nào |
 | [9. Terraform Layers](#9-terraform-layers) | Ba layer, state và phụ thuộc, thứ tự apply lần đầu |
 
@@ -43,9 +43,9 @@ Các sơ đồ được lưu trong một file draw.io gồm chín tab: **[eks-co
 
 [![Luồng telemetry](/img/architecture/06-telemetry-flow.png)](/img/architecture/06-telemetry-flow.png)
 
-## 7. Ứng dụng ShopNow {#7-shopnow-application}
+## 7. Kiến trúc microservices {#7-shopnow-application}
 
-[![ShopNow](/img/architecture/07-shopnow-application.png)](/img/architecture/07-shopnow-application.png)
+[![Kiến trúc microservices](/img/architecture/07-shopnow-application.png)](/img/architecture/07-shopnow-application.png)
 
 ## 8. GitOps và Deployment {#8-gitops-and-delivery}
 

@@ -14,8 +14,8 @@ Sau khi hoàn tất workshop, bạn có thể tiếp tục thay đổi cấu hì
 | Network, phiên bản EKS, kích thước node group, IAM, EFS, ECR, S3 | `eks-core-terraform/<layer>/*.tf` hoặc `terraform.tfvars` | plan → kiểm tra → apply lớp đó |
 | Platform chart (Karpenter, ArgoCD, Prometheus, Mimir, Loki, Grafana) | File values tại `eks-core-gitops/platform/…` | plan → apply lớp cài chart (20 hoặc 21) |
 | Node pool | `eks-core-gitops/platform/nodepools/*.yaml` | `kubectl apply` |
-| Service ShopNow (replica, tài nguyên, PDB, spread) | Chart hoặc values tại `eks-core-gitops/apps/…` | commit + push → ArgoCD sync |
-| image ShopNow | Mã trong `eks-core-apps` | `IMAGE_TAG` mới → build → render → apply Application |
+| Service của ứng dụng (replica, tài nguyên, PDB, spread) | Chart hoặc values tại `eks-core-gitops/apps/…` | commit + push → ArgoCD sync |
+| Image của ứng dụng | Mã trong `eks-core-apps` | `IMAGE_TAG` mới → build → render → apply Application |
 
 ## Ví dụ 1 · Resize Infra Node Group {#example-1--resize-the-infra-node-group-terraform}
 

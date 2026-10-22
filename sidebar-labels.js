@@ -16,7 +16,7 @@ module.exports = {
   "karpenter/on-demand-spot-ratio-and-limits": "Measure the mixed 1:3 ratio",
   "karpenter/arm64-validation": "Verify ARM64",
   "karpenter/disruption-and-spot-interruption": "Consolidation and interruption",
-  "apps-shopnow/shopnow-microservices-architecture": "ShopNow architecture",
+  "apps-shopnow/shopnow-microservices-architecture": "Microservices architecture",
   "apps-shopnow/docker-build-multi-arch-and-ci": "Build and push images",
   "apps-shopnow/shopnow-end-to-end-deployment-guide": "Deploy through ArgoCD",
   "apps-shopnow/efs-persistent-volumes": "Verify EFS",
