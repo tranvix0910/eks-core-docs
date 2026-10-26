@@ -125,41 +125,49 @@ aws s3api get-bucket-versioning --bucket "eks-tfstate-$AWS_ACCOUNT_ID" --region 
 
 ## 7. Give each layer your account values
 
-The code in Git is the same for everyone, but your **AWS account ID** and **AWS profile** are yours. Terraform gets them from two small files that you create once in each of the three layers. Both are in `.gitignore`, so they never reach GitHub.
+The code in Git is the same for everyone, but your **AWS account ID** and **AWS profile** are yours. Each of the three layers reads them from two small files. Both are in `.gitignore`, so they never reach GitHub.
 
-| File | What Terraform does with it | Example |
-|---|---|---|
-| `backend.hcl` | `terraform init` reads it to find **where this layer's state is stored**: the S3 bucket `eks-tfstate-<account-id>`, reached with your profile. The bucket name contains your account ID, so it cannot be hard-coded in Git. | `bucket = "eks-tfstate-123456789012"`<br/>`profile = "eks-core"` |
-| `account.auto.tfvars` | `terraform plan/apply` loads it automatically. `account_id` makes the AWS provider **refuse to run against any other account**, and it replaces `<AWS_ACCOUNT_ID>` in the Helm values. `aws_profile` chooses the credentials. | `account_id = "123456789012"`<br/>`aws_profile = "eks-core"` |
+| File | What Terraform does with it |
+|---|---|
+| `backend.hcl` | `terraform init` reads it to find **where this layer's state is stored**: the S3 bucket `eks-tfstate-<account-id>`, reached with your profile. |
+| `account.auto.tfvars` | `terraform plan/apply` loads it automatically. `account_id` makes the AWS provider **refuse to run against any other account** and fills `<AWS_ACCOUNT_ID>` in the Helm values; `aws_profile` chooses the credentials. |
 
-The loop below writes both files into every layer from the variables in `workshop.env`. It skips a file that already exists, so running it again is safe:
+**1. Copy the examples.** Every layer ships a `.example` of each file:
 
 ```bash
-: "${AWS_ACCOUNT_ID:?source ~/eks-core/workshop.env first}"
-
-for layer in 10-network 20-cluster-workload 21-cluster-observability; do
-  dir="$TF_DIR/$layer"
-
-  # Where Terraform keeps this layer's state (used by terraform init)
-  [ -e "$dir/backend.hcl" ] || cat > "$dir/backend.hcl" <<EOF
-bucket  = "eks-tfstate-$AWS_ACCOUNT_ID"
-profile = "$AWS_PROFILE"
-EOF
-
-  # Which account and profile Terraform may use (used by plan/apply)
-  [ -e "$dir/account.auto.tfvars" ] || cat > "$dir/account.auto.tfvars" <<EOF
-account_id  = "$AWS_ACCOUNT_ID"
-aws_profile = "$AWS_PROFILE"
-EOF
-done
-
-cat "$TF_DIR/20-cluster-workload/backend.hcl" "$TF_DIR/20-cluster-workload/account.auto.tfvars"
-git -C "$TF_DIR" status --short   # must not list backend.hcl or account.auto.tfvars
+cd "$TF_DIR"
+cp 10-network/backend.hcl.example                     10-network/backend.hcl
+cp 10-network/account.auto.tfvars.example             10-network/account.auto.tfvars
+cp 20-cluster-workload/backend.hcl.example            20-cluster-workload/backend.hcl
+cp 20-cluster-workload/account.auto.tfvars.example    20-cluster-workload/account.auto.tfvars
+cp 21-cluster-observability/backend.hcl.example       21-cluster-observability/backend.hcl
+cp 21-cluster-observability/account.auto.tfvars.example 21-cluster-observability/account.auto.tfvars
+echo "$AWS_ACCOUNT_ID $AWS_PROFILE"    # the two values to put into the files
 ```
 
-**Expected:** two short files with your account ID and profile, and `git status` shows neither of them.
+**2. Edit the six files.** In each one, replace `<AWS_ACCOUNT_ID>` with your account ID and `eks-core` with your profile, the two values printed above. All three layers use the same values. With account `123456789012` and profile `eks-core` the files look like this:
 
-To change the profile later, edit `profile` in `backend.hcl` and `aws_profile` in `account.auto.tfvars` in each layer, then run `terraform -chdir="$TF_DIR/<layer>" init -reconfigure -backend-config=backend.hcl`. Nothing needs to be re-applied. Region, CIDRs, node sizes and the Kubernetes version stay in each layer's committed `terraform.tfvars`.
+```hcl title="backend.hcl"
+bucket  = "eks-tfstate-123456789012"
+profile = "eks-core"
+```
+
+```hcl title="account.auto.tfvars"
+account_id  = "123456789012"
+aws_profile = "eks-core"
+```
+
+**3. Check.**
+
+```bash
+cat "$TF_DIR"/*/backend.hcl "$TF_DIR"/*/account.auto.tfvars
+grep -l '<AWS_ACCOUNT_ID>' "$TF_DIR"/*/backend.hcl "$TF_DIR"/*/account.auto.tfvars   # prints nothing
+git -C "$TF_DIR" status --short                                                      # lists neither file
+```
+
+**Expected:** six files with your account ID and profile, no `<AWS_ACCOUNT_ID>` left, and `git status` shows none of them.
+
+To change the profile later, edit `profile` in `backend.hcl` and `aws_profile` in `account.auto.tfvars`, then run `terraform -chdir="$TF_DIR/<layer>" init -reconfigure -backend-config=backend.hcl` for that layer. Nothing needs to be re-applied. Region, CIDRs, node sizes and the Kubernetes version stay in each layer's committed `terraform.tfvars`.
 
 ## Verify
 
