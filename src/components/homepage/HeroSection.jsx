@@ -25,10 +25,10 @@ const PRODUCTS = [
   },
   {
     title: 'Verify and operate',
-    link: '/docs/operations/workshop-acceptance',
+    link: '/docs/operations/lifecycle-and-cleanup',
     icon: BranchRegular,
-    stats: ['Metrics + Logs → Cluster 2', 'Grafana · Evidence · Cleanup'],
-    text: 'Find telemetry in the observability cluster, verify every requirement, and manage changes after the lab.',
+    stats: ['Metrics + Logs → Cluster 2', 'Grafana · Dashboards · Cleanup'],
+    text: 'Find telemetry in the observability cluster, then manage changes and clean up after the lab.',
   },
 ];
 
@@ -79,10 +79,10 @@ export default function HeroSection() {
               Start the workshop
             </Link>
             <Link
-              to="/docs/operations/workshop-acceptance"
+              to="/docs/platform-overview-and-deployment"
               className="rounded-lg border border-solid border-secondary-700 px-5 py-2.5 font-jakarta text-sm font-semibold text-black hover:border-primary hover:no-underline dark:text-white"
             >
-              View acceptance criteria
+              View all steps
             </Link>
           </div>
         </div>

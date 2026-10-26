@@ -52,15 +52,3 @@ kubectl --context eks-workload -n monitoring logs -l app.kubernetes.io/instance=
 
 Dùng query ở bài [Mimir](../03-observability/02-mimir-metrics-pipeline.md) và [Loki](../03-observability/03-loki-logging-pipeline.md) để kiểm tra dữ liệu. Query qua port-forward cho biết receiver trả lời được. Muốn kiểm tra đường gửi từ cluster 1, cần tìm sample hoặc log vừa được tạo ở cluster đó.
 
-## 5. Lưu kết quả kiểm tra {#5-save-evidence-without-secrets}
-
-```bash
-mkdir -p .workshop/evidence
-kubectl --context eks-workload -n shopnow get pods -o json > $EVIDENCE_DIR/shopnow-pods.json
-kubectl --context eks-workload get nodes -o json > $EVIDENCE_DIR/workload-nodes.json
-kubectl --context eks-workload -n shopnow get pdb -o json > $EVIDENCE_DIR/pdb.json
-kubectl --context eks-observability -n monitoring get pods -o json > $EVIDENCE_DIR/receiver-pods.json
-date -u +%FT%TZ > $EVIDENCE_DIR/checked-at.txt
-```
-
-Kiểm tra output trước khi đưa vào báo cáo: Pod Spec và log có thể chứa biến môi trường hoặc dữ liệu ứng dụng. Không đính kèm Secret YAML, Terraform state hoặc AWS credentials.

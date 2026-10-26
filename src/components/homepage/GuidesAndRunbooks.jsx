@@ -19,7 +19,7 @@ const guides = [
   {title: 'EFS, placement, and PDBs', icon: GlobeRegular, text: 'Verify storage, replica distribution, and eviction.', link: '/docs/apps-shopnow/efs-persistent-volumes'},
 ];
 const runbooks = [
-  {title: 'Verify every requirement', icon: StethoscopeRegular, link: '/docs/operations/workshop-acceptance'},
+  {title: 'Run diagnostics commands', icon: StethoscopeRegular, link: '/docs/operations/system-verification-and-diagnostics'},
   {title: 'Diagnose and resolve failures', icon: WarningRegular, link: '/docs/operations/master-incident-catalogue'},
   {title: 'Updates, rollback, and cleanup', icon: FlashRegular, link: '/docs/operations/lifecycle-and-cleanup'},
   {title: 'Centralized metrics and logs', icon: GlobeRegular, link: '/docs/observability/observability-architecture-overview'},

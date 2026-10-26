@@ -32,8 +32,7 @@ kubectl --context eks-workload get nodes -l workload=microservices \
 
 kubectl --context eks-workload get nodes -l workload=microservices -o json | jq -r '
   [.items[] | {type: .metadata.labels["karpenter.sh/capacity-type"], cpu: (.status.capacity.cpu|tonumber)}]
-  | group_by(.type) | .[] | "\(.[0].type): nodes=\(length) vCPU=\(map(.cpu)|add)"' \
-  | tee "$EVIDENCE_DIR/pool2-capacity.txt"
+  | group_by(.type) | .[] | "\(.[0].type): nodes=\(length) vCPU=\(map(.cpu)|add)"'
 ```
 
 ## 2. Test tỷ lệ 1:3 {#2-prove-1--3-with-a-controlled-test}
@@ -69,8 +68,7 @@ kubectl --context eks-workload rollout status deployment/workshop-ratio --timeou
 
 ```bash
 kubectl --context eks-workload get nodes -l workload=microservices \
-  -L karpenter.sh/nodepool,karpenter.sh/capacity-type,node.kubernetes.io/instance-type \
-  | tee "$EVIDENCE_DIR/pool2-ratio-test.txt"
+  -L karpenter.sh/nodepool,karpenter.sh/capacity-type,node.kubernetes.io/instance-type
 ```
 
 **Kết quả:** 1 node từ `ms-od` (`on-demand`) và 3 node từ `ms-spot` (`spot`), mỗi node 4 vCPU, bốn Pod `Running`. Nếu không có capacity Spot, số node Spot ít hơn; ghi nhận kết quả thực tế thay vì sửa pool.

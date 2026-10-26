@@ -11,6 +11,6 @@ The workshop builds two EKS clusters with Terraform: a workload cluster with an 
 | 2 · Platform on cluster 1 | `01-platform-addons/01-gitops-bootstrap-order.md`, `02-karpenter/02…`, `03…`, `05…` |
 | 3 · Microservices | `04-apps-shopnow/04…`, `00…`, `05…`, `06…`, `07…` |
 | 4 · Centralized observability | `03-observability/01…`, `01-platform-addons/03…`, `03-observability/02…`, `03…`, `04…` |
-| 5 · Accept and operate | `06-operations/06-workshop-acceptance.md`, `05-lifecycle-and-cleanup.md`, `02-master-incident-catalogue.md` |
+| 5 · Accept and operate | `05-lifecycle-and-cleanup.md`, `02-master-incident-catalogue.md` |
 
 Everything else is an optional extension or reference page. The sidebar order is defined in `../sidebars.js`.

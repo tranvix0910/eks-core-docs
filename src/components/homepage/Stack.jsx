@@ -63,7 +63,7 @@ export default function Stack() {
           <Item name="Mimir" to="/docs/observability/mimir-metrics-pipeline" icon={ChartMultipleRegular} />
           <Item name="Loki" to="/docs/observability/loki-logging-pipeline" icon={DocumentTextRegular} />
           <Item name="PDB" to="/docs/apps-shopnow/availability-and-pdb" icon={BoxMultipleRegular} />
-          <Item name="Acceptance" to="/docs/operations/workshop-acceptance" icon={PeopleTeamRegular} />
+          <Item name="Cleanup" to="/docs/operations/lifecycle-and-cleanup" icon={PeopleTeamRegular} />
         </div>
       </div>
     </section>

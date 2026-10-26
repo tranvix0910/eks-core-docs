@@ -15,4 +15,4 @@ The core assignment deploys microservices through ArgoCD, mounts EFS, distribute
 
 Revert the source configuration commit, then sync for durable rollback. Runtime UI/CLI rollback is an incident response step; update Git afterward so self-heal does not deploy the broken version again.
 
-Do not use one image tag for two different builds in a release exercise. Record the commit, image digest, and promotion/rollback times as evidence.
+Do not use one image tag for two different builds in a release exercise.

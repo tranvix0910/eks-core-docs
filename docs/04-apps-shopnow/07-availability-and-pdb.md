@@ -49,7 +49,7 @@ evict() { kubectl --context eks-workload create --raw "/api/v1/namespaces/shopno
 {"apiVersion":"policy/v1","kind":"Eviction","metadata":{"name":"$1","namespace":"shopnow"}}
 JSON
 }
-evict "$VICTIM" 2>&1 | tee "$EVIDENCE_DIR/pdb-refused.txt"
+evict "$VICTIM" 2>&1
 ```
 
 **Expected:** `Cannot evict pod as it would violate the pod's disruption budget` (HTTP 429), and the Pod is still running.
@@ -63,7 +63,7 @@ Restore the unready Pod, wait for the budget to return to 1, and repeat:
 "${P[@]}" wait "pod/$HOLD" --for=condition=Ready --timeout=2m
 "${P[@]}" get pdb workshop-proof          # ALLOWED DISRUPTIONS 1
 
-evict "$VICTIM" | tee "$EVIDENCE_DIR/pdb-allowed.txt"
+evict "$VICTIM"
 "${P[@]}" rollout status deployment/workshop-proof --timeout=10m
 "${P[@]}" get pods -l app=workshop-proof -o wide
 ```
@@ -78,7 +78,7 @@ Keep the gateway port-forward running (`svc/shopnow-api-gateway-service 5860:586
 for i in $(seq 1 90); do
   printf '%s %s\n' "$(date -u +%T)" "$(curl -s -o /dev/null -m 3 -w '%{http_code}' http://localhost:5860/product)"
   sleep 1
-done | tee "$EVIDENCE_DIR/availability.txt"
+done
 ```
 
 In another terminal, evict one product Pod through the budget:

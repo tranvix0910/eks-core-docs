@@ -64,10 +64,6 @@ const COLUMNS = [
     "name": "Operations",
     "links": [
       {
-        "name": "Acceptance",
-        "to": "/docs/operations/workshop-acceptance"
-      },
-      {
         "name": "Incident catalogue",
         "to": "/docs/operations/master-incident-catalogue"
       },

@@ -14,6 +14,6 @@ Workshop hướng dẫn tạo hai EKS cluster và triển khai ứng dụng bằ
 | 2 · Cấu hình workload cluster | `01-platform-addons/01-gitops-bootstrap-order.md`; `02-karpenter/`; `01-platform-addons/07-kite-dashboard.md` |
 | 3 · microservices | `04-apps-shopnow/` — build image, deploy, EFS, phân bổ Pod và PDB |
 | 4 · Observability | `01-platform-addons/03-cert-manager-and-internal-tls.md`; `03-observability/` |
-| 5 · Kiểm tra và vận hành | `06-operations/06-workshop-acceptance.md`; `06-operations/05-lifecycle-and-cleanup.md`; `06-operations/02-master-incident-catalogue.md` |
+| 5 · Kiểm tra và vận hành | `06-operations/05-lifecycle-and-cleanup.md`; `06-operations/02-master-incident-catalogue.md` |
 
 Các trang còn lại là bài mở rộng và tài liệu tham khảo. Thứ tự sidebar nằm trong `sidebars.js` ở thư mục gốc repo docs.

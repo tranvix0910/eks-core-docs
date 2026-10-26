@@ -11,7 +11,7 @@ In this workshop you build a production-style Kubernetes platform on Amazon EKS,
 - **Cluster 1 — Workload**: a Managed Node Group for platform tools, three Karpenter node pools (Spot, mixed On-Demand/Spot 1:3, ARM64), and the microservices deployed by ArgoCD on EFS storage, spread evenly across nodes and protected by PodDisruptionBudgets.
 - **Cluster 2 — Observability**: Prometheus-compatible metrics (Mimir), logs (Loki) and Grafana that receive everything shipped from cluster 1.
 
-Every step ends with a check you can run, so at the end you have a working platform **and** the evidence that each requirement is met.
+Every step ends with a check you can run, so you know each part works before moving on.
 
 **[Start with the workshop roadmap →](./00-platform-overview-and-deployment.md)**
 
@@ -50,9 +50,7 @@ Every step ends with a check you can run, so at the end you have a working platf
   <Card title="Grafana" to="/docs/observability/grafana-dashboards" description="Query cluster 1 metrics and logs from one place." />
 </CardSection>
 
-<CardSection title="Module 5 · Accept and operate" description="Check every requirement, run day-2 changes, and clean up.">
-  <Card title="Acceptance checklist" to="/docs/operations/workshop-acceptance" description="One row per requirement, with the command that proves it." />
-  <Card title="Day-2 operations and cleanup" to="/docs/operations/lifecycle-and-cleanup" description="Change Terraform and GitOps safely, roll back, pause, destroy." />
+<CardSection title="Module 5 · Accept and operate" description="Check every requirement, run day-2 changes, and clean up.">  <Card title="Day-2 operations and cleanup" to="/docs/operations/lifecycle-and-cleanup" description="Change Terraform and GitOps safely, roll back, pause, destroy." />
   <Card title="Troubleshooting" to="/docs/operations/master-incident-catalogue" description="Symptoms, the evidence to collect, and the usual fixes." />
 </CardSection>
 

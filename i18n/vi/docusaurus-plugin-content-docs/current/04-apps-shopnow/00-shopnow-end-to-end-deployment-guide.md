@@ -136,7 +136,7 @@ Frontend là Argo Rollout blue-green, promote thủ công; lần triển khai đ
 ## Kiểm tra ArgoCD Application {#verify--argocd-requirement-7}
 
 ```bash
-argocd app list -p shopnow | tee "$EVIDENCE_DIR/argocd-apps.txt"
+argocd app list -p shopnow
 ```
 
 **Kết quả:** mọi Application `Synced` và `Healthy`, trỏ tới đúng repo và revision của bạn.
@@ -150,7 +150,7 @@ kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
 | while IFS=$'\t' read -r pod node; do
     printf '%-60s %s\n' "$pod" "$(kubectl --context eks-workload get node "$node" \
       -o jsonpath='{.metadata.labels.karpenter\.sh/nodepool}/{.metadata.labels.karpenter\.sh/capacity-type}')"
-  done | tee "$EVIDENCE_DIR/pool2-placement.txt"
+  done
 ```
 
 **Kết quả:** mọi Pod backend và frontend hiển thị `ms-od/on-demand` hoặc `ms-spot/spot`. Không Pod nào chạy trên node `infra`, `batch-spot` hoặc `arm64`.

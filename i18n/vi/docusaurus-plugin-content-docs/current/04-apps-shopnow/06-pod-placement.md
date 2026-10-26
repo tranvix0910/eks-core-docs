@@ -56,7 +56,7 @@ kubectl --context eks-workload get nodes -l workload=microservices -o json \
 kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
   | select(.status.phase=="Running") | [.metadata.labels.app, .spec.nodeName] | @tsv' \
 | awk -F'\t' 'NR==FNR {zone[$1]=$2; next} {print $1"\t"$2"\t"zone[$2]}' /tmp/node-zone.tsv - \
-| sort | column -t | tee "$EVIDENCE_DIR/placement.txt"
+| sort | column -t | tee /tmp/placement.txt
 ```
 
 **Kết quả:** với service có hai replica, hai Pod ở **node khác nhau** và **zone khác nhau**. Service một replica như Eureka và database xuất hiện một lần.
@@ -66,7 +66,7 @@ kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
 ```bash
 awk '{n[$1]++; host[$1" "$2]++} END {for (k in host) {split(k,a," "); c[a[1]]++; if (host[k]>m[a[1]]) m[a[1]]=host[k]}
      for (s in n) printf "%-36s replicas=%d nodes=%d max-per-node=%d\n", s, n[s], c[s], m[s]}' \
-  "$EVIDENCE_DIR/placement.txt" | sort
+  /tmp/placement.txt | sort
 ```
 
 **Kết quả:** `max-per-node=1` cho mọi service có hai replica.

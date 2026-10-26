@@ -48,7 +48,7 @@ Script đăng nhập ECR rồi chạy `docker buildx build --push` cho từng im
 for repo in frontend api-gateway config-server discovery-server product-service shopping-cart-service user-service; do
   aws ecr describe-images --repository-name "shopnow/shopnow-$repo" --image-ids imageTag="$IMAGE_TAG" \
     --query 'imageDetails[0].[repositoryName,imageTags[0],imagePushedAt]' --output text
-done | tee "$EVIDENCE_DIR/images.txt"
+done
 
 docker buildx imagetools inspect \
   "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/shopnow/shopnow-product-service:$IMAGE_TAG"

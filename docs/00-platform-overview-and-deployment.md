@@ -51,8 +51,7 @@ This page lists **what the workshop asks for**, **where each requirement is impl
 | **4.2** [Metrics → Mimir](observability/mimir-metrics-pipeline) | Verify remote_write | Cluster 1 metrics in cluster 2 |
 | **4.3** [Logs → Loki](observability/loki-logging-pipeline) | Install Alloy | Cluster 1 logs in cluster 2 |
 | **4.4** [Grafana](observability/grafana-dashboards) | Query both datasources | One place to observe cluster 1 |
-| **5.1** [Acceptance](operations/workshop-acceptance) | Fill the checklist | Requirement-by-requirement evidence |
-| **5.2** [Day-2 and cleanup](operations/lifecycle-and-cleanup) | Make a change, roll back, destroy | You can operate and remove the platform |
+| **5.1** [Day-2 and cleanup](operations/lifecycle-and-cleanup) | Make a change, roll back, destroy | You can operate and remove the platform |
 
 Plan for a full working day for the first run. Most of the waiting is EKS cluster creation (about 15 minutes per cluster) and Karpenter launching nodes.
 

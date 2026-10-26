@@ -1,9 +1,9 @@
 ---
-title: "Step 5.2 — Day-2 operations and cleanup"
-sidebar_label: "5.2 Day-2 and cleanup"
+title: "Step 5.1 — Day-2 operations and cleanup"
+sidebar_label: "5.1 Day-2 and cleanup"
 ---
 
-# Step 5.2 — Day-2 operations and cleanup
+# Step 5.1 — Day-2 operations and cleanup
 
 :::info Step summary
 **Goal:** change the platform safely through the right owner, roll back, pause, and finally remove everything in the right order.

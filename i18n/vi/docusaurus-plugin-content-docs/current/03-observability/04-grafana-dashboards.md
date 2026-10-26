@@ -55,7 +55,7 @@ Chọn **Loki**:
 {cluster="eks-workload", namespace="shopnow"} |= "workshop-proof"
 ```
 
-**Kết quả:** cả bốn query có dữ liệu trong 15 phút gần nhất. Lưu ảnh từng query kèm khoảng thời gian làm kết quả kiểm tra.
+**Kết quả:** cả bốn query có dữ liệu trong 15 phút gần nhất.
 
 ## 4. Dashboard {#4-dashboard}
 
@@ -66,4 +66,4 @@ Dashboard **Enterprise Workload 360** được thêm ở bước 1.3 để xem P
 - Tốc độ request và độ trễ HTTP cần service mở `/actuator/prometheus` cùng ServiceMonitor; năm Spring MVC service đã có Micrometer.
 - Có thể thêm alert rule vào Mimir ruler và định tuyến qua Alertmanager.
 
-**Tiếp theo:** [5.1 Kiểm tra](../operations/workshop-acceptance)
+**Tiếp theo:** [5.1 Vận hành và cleanup](../operations/lifecycle-and-cleanup)

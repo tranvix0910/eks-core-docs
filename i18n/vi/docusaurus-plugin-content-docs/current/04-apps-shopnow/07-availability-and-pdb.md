@@ -76,7 +76,7 @@ evict() { kubectl --context eks-workload create --raw "/api/v1/namespaces/shopno
 {"apiVersion":"policy/v1","kind":"Eviction","metadata":{"name":"$1","namespace":"shopnow"}}
 JSON
 }
-evict "$VICTIM" 2>&1 | tee "$EVIDENCE_DIR/pdb-refused.txt"
+evict "$VICTIM" 2>&1
 ```
 
 **Kết quả:** `Cannot evict pod as it would violate the pod's disruption budget` (HTTP 429); Pod vẫn đang chạy.
@@ -90,7 +90,7 @@ Khôi phục Pod unready, chờ budget trở lại 1 rồi lặp lại:
 "${P[@]}" wait "pod/$HOLD" --for=condition=Ready --timeout=2m
 "${P[@]}" get pdb workshop-proof          # ALLOWED DISRUPTIONS 1
 
-evict "$VICTIM" | tee "$EVIDENCE_DIR/pdb-allowed.txt"
+evict "$VICTIM"
 "${P[@]}" rollout status deployment/workshop-proof --timeout=10m
 "${P[@]}" get pods -l app=workshop-proof -o wide
 ```
@@ -105,7 +105,7 @@ Giữ port-forward gateway (`svc/shopnow-api-gateway-service 5860:5860`). Trong 
 for i in $(seq 1 90); do
   printf '%s %s\n' "$(date -u +%T)" "$(curl -s -o /dev/null -m 3 -w '%{http_code}' http://localhost:5860/product)"
   sleep 1
-done | tee "$EVIDENCE_DIR/availability.txt"
+done
 ```
 
 Trong terminal khác, evict một product Pod thông qua budget:

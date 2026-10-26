@@ -34,11 +34,9 @@ aws service-quotas list-service-quotas --service-code ec2 \
 | AWS CLI | 2.35.24 | Credentials, đăng nhập ECR, kiểm tra tài nguyên AWS |
 | Terraform | 1.15.5 (code yêu cầu ≥ 1.10, < 2.0) | Tạo ba layer hạ tầng |
 | kubectl | 1.34.11 (cùng minor với EKS 1.34) | Truy cập cluster |
-| Helm | 4.2.3 | Cài cert-manager, Argo Rollouts, Alloy |
-| Docker có buildx | Docker 29.5.3, buildx 0.34.1 | Build và push image |
-| argocd CLI | 3.5.0 (khớp với ArgoCD chart 10.3.0) | `argocd app wait`, `sync`, `diff` |
-
-Các lệnh trong workshop cũng dùng `git`, `jq` và `curl`; hầu hết máy đã có sẵn.
+| Helm | 4.2.3 | Cài đặt cert-manager, Argo Rollouts, Alloy |
+| Docker buildx | Docker 29.5.3, buildx 0.34.1 | Build và push image |
+| ArgoCD CLI | 3.5.0 (khớp với ArgoCD chart 10.3.0) | `argocd app wait`, `sync`, `diff` |
 
 ```bash
 aws --version              # aws-cli/2.35.x
@@ -59,11 +57,9 @@ export AWS_PROFILE=eks-core   # example: replace with an existing profile from t
 aws sts get-caller-identity --profile "$AWS_PROFILE"
 ```
 
-Nếu chưa có profile, đăng nhập theo cách tài khoản của bạn đang sử dụng. Với IAM Identity Center, cấu hình bằng `aws configure sso --profile "$AWS_PROFILE"`, sau đó chạy `aws sso login --profile "$AWS_PROFILE"`. Kiểm tra lại identity sau khi đăng nhập. Không lưu access key trong repo.
-
 ## 4. Clone 4 Repo {#4-clone-the-four-repositories-side-by-side}
 
-Đặt 4 repo trong cùng thư mục cha. Terraform đọc Helm values qua đường dẫn tương đối `../eks-core-gitops`.
+Đặt 4 repo trong cùng thư mục cha. Terraform đọc Helm Values qua đường dẫn tương đối `../eks-core-gitops`.
 
 ```bash
 mkdir -p ~/eks-core && cd ~/eks-core
@@ -73,9 +69,7 @@ git clone https://github.com/tranvix0910/eks-core-apps.git
 git clone https://github.com/tranvix0910/eks-core-docs.git
 ```
 
-ArgoCD triển khai từ Git URL. Nếu cần sửa chart hoặc values, chẳng hạn ở [bước 3.4](../apps-shopnow/pod-placement), hãy **fork `eks-core-gitops`** và dùng URL của fork bên dưới.
-
-## 5. Cấu hình môi trường {#5-variables-used-in-every-step}
+## 5. Cấu Hình Môi Trường {#5-variables-used-in-every-step}
 
 Lưu các biến dùng chung vào `~/eks-core/workshop.env`. Trước khi source file, sửa `AWS_PROFILE=eks-core` thành profile vừa chọn. Mỗi terminal mới cần source lại file này. Nếu bạn đã export một profile khác, giá trị trong file vẫn sẽ ghi đè biến đó.
 
@@ -86,7 +80,6 @@ export TF_DIR=$WORKSHOP_HOME/eks-core-terraform
 export GITOPS_DIR=$WORKSHOP_HOME/eks-core-gitops
 export APPS_DIR=$WORKSHOP_HOME/eks-core-apps
 export PLAN_DIR=$WORKSHOP_HOME/plans          # saved Terraform plans
-export EVIDENCE_DIR=$WORKSHOP_HOME/evidence   # outputs you keep as proof
 
 # AWS
 export AWS_PROFILE=eks-core                  # replace with the profile selected in step 3
@@ -107,14 +100,14 @@ export WORKSHOP_REPO_URL=https://github.com/tranvix0910/eks-core-gitops.git   # 
 export WORKSHOP_REVISION=main
 export IMAGE_TAG=workshop-v1
 
-mkdir -p "$PLAN_DIR" "$EVIDENCE_DIR"
+mkdir -p "$PLAN_DIR"
 ```
 
 ```bash
 source ~/eks-core/workshop.env && printf '%s %s\n' "$AWS_ACCOUNT_ID" "$AWS_REGION"
 ```
 
-## 6. Cấu hình Terraform backend {#6-create-the-terraform-state-bucket}
+## 6. Cấu hình Terraform Backend {#6-create-the-terraform-state-bucket}
 
 3 Terraform layer lưu state vào S3 bucket `eks-tfstate-<account-id>`, mỗi layer dùng state key riêng. Tạo bucket một lần:
 
@@ -125,45 +118,43 @@ aws s3api get-bucket-versioning --bucket "eks-tfstate-$AWS_ACCOUNT_ID" --region 
 
 **Kết quả:** `"Status": "Enabled"`. Bucket chặn truy cập công khai và được mã hóa. Backend dùng S3 lock file (`use_lockfile = true`), nên không cần bảng DynamoDB.
 
-## 7. Cấu hình tài khoản AWS cho từng layer {#7-give-each-layer-your-account-values}
+## 7. Khai báo tài khoản AWS cho từng layer {#7-give-each-layer-your-account-values}
 
-Mỗi layer đọc 2 file local đã được gitignore. Dùng các file này để cấu hình account và profile, không commit thông tin riêng vào Git:
+Code trong Git giống nhau với mọi người, nhưng **AWS account ID** và **AWS profile** là của riêng bạn. Terraform lấy hai giá trị này từ hai file nhỏ, tạo một lần trong mỗi layer (3 layer). Cả hai file đều nằm trong `.gitignore` nên không bao giờ bị đẩy lên GitHub.
 
-| File | Nội dung |
-|---|---|
-| `backend.hcl` | Tên state bucket và AWS profile cho S3 backend |
-| `account.auto.tfvars` | `account_id` và `aws_profile` — provider kiểm tra account và dùng profile local đã chọn |
+| File | Terraform dùng để làm gì | Ví dụ |
+|---|---|---|
+| `backend.hcl` | `terraform init` đọc file này để biết **state của layer được lưu ở đâu**: S3 bucket `eks-tfstate-<account-id>`, truy cập bằng profile của bạn. Tên bucket chứa account ID nên không thể ghi cứng trong Git. | `bucket = "eks-tfstate-123456789012"`<br/>`profile = "eks-core"` |
+| `account.auto.tfvars` | `terraform plan/apply` tự nạp file này. `account_id` khiến AWS provider **từ chối chạy trên account khác**, đồng thời được dùng để thay `<AWS_ACCOUNT_ID>` trong Helm values. `aws_profile` chọn credentials để gọi AWS. | `account_id = "123456789012"`<br/>`aws_profile = "eks-core"` |
+
+Vòng lặp dưới đây tạo hai file cho cả ba layer từ các biến trong `workshop.env`. File nào đã tồn tại sẽ được bỏ qua, nên chạy lại cũng không sao:
 
 ```bash
-python3 <<'PYCONFIG'
-import json, os, re
-from pathlib import Path
-account = os.environ.get("AWS_ACCOUNT_ID", "")
-profile = os.environ.get("AWS_PROFILE", "")
-if not re.fullmatch(r"[0-9]{12}", account) or not profile:
-    raise SystemExit("Load a valid AWS_ACCOUNT_ID and AWS_PROFILE before creating local files.")
-root = Path(os.environ["TF_DIR"])
-# Preflight all paths before writing anything; preserve existing local files.
-for name in ("10-network", "20-cluster-workload", "21-cluster-observability"):
-    layer = root / name
-    if not (layer / "main.tf").is_file():
-        raise SystemExit("Invalid Terraform layer: " + str(layer))
-    for filename in ("backend.hcl", "account.auto.tfvars"):
-        if (layer / filename).exists():
-            raise SystemExit("Already exists; review/update this file instead of overwriting: " + str(layer / filename))
-for name in ("10-network", "20-cluster-workload", "21-cluster-observability"):
-    layer = root / name
-    (layer / "backend.hcl").write_text(
-        'bucket = ' + json.dumps("eks-tfstate-" + account) + '\nprofile = ' + json.dumps(profile) + '\n')
-    (layer / "account.auto.tfvars").write_text(
-        'account_id = ' + json.dumps(account) + '\naws_profile = ' + json.dumps(profile) + '\n')
-PYCONFIG
+: "${AWS_ACCOUNT_ID:?source ~/eks-core/workshop.env first}"
+
+for layer in 10-network 20-cluster-workload 21-cluster-observability; do
+  dir="$TF_DIR/$layer"
+
+  # Where Terraform keeps this layer's state (used by terraform init)
+  [ -e "$dir/backend.hcl" ] || cat > "$dir/backend.hcl" <<EOF
+bucket  = "eks-tfstate-$AWS_ACCOUNT_ID"
+profile = "$AWS_PROFILE"
+EOF
+
+  # Which account and profile Terraform may use (used by plan/apply)
+  [ -e "$dir/account.auto.tfvars" ] || cat > "$dir/account.auto.tfvars" <<EOF
+account_id  = "$AWS_ACCOUNT_ID"
+aws_profile = "$AWS_PROFILE"
+EOF
+done
+
+cat "$TF_DIR/20-cluster-workload/backend.hcl" "$TF_DIR/20-cluster-workload/account.auto.tfvars"
 git -C "$TF_DIR" status --short   # must not list backend.hcl or account.auto.tfvars
 ```
 
-Nếu bạn đã làm workshop trước đó, chỉ cần sửa `profile` trong `backend.hcl` và `aws_profile` trong `account.auto.tfvars` của từng layer. Giữ account ID và bucket đang dùng. File `*.auto.tfvars` sẽ ghi đè profile mẫu trong `terraform.tfvars`. Sau khi đổi backend profile, chạy `terraform -chdir="$TF_DIR/<layer>" init -reconfigure -backend-config=backend.hcl` tại layer tương ứng. Việc đổi profile CLI không cần apply lại hạ tầng.
+**Kết quả:** hai file ngắn chứa account ID và profile của bạn; `git status` không hiển thị file nào trong số đó.
 
-Region, CIDR, kích thước node và phiên bản Kubernetes nằm trong `terraform.tfvars` của từng layer. Sửa tại đó nếu dùng region khác.
+Muốn đổi profile sau này, sửa `profile` trong `backend.hcl` và `aws_profile` trong `account.auto.tfvars` ở từng layer, rồi chạy `terraform -chdir="$TF_DIR/<layer>" init -reconfigure -backend-config=backend.hcl`. Không cần apply lại hạ tầng. Region, CIDR, kích thước node và phiên bản Kubernetes vẫn nằm trong `terraform.tfvars` đã commit của từng layer.
 
 ## Kiểm tra {#verify}
 

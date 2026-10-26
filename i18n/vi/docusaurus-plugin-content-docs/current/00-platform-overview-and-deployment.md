@@ -94,8 +94,7 @@ Nếu mới làm quen với EKS, có thể đọc các phần này theo thứ t�
 
 | Bước | Thực hiện |
 |---|---|
-| **5.1** [Checklist nghiệm thu](operations/workshop-acceptance) | Thực hiện đối chiếu toàn bộ các tiêu chí kỹ thuật theo checklist nghiệm thu và lưu lại bằng chứng kiểm thử của workshop |
-| **5.2** [Vận hành và cleanup](operations/lifecycle-and-cleanup) | Thực hành quy trình thay đổi cấu hình, rollback hệ thống và destroy toàn bộ tài nguyên theo đúng thứ tự để dọn dẹp môi trường, tránh phát sinh chi phí |
+| **5.1** [Vận hành và cleanup](operations/lifecycle-and-cleanup) | Thực hành quy trình thay đổi cấu hình, rollback hệ thống và destroy toàn bộ tài nguyên theo đúng thứ tự để dọn dẹp môi trường, tránh phát sinh chi phí |
 
 Dự kiến 1 ngày cho lần thực hiện đầu tiên. Mỗi EKS cluster thường cần khoảng 15 phút để tạo; build image và provision node Karpenter cũng cần thời gian chờ.
 

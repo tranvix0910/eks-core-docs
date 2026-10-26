@@ -55,7 +55,7 @@ kubectl --context eks-observability -n monitoring port-forward svc/mimir-gateway
 
 curl -fsSG http://localhost:19009/prometheus/api/v1/query -H 'X-Scope-OrgID: eks-workload' \
   --data-urlencode 'query=count by (namespace) (kube_pod_info{cluster="eks-workload"})' \
-  | jq -r '.data.result[] | "\(.metric.namespace) \(.value[1])"' | tee "$EVIDENCE_DIR/mimir-query.txt"
+  | jq -r '.data.result[] | "\(.metric.namespace) \(.value[1])"'
 ```
 
 **Kết quả:** mỗi namespace cluster 1 có một dòng, bao gồm `shopnow`, được đếm từ dữ liệu đi qua remote_write.

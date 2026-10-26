@@ -1,10 +1,10 @@
 ---
-title: "Verify the system and collect evidence"
+title: "Verify the system"
 ---
 
 # Check infrastructure through application behavior
 
-Run after sourcing the variables from step 0.1. These commands inspect state; they do not replace the load/eviction tests used for acceptance.
+Run after sourcing the variables from step 0.1. These commands inspect state; they do not replace the load and eviction tests in the lab steps.
 
 ## 1. Account, clusters, nodes
 
@@ -52,15 +52,3 @@ kubectl --context eks-workload -n monitoring logs -l app.kubernetes.io/instance=
 
 Use the end-to-end queries in the [Mimir](../03-observability/02-mimir-metrics-pipeline.md) and [Loki](../03-observability/03-loki-logging-pipeline.md) labs. A successful receiver query through port-forward proves read access; new cluster 1 data proves the shipping path too.
 
-## 5. Save evidence without secrets
-
-```bash
-mkdir -p .workshop/evidence
-kubectl --context eks-workload -n shopnow get pods -o json > $EVIDENCE_DIR/shopnow-pods.json
-kubectl --context eks-workload get nodes -o json > $EVIDENCE_DIR/workload-nodes.json
-kubectl --context eks-workload -n shopnow get pdb -o json > $EVIDENCE_DIR/pdb.json
-kubectl --context eks-observability -n monitoring get pods -o json > $EVIDENCE_DIR/receiver-pods.json
-date -u +%FT%TZ > $EVIDENCE_DIR/checked-at.txt
-```
-
-Review before sharing: Pod specs/logs can contain environment values or application data. Do not save `kubectl get secrets -A -o yaml`, full Terraform state, or cloud credentials in evidence.

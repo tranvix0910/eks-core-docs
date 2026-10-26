@@ -107,7 +107,7 @@ The frontend is a blue-green Argo Rollout with manual promotion; on first deploy
 ## Verify — ArgoCD (requirement 7)
 
 ```bash
-argocd app list -p shopnow | tee "$EVIDENCE_DIR/argocd-apps.txt"
+argocd app list -p shopnow
 ```
 
 **Expected:** every Application `Synced` and `Healthy`, pointing at your repository and revision.
@@ -121,7 +121,7 @@ kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
 | while IFS=$'\t' read -r pod node; do
     printf '%-60s %s\n' "$pod" "$(kubectl --context eks-workload get node "$node" \
       -o jsonpath='{.metadata.labels.karpenter\.sh/nodepool}/{.metadata.labels.karpenter\.sh/capacity-type}')"
-  done | tee "$EVIDENCE_DIR/pool2-placement.txt"
+  done
 ```
 
 **Expected:** every backend and frontend Pod shows `ms-od/on-demand` or `ms-spot/spot`. None is on an `infra`, `batch-spot` or `arm64` node.

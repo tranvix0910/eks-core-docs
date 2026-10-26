@@ -56,7 +56,7 @@ Choose **Loki**:
 {cluster="eks-workload", namespace="shopnow"} |= "workshop-proof"
 ```
 
-**Expected:** data for the last 15 minutes in all four. Save a screenshot of each with the time range visible as evidence.
+**Expected:** data for the last 15 minutes in all four.
 
 ## 4. Dashboard
 
@@ -67,4 +67,4 @@ The **Enterprise Workload 360** dashboard (loaded in step 1.3) shows Pods, nodes
 - HTTP request rate and latency need the services to expose `/actuator/prometheus` and a ServiceMonitor; the five Spring MVC services already include Micrometer.
 - Alert rules can be added to Mimir's ruler and routed through Alertmanager.
 
-**Next:** [5.1 Acceptance](../operations/workshop-acceptance)
+**Next:** [5.1 Day-2 and cleanup](../operations/lifecycle-and-cleanup)

@@ -79,8 +79,7 @@ for ns in kube-system argocd monitoring cert-manager argo-rollouts javamelody; d
 done | while read -r ns pod node; do
   printf '%-14s %-60s role=%s\n' "$ns" "$pod" \
     "$(kubectl --context eks-workload get node "$node" -o jsonpath='{.metadata.labels.role}')"
-done | grep -Ev 'aws-node|kube-proxy|ebs-csi-node|efs-csi-node|pod-identity|node-exporter' \
-  | tee "$EVIDENCE_DIR/infra-placement.txt"
+done | grep -Ev 'aws-node|kube-proxy|ebs-csi-node|efs-csi-node|pod-identity|node-exporter'
 ```
 
 **Expected:** every line ends with `role=infra`. DaemonSets (VPC CNI, kube-proxy, CSI node drivers, node-exporter) run on every node by design and are filtered out.

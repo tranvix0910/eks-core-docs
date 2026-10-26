@@ -34,8 +34,7 @@ kubectl --context eks-workload get nodes -l workload=microservices \
 
 kubectl --context eks-workload get nodes -l workload=microservices -o json | jq -r '
   [.items[] | {type: .metadata.labels["karpenter.sh/capacity-type"], cpu: (.status.capacity.cpu|tonumber)}]
-  | group_by(.type) | .[] | "\(.[0].type): nodes=\(length) vCPU=\(map(.cpu)|add)"' \
-  | tee "$EVIDENCE_DIR/pool2-capacity.txt"
+  | group_by(.type) | .[] | "\(.[0].type): nodes=\(length) vCPU=\(map(.cpu)|add)"'
 ```
 
 ## 2. Prove 1 : 3 with a controlled test
@@ -71,8 +70,7 @@ kubectl --context eks-workload rollout status deployment/workshop-ratio --timeou
 
 ```bash
 kubectl --context eks-workload get nodes -l workload=microservices \
-  -L karpenter.sh/nodepool,karpenter.sh/capacity-type,node.kubernetes.io/instance-type \
-  | tee "$EVIDENCE_DIR/pool2-ratio-test.txt"
+  -L karpenter.sh/nodepool,karpenter.sh/capacity-type,node.kubernetes.io/instance-type
 ```
 
 **Expected:** 1 node from `ms-od` (`on-demand`) and 3 nodes from `ms-spot` (`spot`), each 4 vCPU, and four `Running` Pods. If Spot capacity is unavailable you will see fewer Spot nodes — record that as the result rather than changing the pools.

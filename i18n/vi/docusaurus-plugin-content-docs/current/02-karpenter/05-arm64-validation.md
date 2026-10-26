@@ -45,7 +45,7 @@ kubectl --context eks-workload rollout status deployment/workshop-arm64 --timeou
 kubectl --context eks-workload get pods -l app=workshop-arm64 -o wide
 kubectl --context eks-workload get nodes -l karpenter.sh/nodepool=arm64 \
   -L kubernetes.io/arch,karpenter.sh/capacity-type,node.kubernetes.io/instance-type
-kubectl --context eks-workload logs deployment/workshop-arm64 | tee "$EVIDENCE_DIR/pool3-arm64.txt"
+kubectl --context eks-workload logs deployment/workshop-arm64
 ```
 
 **Kết quả:** Pod chạy trên node thuộc NodePool `arm64`, có `kubernetes.io/arch=arm64`, dùng loại Graviton như `m7g` hoặc `c7g`; log hiển thị `aarch64`.

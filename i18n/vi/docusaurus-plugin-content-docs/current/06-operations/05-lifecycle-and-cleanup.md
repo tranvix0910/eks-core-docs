@@ -1,9 +1,9 @@
 ---
-title: "Bước 5.2 — Vận hành và cleanup"
-sidebar_label: "5.2 Vận hành và cleanup"
+title: "Bước 5.1 — Vận hành và cleanup"
+sidebar_label: "5.1 Vận hành và cleanup"
 ---
 
-# Bước 5.2 — Vận hành và cleanup {#step-52--day-2-operations-and-cleanup}
+# Bước 5.1 — Vận hành và cleanup {#step-51--day-2-operations-and-cleanup}
 
 Sau khi hoàn tất workshop, bạn có thể tiếp tục thay đổi cấu hình hoặc dọn môi trường. Phần này hướng dẫn cập nhật qua Terraform và GitOps, rollback khi cần và xóa resource theo đúng thứ tự.
 

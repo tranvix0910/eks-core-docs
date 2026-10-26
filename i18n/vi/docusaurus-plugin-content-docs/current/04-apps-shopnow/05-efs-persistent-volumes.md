@@ -95,7 +95,7 @@ kubectl --context eks-workload -n shopnow exec "$READER" -- cat /data/efs-test.t
 kubectl --context eks-workload -n shopnow delete pod "$WRITER"
 kubectl --context eks-workload -n shopnow rollout status deployment/shopnow-product-service-deployment --timeout=10m
 NEW=$(kubectl --context eks-workload -n shopnow get pods -l app=shopnow-product-service -o jsonpath='{.items[0].metadata.name}')
-kubectl --context eks-workload -n shopnow exec "$NEW" -- cat /data/efs-test.txt | tee "$EVIDENCE_DIR/efs-persistence.txt"
+kubectl --context eks-workload -n shopnow exec "$NEW" -- cat /data/efs-test.txt
 ```
 
 **Kết quả:** Pod mới đọc được file đã ghi trước khi thay Pod.

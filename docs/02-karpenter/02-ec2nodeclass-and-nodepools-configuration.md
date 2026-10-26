@@ -78,8 +78,7 @@ kubectl --context eks-workload rollout status deployment/workshop-spot --timeout
 ```bash
 kubectl --context eks-workload get pods -l app=workshop-spot -o wide
 kubectl --context eks-workload get nodes -l karpenter.sh/nodepool=batch-spot \
-  -L karpenter.sh/nodepool,karpenter.sh/capacity-type,kubernetes.io/arch,node.kubernetes.io/instance-type \
-  | tee "$EVIDENCE_DIR/pool1-spot.txt"
+  -L karpenter.sh/nodepool,karpenter.sh/capacity-type,kubernetes.io/arch,node.kubernetes.io/instance-type
 ```
 
 **Expected:** the Pod is `Running` on a node with `nodepool=batch-spot`, `capacity-type=spot`, `arch=amd64`.

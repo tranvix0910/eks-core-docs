@@ -53,7 +53,7 @@ START=$(( $(date +%s) - 900 ))000000000
 curl -fsSG http://localhost:13100/loki/api/v1/query_range \
   --data-urlencode 'query={cluster="eks-workload", namespace="shopnow"} |= "workshop-proof"' \
   --data-urlencode "start=$START" --data-urlencode 'limit=5' \
-  | jq -r '.data.result[].values[][1]' | tee "$EVIDENCE_DIR/loki-query.txt"
+  | jq -r '.data.result[].values[][1]'
 ```
 
 **Kết quả:** dòng `workshop-proof …` gần đây với timestamp trong vài phút vừa qua.

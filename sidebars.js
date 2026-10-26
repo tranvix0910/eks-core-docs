@@ -56,9 +56,7 @@ module.exports = {
       doc('observability/grafana-dashboards'),
     ], { className: 'sb-icon sb-icon-chart', link: { type: 'doc', id: 'sections/observability' } }),
 
-    section('5 · Accept and operate', [
-      doc('operations/workshop-acceptance'),
-      doc('operations/lifecycle-and-cleanup'),
+    section('5 · Accept and operate', [      doc('operations/lifecycle-and-cleanup'),
       doc('operations/master-incident-catalogue', 'Troubleshooting'),
       doc('operations/system-verification-and-diagnostics', 'Diagnostics commands'),
     ], { className: 'sb-divider', link: { type: 'doc', id: 'sections/accept-and-operate' } }),
