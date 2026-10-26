@@ -27,22 +27,6 @@ This page lists **what the workshop asks for**, **where each requirement is impl
 8. Centralized observability: Prometheus-compatible metrics, Grafana, Loki.
 9. Metrics and logs from cluster 1 are **shipped to cluster 2**.
 
-## How each requirement is implemented
-
-| # | Requirement | Implementation | Step that builds it | How you prove it |
-|---|---|---|---|---|
-| 1 | Infra Managed Node Group | EKS Managed Node Group `infra` (label `role=infra`, taint `CriticalAddonsOnly`); every platform chart uses `nodeSelector: role=infra` plus the matching toleration, so application Pods cannot land there | [1.2](architecture/layer-20-cluster-workload), [2.1](platform-addons/gitops-bootstrap-order) | Prometheus, JavaMelody, Karpenter and ArgoCD Pods all run on `role=infra` nodes |
-| 2 | Spot pool | NodePool `batch-spot` (`capacity-type=spot`) | [2.2](karpenter/ec2nodeclass-and-nodepools-configuration) | A test Pod lands on a Spot node from `batch-spot` |
-| 2 | Mixed pool 1:3 | NodePools `ms-od` (On-Demand, 24 vCPU, weight 100) + `ms-spot` (Spot, 72 vCPU, weight 10) sharing one label and taint | [2.2](karpenter/ec2nodeclass-and-nodepools-configuration), [2.3](karpenter/on-demand-spot-ratio-and-limits) | Capacity report shows On-Demand vs Spot nodes and vCPU |
-| 2 | ARM64 pool | NodePool `arm64` (`kubernetes.io/arch=arm64`) | [2.4](karpenter/arm64-validation) | `uname -m` returns `aarch64` on an `arm64` node |
-| 3 | Microservices on pool 2 | Backend and frontend values: `nodeSelector: workload=microservices` + matching toleration | [3.2](apps-shopnow/shopnow-end-to-end-deployment-guide) | Every backend and frontend Pod is on an `ms-od` or `ms-spot` node |
-| 4 | EFS persistent volumes | EFS file system + EFS CSI driver + StorageClass `efs-sc`; one `ReadWriteMany` PVC per service mounted at `/data` | [1.2](architecture/layer-20-cluster-workload), [3.3](apps-shopnow/efs-persistent-volumes) | Two replicas read the same file; the file survives Pod replacement |
-| 5 | Even distribution | `topologySpreadConstraints` on zone and hostname, `maxSkew: 1` | [3.4](apps-shopnow/pod-placement) | Pod → node → zone table with skew ≤ 1 |
-| 6 | PodDisruptionBudget | `maxUnavailable: 1` for every service with two replicas (API gateway, config server, product, cart, user); a 2-of-3 PDB on the proof workload. `discovery-server` and the frontend run one replica, so they have no PDB and no spread | [3.5](apps-shopnow/availability-and-pdb) | An eviction is refused when the budget is 0 and allowed when it is 1 |
-| 7 | Deploy through ArgoCD | One ArgoCD Application per service, reading Helm charts from `eks-core-gitops` | [3.2](apps-shopnow/shopnow-end-to-end-deployment-guide) | Every Application is `Synced` and `Healthy` |
-| 8 | Centralized observability | Cluster 2 runs Mimir, Loki and Grafana on S3 storage | [1.3](architecture/layer-21-cluster-observability) | Receiver Pods Ready, Grafana reachable |
-| 9 | Ship telemetry 1 → 2 | Prometheus `remote_write` → Mimir; Alloy DaemonSet → Loki; over an internal ALB with private DNS and TLS | [4.1–4.4](observability/observability-architecture-overview) | A new cluster 1 metric and log line are queryable in cluster 2 Grafana |
-
 ## Steps
 
 | Step | What you do | Result |
@@ -91,15 +75,4 @@ EBS, EFS, S3, ECR and data transfer add a few cents per hour at workshop scale. 
 
 :::note
 These are estimates from the AWS price list; check the [AWS Pricing Calculator](https://calculator.aws/) for your region and account. Credits or the Free Tier lower the bill.
-:::
-
-## Conventions used in every step
-
-- Each page starts with a box showing the **goal**, the **requirement** it covers, and **which repository** the commands run from.
-- Commands are Bash. Every `kubectl` command passes `--context eks-workload` or `--context eks-observability`, so you never act on the wrong cluster.
-- Paths use the variables from [step 0.1](architecture/organizational-constraints-and-prerequisites): `$TF_DIR`, `$GITOPS_DIR`, `$APPS_DIR`, `$PLAN_DIR`, `$EVIDENCE_DIR`.
-- A **Verify** section closes every step. Do not move on until it passes.
-
-:::warning Cost
-The workshop creates billable resources: two EKS control planes, EC2 nodes, a NAT gateway, EFS, load balancers and S3. Follow [cleanup](operations/lifecycle-and-cleanup) when you are done.
 :::
