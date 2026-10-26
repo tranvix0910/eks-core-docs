@@ -6,12 +6,12 @@ sidebar_label: "Tổng quan workshop"
 
 # EKS Workshop
 
-Trong workshop này, chúng ta sẽ triển khai microservices trên Amazon EKS bằng Terraform và ArgoCD. Bên cạnh việc đưa ứng dụng lên cluster, bạn sẽ thực hành cách cấp node bằng Karpenter, sử dụng EFS, phân bổ replica và theo dõi metrics, logs.
+Trong workshop này, chúng ta sẽ triển khai Microservices trên Amazon EKS bằng Terraform và ArgoCD. Bên cạnh việc đưa ứng dụng lên cluster, ngoài ra sẽ thực hành cách Provision Node bằng Karpenter, sử dụng EFS, phân bổ Replica và theo dõi Metrics, Logs.
 
 Hệ thống gồm hai cluster:
 
-- **Workload cluster** chạy ứng dụng. Managed Node Group `infra` dành cho ArgoCD, Karpenter, Prometheus và các công cụ vận hành. Karpenter quản lý ba nhóm workload: Spot, mixed On-Demand/Spot và ARM64. Microservices chạy trên mixed pool.
-- **Observability cluster** chạy Mimir, Loki và Grafana để lưu, xem metrics và logs gửi từ workload cluster.
+- **Workload Cluster** chạy ứng dụng. Managed Node Group `infra` dành cho ArgoCD, Karpenter, Prometheus và các công cụ vận hành. Karpenter quản lý ba nhóm workload: Spot, Mixed On-Demand/Spot và ARM64. Microservices chạy trên Mixed pool.
+- **Observability Cluster** chạy Mimir, Loki và Grafana để thu thập Metrics và Logs gửi từ Workload cluster.
 
 Các phần bên dưới đi từ lý thuyết đến thực hành. Nếu đã quen với các thành phần này, bạn có thể bắt đầu từ bước chuẩn bị rồi làm lần lượt theo sidebar.
 
@@ -70,9 +70,9 @@ Các phần bên dưới đi từ lý thuyết đến thực hành. Nếu đã q
   <Card title="Xử lý sự cố" to="/docs/operations/master-incident-catalogue" description="Tìm nguyên nhân theo Events, log và cấu hình của từng thành phần." />
 </CardSection>
 
-<CardSection id="repositories" title="Các repository" description="Clone bốn repo vào cùng thư mục cha để dùng các đường dẫn trong workshop.">
-  <Card title="eks-core-terraform" to="https://github.com/tranvix0910/eks-core-terraform" description="Network và hai EKS cluster, được chia thành ba Terraform layer." />
-  <Card title="eks-core-gitops" to="https://github.com/tranvix0910/eks-core-gitops" description="Manifest, Helm values, chart ứng dụng và các workload thực hành." />
+<CardSection id="repositories" title="Repository" description="Clone các repo vào cùng thư mục cha để dùng các đường dẫn trong workshop.">
+  <Card title="eks-core-terraform" to="https://github.com/tranvix0910/eks-core-terraform" description="Network và hai EKS cluster, được chia thành các Terraform layer." />
+  <Card title="eks-core-gitops" to="https://github.com/tranvix0910/eks-core-gitops" description="Manifest, Helm Values, Chart ứng dụng và các thành phần khác." />
   <Card title="eks-core-apps" to="https://github.com/tranvix0910/eks-core-apps" description="Mã nguồn ứng dụng và script build image." />
-  <Card title="eks-core-docs" to="https://github.com/tranvix0910/eks-core-docs" description="Docs workshop." />
+  <Card title="eks-core-docs" to="https://github.com/tranvix0910/eks-core-docs" description="Docs Workshop." />
 </CardSection>
