@@ -16,7 +16,7 @@ Tiếp theo, chúng ta sẽ tạo cluster `eks-observability` và cài Mimir, Lo
 | EKS `eks-observability` | Kubernetes 1.34 |
 | Managed Node Group `monitoring` | 2 × `t3.medium` On-Demand |
 | S3 bucket | `eks-observability-mimir-<account>` và `eks-observability-loki-<account>`, hết hạn sau 30 ngày |
-| Pod Identity | Quyền S3 cho Mimir và Loki, EBS CSI, tải Balancer controller |
+| Pod Identity | Quyền S3 cho Mimir và Loki, EBS CSI, Load Balancer Controller |
 | Security group ALB nội bộ | Cho phép node cluster 1 qua cổng 9009 (Mimir) và 3100 (Loki) |
 | Private hosted zone | `observability.internal` |
 | Helm release | LBC trong `kube-system`; Prometheus (metrics riêng cluster 2), Mimir 6.1, Loki 7.3, Grafana 10.5 trong `monitoring` |
@@ -42,9 +42,9 @@ aws eks update-kubeconfig --name eks-observability --region "$AWS_REGION" --alia
 kubectl --context eks-observability get nodes -L role
 ```
 
-## 2. Tạo Namespace, StorageClass và tải Balancer controller {#2-namespace-storage-class-and-load-balancer-controller}
+## 2. Tạo Namespace, StorageClass và Load Balancer Controller {#2-namespace-storage-class-and-load-balancer-controller}
 
-Grafana cần đọc ConfigMap chứa dashboard trong namespace `monitoring`. Chúng ta sẽ để Terraform tạo namespace, StorageClass và tải Balancer controller trước, rồi mới apply các chart observability:
+Grafana cần đọc ConfigMap chứa dashboard trong namespace `monitoring`. Chúng ta sẽ để Terraform tạo namespace, StorageClass và Load Balancer Controller trước, rồi mới apply các chart observability:
 
 ```bash
 terraform -chdir="$TF_DIR/$L" plan \
@@ -82,7 +82,7 @@ helm --kube-context eks-observability list -n monitoring
 terraform -chdir="$TF_DIR/$L" output mimir_bucket_name
 ```
 
-**Kết quả:** mọi Pod `Running`/`Ready`, mọi PVC `Bound`, bốn release `deployed` trong `monitoring` (prometheus, mimir, loki, grafana). Tải balancer controller nằm trong `kube-system`.
+**Kết quả:** mọi Pod `Running`/`Ready`, mọi PVC `Bound`, bốn release `deployed` trong `monitoring` (prometheus, mimir, loki, grafana). Load Balancer Controller nằm trong `kube-system`.
 
 | Triệu chứng | Kiểm tra |
 |---|---|
@@ -108,7 +108,7 @@ Các thành phần được cài thêm:
 
 | Release / tài nguyên | Namespace |
 |---|---|
-| AWS tải Balancer controller 3.4 | `kube-system` |
+| AWS Load Balancer Controller 3.4 | `kube-system` |
 | Karpenter 1.14 (controller và CRD) | `kube-system` |
 | ArgoCD (chart 10.3) | `argocd` |
 | kube-prometheus-stack 88.6 | `monitoring` |

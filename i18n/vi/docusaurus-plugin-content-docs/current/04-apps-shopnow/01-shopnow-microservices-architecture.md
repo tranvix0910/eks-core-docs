@@ -23,7 +23,7 @@ Các giá trị cần đối chiếu: Config Server port `5859`; Cart dùng Post
 
 ## Request Flow {#request-flow}
 
-frontend gọi Gateway qua `/product`, `/shopping-cart` và `/user`. Gateway tìm service qua Eureka, thêm prefix `/api`, rồi chuyển request tới Spring controller. Khi API lỗi, kiểm tra lần lượt Browser, Gateway và backend để xác định chặng lỗi.
+Frontend gọi Gateway qua `/product`, `/shopping-cart` và `/user`. Gateway tìm service qua Eureka, thêm prefix `/api`, rồi chuyển request tới Spring controller. Khi API lỗi, kiểm tra lần lượt Browser, Gateway và backend để xác định chặng lỗi.
 
 ## Storage {#workshop-storage}
 

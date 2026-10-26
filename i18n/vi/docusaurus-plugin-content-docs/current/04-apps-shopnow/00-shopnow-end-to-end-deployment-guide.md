@@ -112,7 +112,7 @@ argocd login localhost:8080 --plaintext --username admin \
 
 ## 4. Deploy theo thứ tự {#4-deploy-in-dependency-order}
 
-database cần sẵn sàng trước khi backend khởi động. Chúng ta sẽ triển khai lần lượt database, Discovery Server, Config Server, các service và frontend. Chờ nhóm hiện tại `Healthy` rồi mới chạy nhóm tiếp theo.
+Database cần sẵn sàng trước khi backend khởi động. Chúng ta sẽ triển khai lần lượt database, Discovery Server, Config Server, các service và frontend. Chờ nhóm hiện tại `Healthy` rồi mới chạy nhóm tiếp theo.
 
 ```bash
 A=.workshop/applications
@@ -131,7 +131,7 @@ Khi backend bắt đầu chạy, theo dõi Karpenter cấp node cho mixed pool:
 kubectl --context eks-workload get nodeclaims -w
 ```
 
-frontend là Argo Rollout blue-green, promote thủ công; lần triển khai đầu tiên chuyển Healthy trực tiếp. Các lần cập nhật sau chờ promote ([blue-green](blue-green-argo-rollouts)).
+Frontend là Argo Rollout blue-green, promote thủ công; lần triển khai đầu tiên chuyển Healthy trực tiếp. Các lần cập nhật sau chờ promote ([blue-green](blue-green-argo-rollouts)).
 
 ## Kiểm tra ArgoCD Application {#verify--argocd-requirement-7}
 
@@ -145,7 +145,7 @@ argocd app list -p shopnow | tee "$EVIDENCE_DIR/argocd-apps.txt"
 
 ```bash
 kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
-  | select(.metadata.labels.app // "" | test("service|gateway|server"))
+  | select(.metadata.labels.app // "" | test("service|gateway|server|frontend"))
   | [.metadata.name, .spec.nodeName] | @tsv' \
 | while IFS=$'\t' read -r pod node; do
     printf '%-60s %s\n' "$pod" "$(kubectl --context eks-workload get node "$node" \
@@ -153,7 +153,7 @@ kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
   done | tee "$EVIDENCE_DIR/pool2-placement.txt"
 ```
 
-**Kết quả:** mọi backend Pod hiển thị `ms-od/on-demand` hoặc `ms-spot/spot`. Không Pod nào chạy trên node `infra`, `batch-spot` hoặc `arm64`.
+**Kết quả:** mọi Pod backend và frontend hiển thị `ms-od/on-demand` hoặc `ms-spot/spot`. Không Pod nào chạy trên node `infra`, `batch-spot` hoặc `arm64`.
 
 ## Kiểm tra ứng dụng {#verify--the-application-works}
 

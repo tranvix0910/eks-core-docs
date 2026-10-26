@@ -31,14 +31,14 @@ This page lists **what the workshop asks for**, **where each requirement is impl
 
 | # | Requirement | Implementation | Step that builds it | How you prove it |
 |---|---|---|---|---|
-| 1 | Infra Managed Node Group | EKS Managed Node Group `infra` (label `role=infra`); every platform chart uses `nodeSelector: role=infra` | [1.2](architecture/layer-20-cluster-workload), [2.1](platform-addons/gitops-bootstrap-order) | Prometheus, JavaMelody, Karpenter and ArgoCD Pods all run on `role=infra` nodes |
+| 1 | Infra Managed Node Group | EKS Managed Node Group `infra` (label `role=infra`, taint `CriticalAddonsOnly`); every platform chart uses `nodeSelector: role=infra` plus the matching toleration, so application Pods cannot land there | [1.2](architecture/layer-20-cluster-workload), [2.1](platform-addons/gitops-bootstrap-order) | Prometheus, JavaMelody, Karpenter and ArgoCD Pods all run on `role=infra` nodes |
 | 2 | Spot pool | NodePool `batch-spot` (`capacity-type=spot`) | [2.2](karpenter/ec2nodeclass-and-nodepools-configuration) | A test Pod lands on a Spot node from `batch-spot` |
 | 2 | Mixed pool 1:3 | NodePools `ms-od` (On-Demand, 24 vCPU, weight 100) + `ms-spot` (Spot, 72 vCPU, weight 10) sharing one label and taint | [2.2](karpenter/ec2nodeclass-and-nodepools-configuration), [2.3](karpenter/on-demand-spot-ratio-and-limits) | Capacity report shows On-Demand vs Spot nodes and vCPU |
 | 2 | ARM64 pool | NodePool `arm64` (`kubernetes.io/arch=arm64`) | [2.4](karpenter/arm64-validation) | `uname -m` returns `aarch64` on an `arm64` node |
-| 3 | Microservices on pool 2 | Backend values: `nodeSelector: workload=microservices` + matching toleration | [3.2](apps-shopnow/shopnow-end-to-end-deployment-guide) | Every backend Pod is on an `ms-od` or `ms-spot` node |
+| 3 | Microservices on pool 2 | Backend and frontend values: `nodeSelector: workload=microservices` + matching toleration | [3.2](apps-shopnow/shopnow-end-to-end-deployment-guide) | Every backend and frontend Pod is on an `ms-od` or `ms-spot` node |
 | 4 | EFS persistent volumes | EFS file system + EFS CSI driver + StorageClass `efs-sc`; one `ReadWriteMany` PVC per service mounted at `/data` | [1.2](architecture/layer-20-cluster-workload), [3.3](apps-shopnow/efs-persistent-volumes) | Two replicas read the same file; the file survives Pod replacement |
 | 5 | Even distribution | `topologySpreadConstraints` on zone and hostname, `maxSkew: 1` | [3.4](apps-shopnow/pod-placement) | Pod → node → zone table with skew ≤ 1 |
-| 6 | PodDisruptionBudget | `maxUnavailable: 1` per backend; a 2-of-3 PDB on the proof workload | [3.5](apps-shopnow/availability-and-pdb) | An eviction is refused when the budget is 0 and allowed when it is 1 |
+| 6 | PodDisruptionBudget | `maxUnavailable: 1` for every service with two replicas (API gateway, config server, product, cart, user); a 2-of-3 PDB on the proof workload. `discovery-server` and the frontend run one replica, so they have no PDB and no spread | [3.5](apps-shopnow/availability-and-pdb) | An eviction is refused when the budget is 0 and allowed when it is 1 |
 | 7 | Deploy through ArgoCD | One ArgoCD Application per service, reading Helm charts from `eks-core-gitops` | [3.2](apps-shopnow/shopnow-end-to-end-deployment-guide) | Every Application is `Synced` and `Healthy` |
 | 8 | Centralized observability | Cluster 2 runs Mimir, Loki and Grafana on S3 storage | [1.3](architecture/layer-21-cluster-observability) | Receiver Pods Ready, Grafana reachable |
 | 9 | Ship telemetry 1 → 2 | Prometheus `remote_write` → Mimir; Alloy DaemonSet → Loki; over an internal ALB with private DNS and TLS | [4.1–4.4](observability/observability-architecture-overview) | A new cluster 1 metric and log line are queryable in cluster 2 Grafana |
@@ -71,6 +71,27 @@ This page lists **what the workshop asks for**, **where each requirement is impl
 | **5.2** [Day-2 and cleanup](operations/lifecycle-and-cleanup) | Make a change, roll back, destroy | You can operate and remove the platform |
 
 Plan for a full working day for the first run. Most of the waiting is EKS cluster creation (about 15 minutes per cluster) and Karpenter launching nodes.
+
+## Cost {#cost}
+
+Estimated On-Demand prices in `ap-northeast-1` (Tokyo), before tax and free credits:
+
+| Resource | Quantity | USD per hour |
+|---|---|---|
+| EKS control plane ($0.10/h) | 2 clusters | 0.20 |
+| Infra node group, `t3.large` ($0.1088/h) | 3 nodes | 0.33 |
+| Observability node group, `t3.medium` ($0.0544/h) | 2 nodes | 0.11 |
+| NAT gateway ($0.062/h + $0.062/GB) | 1 | 0.06 |
+| Application Load Balancer ($0.0243/h + LCU) | 2 (admin, internal) | 0.05 |
+| Public IPv4 addresses ($0.005/h) | about 4 | 0.02 |
+| **Baseline once Terraform is applied** | | **≈ 0.77** |
+| Karpenter nodes for the labs and the application (Spot is cheaper) | 3–5 nodes | ≈ 0.3–0.6 |
+
+EBS, EFS, S3, ECR and data transfer add a few cents per hour at workshop scale. **One working day (about 8 hours) costs roughly USD 10–15.** Left running, the baseline alone is about USD 18 per day, so run [cleanup](operations/lifecycle-and-cleanup) the same day.
+
+:::note
+These are estimates from the AWS price list; check the [AWS Pricing Calculator](https://calculator.aws/) for your region and account. Credits or the Free Tier lower the bill.
+:::
 
 ## Conventions used in every step
 

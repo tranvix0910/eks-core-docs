@@ -96,7 +96,7 @@ Mỗi layer chỉ nên có một lượt apply đang chạy. S3 lock file giúp 
 
 ## Thứ tự triển khai lần đầu {#first-time-order}
 
-layer 20 và 21 đọc output của nhau để cấu hình security group giữa hai cluster. Ngoài ra, Helm cần kết nối được tới Kubernetes API trước khi cài chart. Vì vậy, lần đầu chúng ta tạo phần AWS trước, rồi mới apply đầy đủ các resource trong cluster theo thứ tự dưới đây:
+Layer 20 và 21 đọc output của nhau để cấu hình security group giữa hai cluster. Ngoài ra, Helm cần kết nối được tới Kubernetes API trước khi cài chart. Vì vậy, lần đầu chúng ta tạo phần AWS trước, rồi mới apply đầy đủ các resource trong cluster theo thứ tự dưới đây:
 
 ```mermaid
 sequenceDiagram

@@ -116,7 +116,7 @@ argocd app list -p shopnow | tee "$EVIDENCE_DIR/argocd-apps.txt"
 
 ```bash
 kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
-  | select(.metadata.labels.app // "" | test("service|gateway|server"))
+  | select(.metadata.labels.app // "" | test("service|gateway|server|frontend"))
   | [.metadata.name, .spec.nodeName] | @tsv' \
 | while IFS=$'\t' read -r pod node; do
     printf '%-60s %s\n' "$pod" "$(kubectl --context eks-workload get node "$node" \
@@ -124,7 +124,7 @@ kubectl --context eks-workload -n shopnow get pods -o json | jq -r '.items[]
   done | tee "$EVIDENCE_DIR/pool2-placement.txt"
 ```
 
-**Expected:** every backend Pod shows `ms-od/on-demand` or `ms-spot/spot`. None is on an `infra`, `batch-spot` or `arm64` node.
+**Expected:** every backend and frontend Pod shows `ms-od/on-demand` or `ms-spot/spot`. None is on an `infra`, `batch-spot` or `arm64` node.
 
 ## Verify — the application works
 

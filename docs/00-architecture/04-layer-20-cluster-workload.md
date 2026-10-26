@@ -15,7 +15,7 @@ sidebar_label: "1.2 Cluster 1 · Workload"
 | Resource | Details |
 |---|---|
 | EKS `eks-workload` | Kubernetes 1.34, public endpoint, control-plane logs to CloudWatch (7 days) |
-| Managed Node Group `infra` | 3 × `t3.large` On-Demand, AL2023, label `role=infra` — runs the platform tools |
+| Managed Node Group `infra` | 3 × `t3.large` On-Demand, AL2023, label `role=infra`, taint `CriticalAddonsOnly=true:NoSchedule` — runs the platform tools only; every platform chart tolerates the taint, application Pods do not |
 | EKS add-ons | VPC CNI, CoreDNS, kube-proxy, EBS CSI, EFS CSI, Pod Identity Agent |
 | Karpenter AWS side | Node IAM role, controller IAM (Pod Identity), SQS interruption queue, EventBridge rules |
 | EFS | File system with a mount target in each workload subnet; NFS (2049) allowed from the nodes |
@@ -73,7 +73,7 @@ terraform -chdir="$TF_DIR/20-cluster-workload" output -raw karpenter_node_iam_ro
 
 **Expected:**
 
-- Three `Ready` nodes labelled `role=infra`, one per AZ.
+- Three `Ready` nodes labelled `role=infra`, one per AZ, each with the `CriticalAddonsOnly` taint.
 - CoreDNS, VPC CNI, EBS CSI and EFS CSI Pods `Running` in `kube-system`.
 - An EFS file system ID (`fs-…`), seven ECR URLs and a Karpenter node role name.
 

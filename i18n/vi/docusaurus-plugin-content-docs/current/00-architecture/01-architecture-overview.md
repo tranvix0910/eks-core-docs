@@ -90,7 +90,7 @@ Hai cluster nằm trong cùng một VPC nhưng sử dụng subnet và security g
 | Thành phần | Chạy trên | Mục đích |
 |---|---|---|
 | Managed Node Group `infra` (3 × t3.large, On-Demand) | — | capacity ổn định cho công cụ vận hành, độc lập với Karpenter |
-| ArgoCD, Karpenter, Prometheus, JavaMelody, AWS tải Balancer controller, Metrics Server | Node `infra` | công cụ vận hành (yêu cầu 1) |
+| ArgoCD, Karpenter, Prometheus, JavaMelody, AWS Load Balancer Controller, Metrics Server | Node `infra` | công cụ vận hành (yêu cầu 1) |
 | NodePool `batch-spot` | EC2 Spot | Pool 1 — workload Spot |
 | NodePool `ms-od` + `ms-spot` | EC2 On-Demand + Spot | Pool 2 — microservices, 1:3 |
 | NodePool `arm64` | EC2 Graviton | Pool 3 — workload ARM64 |

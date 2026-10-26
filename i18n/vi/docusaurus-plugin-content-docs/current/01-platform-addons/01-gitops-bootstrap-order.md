@@ -23,7 +23,7 @@ nodeSelector:
 | Karpenter | Terraform (bước 1.3) | `platform/addons/karpenter/values.yaml` |
 | ArgoCD | Terraform (bước 1.3) | `platform/addons/argocd/values.yaml` |
 | Prometheus (kube-prometheus-stack) | Terraform (bước 1.3) | `platform/addons/prometheus/values.yaml` |
-| Metrics Server, tải Balancer controller | Terraform (bước 1.3) | `platform/addons/metrics-server/values.yaml` |
+| Metrics Server, Load Balancer Controller | Terraform (bước 1.3) | `platform/addons/metrics-server/values.yaml` |
 | cert-manager | Helm, tại bước này | `platform/addons/cert-manager/values.yaml` |
 | Argo Rollouts | Helm, tại bước này | `--set nodeSelector.role=infra` |
 | JavaMelody collector | kubectl, tại bước này | `platform/addons/javamelody/javamelody-collector.yaml` |
@@ -33,7 +33,7 @@ Các release do Terraform cài vẫn được cập nhật bằng Terraform. S�
 
 ## 1. Cài cert-manager {#1-install-cert-manager}
 
-cert-manager cấp chứng chỉ cho endpoint telemetry nội bộ tại [bước 4.1](cert-manager-and-internal-tls).
+Công cụ cert-manager cấp chứng chỉ cho endpoint telemetry nội bộ tại [bước 4.1](cert-manager-and-internal-tls).
 
 ```bash
 helm repo add jetstack https://charts.jetstack.io && helm repo update jetstack
@@ -56,7 +56,9 @@ helm search repo argo/argo-rollouts --versions | head -5     # pick a version
 export ROLLOUTS_CHART_VERSION=<version from the list>
 helm --kube-context eks-workload upgrade --install argo-rollouts argo/argo-rollouts \
   --version "$ROLLOUTS_CHART_VERSION" --namespace argo-rollouts --create-namespace \
-  --set controller.nodeSelector.role=infra --wait --timeout 10m
+  --set controller.nodeSelector.role=infra \
+  --set-json 'controller.tolerations=[{"key":"CriticalAddonsOnly","operator":"Exists","effect":"NoSchedule"}]' \
+  --wait --timeout 10m
 kubectl --context eks-workload get crd rollouts.argoproj.io
 ```
 

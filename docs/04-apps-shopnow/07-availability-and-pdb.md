@@ -17,6 +17,8 @@ A PodDisruptionBudget limits **voluntary evictions** — `kubectl drain`, node u
 | Workload | PDB | With 2 Ready replicas |
 |---|---|---|
 | Each backend (except Eureka) | `maxUnavailable: 1` | one Pod may be evicted at a time |
+
+`discovery-server` (Eureka) and the frontend run a single replica, so the charts create no PDB for them: a budget on one replica would either block every drain or protect nothing. Draining their node restarts them with a short outage; scale them to two replicas if that matters.
 | `workshop-proof` (3 replicas) | `minAvailable: 2` | one eviction allowed; none if a Pod is already unready |
 
 A PDB does **not** stop a direct `kubectl delete pod`, a node crash, or a Spot reclaim. Availability against those comes from multiple replicas spread over nodes and zones ([step 3.4](pod-placement)).

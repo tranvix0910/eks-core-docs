@@ -24,7 +24,7 @@ tolerations:
     effect: NoSchedule            # taint set by NodePool arm64
 ```
 
-container trên Graviton cần image hỗ trợ `linux/arm64`. Nếu image chỉ có `amd64`, Pod có thể được schedule đúng node nhưng container vẫn lỗi `exec format error`. Kiểm tra image manifest trước khi chạy bài test.
+Container trên Graviton cần image hỗ trợ `linux/arm64`. Nếu image chỉ có `amd64`, Pod có thể được schedule đúng node nhưng container vẫn lỗi `exec format error`. Kiểm tra image manifest trước khi chạy bài test.
 
 ## 1. Kiểm tra image hỗ trợ ARM64 {#1-check-the-image-supports-arm64}
 

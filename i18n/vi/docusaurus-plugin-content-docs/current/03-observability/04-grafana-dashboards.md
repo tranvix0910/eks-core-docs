@@ -59,7 +59,7 @@ Chọn **Loki**:
 
 ## 4. Dashboard {#4-dashboard}
 
-dashboard **Enterprise Workload 360** được thêm ở bước 1.3 để xem Pod, node, CPU, memory và restart của workload cluster. Các panel dùng datasource UID `Mimir`. Nếu thấy *datasource not found*, sửa `uid: Mimir` trong values rồi apply lại layer 21.
+Dashboard **Enterprise Workload 360** được thêm ở bước 1.3 để xem Pod, node, CPU, memory và restart của workload cluster. Các panel dùng datasource UID `Mimir`. Nếu thấy *datasource not found*, sửa `uid: Mimir` trong values rồi apply lại layer 21.
 
 ## Mở rộng dashboard và Alert {#ideas-for-more}
 

@@ -30,7 +30,7 @@ terraform -chdir="$TF_DIR/$L" apply "$PLAN_DIR/$L.tfplan"
 kubectl --context eks-workload get nodes -l role=infra
 ```
 
-plan phải thể hiện **update in-place** node group, không thay thế.
+Plan phải thể hiện **update in-place** node group, không thay thế.
 
 ## Ví dụ 2 · Scale Service qua GitOps {#example-2--scale-a-service-gitops}
 
@@ -54,7 +54,7 @@ kubectl --context eks-workload apply -f "$GITOPS_DIR/.workshop/applications/shop
 argocd app wait shopnow-product-service --health
 ```
 
-backend dùng RollingUpdate với `maxUnavailable` trong Deployment. Topology spread tiếp tục được áp dụng khi schedule Pod mới. PDB kiểm soát request tới eviction API; số Pod bị thay trong rolling update do Deployment controller quản lý.
+Backend dùng RollingUpdate với `maxUnavailable` trong Deployment. Topology spread tiếp tục được áp dụng khi schedule Pod mới. PDB kiểm soát request tới eviction API; số Pod bị thay trong rolling update do Deployment controller quản lý.
 
 ## Rollback {#roll-back}
 
@@ -71,7 +71,7 @@ Scale Pod về 0 không dừng các resource AWS: EKS control plane, node `infra
 
 ## Cleanup môi trường {#clean-up--remove-everything}
 
-Thực hiện lần lượt từ ứng dụng, tải Balancer đến EKS và Network. Kiểm tra bước trước đã xong rồi mới destroy layer tiếp theo.
+Thực hiện lần lượt từ ứng dụng, load balancer đến EKS và Network. Kiểm tra bước trước đã xong rồi mới destroy layer tiếp theo.
 
 ### 1. Ứng dụng và workload thực hành (cluster 1) {#1-applications-and-test-workloads-cluster-1}
 
@@ -88,7 +88,7 @@ kubectl --context eks-workload delete nodepools --all     # Karpenter terminates
 kubectl --context eks-workload get nodeclaims -w          # wait until empty
 ```
 
-### 2. Tải balancer do Kubernetes tạo (cluster 2) {#2-load-balancers-created-by-kubernetes-cluster-2}
+### 2. Load balancer do Kubernetes tạo (cluster 2) {#2-load-balancers-created-by-kubernetes-cluster-2}
 
 ```bash
 kubectl --context eks-observability delete -f "$GITOPS_DIR/.workshop/internal-ingress.yaml"
@@ -98,7 +98,7 @@ Chờ ALB nội bộ biến mất trong EC2 console; Terraform không xóa đư�
 
 ### 3. Gỡ Dependency giữa layer 20 và 21 {#3-break-the-link-between-layers-20-and-21}
 
-layer 21 giữ DNS record cho ALB, layer 20 đọc state layer 21. Trước khi destroy:
+Layer 21 giữ DNS record cho ALB, layer 20 đọc state layer 21. Trước khi destroy:
 
 1. Đặt `internal_observability_alb_name = null` trong tfvars layer 21 rồi apply layer 21 để xóa alias.
 2. Tại layer 20, bỏ remote-state data source `cluster_observability`, đặt observability node security group thành `null`; plan và apply layer 20.

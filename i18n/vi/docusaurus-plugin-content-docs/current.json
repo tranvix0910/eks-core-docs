@@ -20,7 +20,7 @@
     "description": "The label for category '3 · Microservices' in sidebar 'guides'"
   },
   "sidebar.guides.category.4 · Centralized observability": {
-    "message": "4 · Observability",
+    "message": "4 · Giám sát tập trung",
     "description": "The label for category '4 · Centralized observability' in sidebar 'guides'"
   },
   "sidebar.guides.category.5 · Accept and operate": {
@@ -36,7 +36,7 @@
     "description": "The label for the doc item 'Workshop overview' in sidebar 'guides', linking to the doc index"
   },
   "sidebar.guides.doc.Troubleshooting": {
-    "message": "Troubleshooting",
+    "message": "Xử lý sự cố",
     "description": "The label for the doc item 'Troubleshooting' in sidebar 'guides', linking to the doc operations/master-incident-catalogue"
   },
   "sidebar.guides.doc.Diagnostics commands": {
@@ -52,11 +52,11 @@
     "description": "The label for the doc item 'API gateway checks' in sidebar 'guides', linking to the doc apps-shopnow/shopnow-api-gateway"
   },
   "sidebar.guides.doc.Connect JavaMelody": {
-    "message": "Setup JavaMelody",
+    "message": "Kết nối JavaMelody",
     "description": "The label for the doc item 'Connect JavaMelody' in sidebar 'guides', linking to the doc platform-addons/javamelody"
   },
   "sidebar.guides.doc.Karpenter concepts": {
-    "message": "Karpenter NodePools",
+    "message": "Khái niệm Karpenter",
     "description": "The label for the doc item 'Karpenter concepts' in sidebar 'guides', linking to the doc karpenter-autoscaling-nodepools"
   },
   "sidebar.guides.doc.Karpenter: AWS side vs controller": {
@@ -64,7 +64,7 @@
     "description": "The label for the doc item 'Karpenter: AWS side vs controller' in sidebar 'guides', linking to the doc karpenter/karpenter-two-halves-architecture"
   },
   "sidebar.guides.doc.Consolidation and Spot interruption": {
-    "message": "Consolidation và Spot Interruption",
+    "message": "Hợp nhất node và Spot interruption",
     "description": "The label for the doc item 'Consolidation and Spot interruption' in sidebar 'guides', linking to the doc karpenter/disruption-and-spot-interruption"
   },
   "sidebar.guides.doc.Autoscaling: HPA, CPA, KEDA": {
@@ -84,7 +84,7 @@
     "description": "The label for the doc item 'Blue-green frontend' in sidebar 'guides', linking to the doc apps-shopnow/blue-green-argo-rollouts"
   },
   "sidebar.guides.doc.Load Balancer Controller": {
-    "message": "Load Balancer Controller",
+    "message": "AWS Load Balancer Controller",
     "description": "The label for the doc item 'Load Balancer Controller' in sidebar 'guides', linking to the doc platform-addons/aws-load-balancer-controller"
   },
   "sidebar.guides.doc.Public admin ingress": {
@@ -104,7 +104,7 @@
     "description": "The label for the doc item 'Cluster access' in sidebar 'guides', linking to the doc security/sts-tokens-and-access-entries"
   },
   "sidebar.guides.doc.Secrets": {
-    "message": "Secrets",
+    "message": "Quản lý Secret",
     "description": "The label for the doc item 'Secrets' in sidebar 'guides', linking to the doc security/secrets-management-and-rotation"
   },
   "sidebar.guides.doc.Certificate renewal": {
@@ -116,15 +116,15 @@
     "description": "The label for the doc item 'Rancher' in sidebar 'guides', linking to the doc platform-addons/rancher-multi-cluster"
   },
   "sidebar.guides.doc.VPC CNI custom networking": {
-    "message": "VPC CNI Custom Networking",
+    "message": "VPC CNI custom networking",
     "description": "The label for the doc item 'VPC CNI custom networking' in sidebar 'guides', linking to the doc architecture/custom-networking-lab-session"
   },
   "sidebar.guides.doc.Service mesh (Istio)": {
-    "message": "Service Mesh (Istio)",
+    "message": "Service mesh (Istio)",
     "description": "The label for the doc item 'Service mesh (Istio)' in sidebar 'guides', linking to the doc service-mesh-and-istio"
   },
   "sidebar.guides.doc.Deploy to another region": {
-    "message": "Deploy sang Region khác",
+    "message": "Triển khai sang region khác",
     "description": "The label for the doc item 'Deploy to another region' in sidebar 'guides', linking to the doc operations/tokyo-region-migration-runbook"
   }
 }

@@ -20,7 +20,7 @@ kubectl --context eks-workload -n kube-system get pods -l app.kubernetes.io/name
 kubectl --context eks-workload -n kube-system logs deployment/karpenter --tail=100
 ```
 
-controller chạy trên Managed Node Group có label `role=infra`. Kiểm tra ServiceAccount và Namespace khớp Pod Identity Association. Giữ controller trên node `infra` để nó vẫn chạy khi các NodePool không còn node.
+Controller chạy trên Managed Node Group có label `role=infra`. Kiểm tra ServiceAccount và Namespace khớp Pod Identity Association. Giữ controller trên node `infra` để nó vẫn chạy khi các NodePool không còn node.
 
 ## Khi Pod Pending {#when-a-pod-is-pending}
 
@@ -33,4 +33,4 @@ Khi tìm lỗi, bắt đầu từ trạng thái hiện tại. Nếu chưa có No
 
 ## Điều kiện hoàn thành {#completion-gate}
 
-controller `Available`, CRD đã cài, Pod Identity và node role khớp cấu hình. Tiếp theo: [apply các nhóm node](02-ec2nodeclass-and-nodepools-configuration.md).
+Controller `Available`, CRD đã cài, Pod Identity và node role khớp cấu hình. Tiếp theo: [apply các nhóm node](02-ec2nodeclass-and-nodepools-configuration.md).

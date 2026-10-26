@@ -44,6 +44,8 @@ PDB được kiểm tra khi có yêu cầu eviction, chẳng hạn trong `kubect
 | Workload | PDB | Khi có 2 replica Ready |
 |---|---|---|
 | Từng backend, trừ Eureka | `maxUnavailable: 1` | Mỗi lần được evict một Pod |
+
+`discovery-server` (Eureka) và frontend chỉ chạy một replica nên chart không tạo PDB cho chúng: budget trên một replica hoặc chặn mọi lần drain, hoặc không bảo vệ được gì. Khi drain node đang chạy chúng, service sẽ gián đoạn trong lúc Pod khởi động lại; hãy tăng lên hai replica nếu cần tránh điều này.
 | `workshop-proof` (3 replica) | `minAvailable: 2` | Cho phép một eviction; không cho phép nếu đã có Pod unready |
 
 PDB không chặn lệnh xóa Pod trực tiếp và không ngăn node bị crash hoặc Spot instance bị thu hồi. Các trường hợp này vẫn cần replica được phân bổ qua nhiều node và AZ như [bước 3.4](pod-placement).

@@ -122,7 +122,7 @@ Call both endpoints from a Pod on cluster 1, verifying the certificate with the 
 ```bash
 kubectl --context eks-workload -n monitoring run tls-check --rm -i --restart=Never \
   --image=curlimages/curl:8.11.1 --env="CA=$(cat "$CERT_DIR/chain.pem")" \
-  --overrides='{"spec":{"nodeSelector":{"role":"infra"}}}' -- sh -c '
+  --overrides='{"spec":{"nodeSelector":{"role":"infra"},"tolerations":[{"key":"CriticalAddonsOnly","operator":"Exists","effect":"NoSchedule"}]}}' -- sh -c '
     printf "%s\n" "$CA" > /tmp/ca.crt
     for u in https://mimir.observability.internal:9009/ready https://loki.observability.internal:3100/; do
       curl -sS --cacert /tmp/ca.crt -o /dev/null -w "%{remote_ip} %{http_code} $u\n" "$u"

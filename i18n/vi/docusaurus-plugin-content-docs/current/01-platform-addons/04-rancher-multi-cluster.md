@@ -29,7 +29,7 @@ Mở `https://localhost:8443`. Lấy bootstrap password từ Secret theo quy tr�
 
 ## 3. Import cluster 2 {#3-import-cluster-2}
 
-apply `platform/addons/rancher/internal-nlb-service.yaml` sau khi đối chiếu tên SG với output Terraform. NLB TCP passthrough giữ nguyên chứng chỉ TLS Rancher trình cho agent. Node cluster 2 cần kết nối tới NLB/Pod qua cổng 443.
+Apply `platform/addons/rancher/internal-nlb-service.yaml` sau khi đối chiếu tên SG với output Terraform. NLB TCP passthrough giữ nguyên chứng chỉ TLS Rancher trình cho agent. Node cluster 2 cần kết nối tới NLB/Pod qua cổng 443.
 
 Trong Rancher, đặt server URL thành endpoint agent truy cập được, chọn import Existing Cluster và dùng manifest đăng ký do UI của phiên bản đang chạy tạo ra. Manifest chứa registration token; không commit. Apply bằng `--context eks-observability`, sau đó kiểm tra log `cattle-cluster-agent` và trạng thái Active trong Rancher.
 

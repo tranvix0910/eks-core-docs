@@ -110,7 +110,7 @@ Truy cập bằng `http://<ALB-DNS>:8088`, dùng trực tiếp hostname ALB. Ing
 | backend | Service `kite:8080`, path `/` |
 | Health check | `/healthz` |
 
-Terraform tạo Ingress sau khi Helm release Kite sẵn sàng. AWS tải Balancer controller đọc Ingress này và cấu hình listener, rule, target group cùng các security group rule do controller quản lý trên AWS.
+Terraform tạo Ingress sau khi Helm release Kite sẵn sàng. AWS Load Balancer Controller đọc Ingress này và cấu hình listener, rule, target group cùng các security group rule do controller quản lý trên AWS.
 
 #### 2B.1 Kiểm tra Environment {#2b1-read-the-manifest}
 
@@ -142,7 +142,7 @@ BASH
 
 Kết quả: đúng AWS account; controller Ready; có class `alb`; Kite Ready; PVC Bound; EndpointSlice có địa chỉ Ready trên port 8080. Kiểm tra annotation của tất cả thành viên group. Nếu khai báo `alb.ingress.kubernetes.io/security-groups` tường minh, `inbound-cidrs` **không** quản lý quyền truy cập: phải kiểm tra rule SG thực tế trước khi tiếp tục. Xác nhận port 8088 chưa được ứng dụng khác sử dụng.
 
-[![tải Balancer controller Ready 2/2, IngressClass alb tồn tại và chưa có Ingress trong group](/img/workshop/platform/kite-alb-prerequisites.png)](/img/workshop/platform/kite-alb-prerequisites.png)
+[![Load Balancer Controller Ready 2/2, IngressClass alb tồn tại và chưa có Ingress trong group](/img/workshop/platform/kite-alb-prerequisites.png)](/img/workshop/platform/kite-alb-prerequisites.png)
 
 *Preflight: controller Ready và có IngressClass `alb`. Danh sách Ingress trống trong ảnh là trạng thái trước khi bật Kite Ingress. Bấm vào ảnh để xem đầy đủ.*
 
@@ -364,7 +364,7 @@ Quyền Kubernetes chỉ đọc cho Kite — thêm vào values của `helm_relea
     }
 ```
 
-plan và apply lại layer 20. Với RBAC chỉ đọc, user vẫn xem được resource; các thao tác Shell, sửa và xóa sẽ bị chặn.
+Plan và apply lại layer 20. Với RBAC chỉ đọc, user vẫn xem được resource; các thao tác Shell, sửa và xóa sẽ bị chặn.
 
 ## Troubleshooting {#troubleshooting}
 

@@ -53,7 +53,9 @@ helm search repo argo/argo-rollouts --versions | head -5     # pick a version
 export ROLLOUTS_CHART_VERSION=<version from the list>
 helm --kube-context eks-workload upgrade --install argo-rollouts argo/argo-rollouts \
   --version "$ROLLOUTS_CHART_VERSION" --namespace argo-rollouts --create-namespace \
-  --set controller.nodeSelector.role=infra --wait --timeout 10m
+  --set controller.nodeSelector.role=infra \
+  --set-json 'controller.tolerations=[{"key":"CriticalAddonsOnly","operator":"Exists","effect":"NoSchedule"}]' \
+  --wait --timeout 10m
 kubectl --context eks-workload get crd rollouts.argoproj.io
 ```
 

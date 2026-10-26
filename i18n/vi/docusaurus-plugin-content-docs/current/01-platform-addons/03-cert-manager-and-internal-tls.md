@@ -32,7 +32,7 @@ flowchart LR
   ALB -- ":3100" --> LG
 ```
 
-cert-manager trên cluster 1 tạo CA và certificate cho hai hostname. Sau đó, chúng ta import certificate vào ACM để gắn với listener của internal ALB trên cluster 2.
+Trên cluster 1, cert-manager tạo CA và certificate cho hai hostname. Sau đó, chúng ta import certificate vào ACM để gắn với listener của internal ALB trên cluster 2.
 
 Route 53 trỏ các hostname tới ALB. Prometheus và Alloy dùng CA certificate để xác minh endpoint trước khi gửi dữ liệu. Private key không cần đưa sang các Pod gửi metrics và logs.
 
@@ -78,7 +78,7 @@ kubectl --context eks-observability apply -f "$GITOPS_DIR/.workshop/internal-ing
 kubectl --context eks-observability -n monitoring get ingress mimir loki -w    # wait for ADDRESS, then Ctrl+C
 ```
 
-tải Balancer controller tạo một ALB nội bộ; hai Ingress dùng chung group `eks-observability-internal` và security group `eks-observability-internal-alb` do Terraform tạo.
+Load Balancer Controller tạo một ALB nội bộ; hai Ingress dùng chung group `eks-observability-internal` và security group `eks-observability-internal-alb` do Terraform tạo.
 
 ## 4. Tạo private DNS Record cho ALB {#4-point-the-private-dns-names-at-the-alb}
 
@@ -119,7 +119,7 @@ Từ Pod trên workload cluster, gọi 2 endpoint và dùng CA để kiểm tra 
 ```bash
 kubectl --context eks-workload -n monitoring run tls-check --rm -i --restart=Never \
   --image=curlimages/curl:8.11.1 --env="CA=$(cat "$CERT_DIR/chain.pem")" \
-  --overrides='{"spec":{"nodeSelector":{"role":"infra"}}}' -- sh -c '
+  --overrides='{"spec":{"nodeSelector":{"role":"infra"},"tolerations":[{"key":"CriticalAddonsOnly","operator":"Exists","effect":"NoSchedule"}]}}' -- sh -c '
     printf "%s\n" "$CA" > /tmp/ca.crt
     for u in https://mimir.observability.internal:9009/ready https://loki.observability.internal:3100/; do
       curl -sS --cacert /tmp/ca.crt -o /dev/null -w "%{remote_ip} %{http_code} $u\n" "$u"

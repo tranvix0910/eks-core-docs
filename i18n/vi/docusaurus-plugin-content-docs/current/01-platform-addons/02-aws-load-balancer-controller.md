@@ -1,10 +1,10 @@
 ---
-title: "AWS tải Balancer controller"
+title: "AWS Load Balancer Controller"
 ---
 
-# Kiểm tra tải Balancer controller {#verify-load-balancing-before-exposing-services}
+# Kiểm tra Load Balancer Controller {#verify-load-balancing-before-exposing-services}
 
-AWS tải Balancer controller theo dõi Service và Ingress để tạo load balancer trên AWS. Trong repo này, Terraform truyền `clusterName`, region và VPC ID vào chart. Khi kiểm tra, xem values của release đang chạy vì một số file mẫu có thể còn ID của môi trường cũ.
+AWS Load Balancer Controller theo dõi Service và Ingress để tạo load balancer trên AWS. Trong repo này, Terraform truyền `clusterName`, region và VPC ID vào chart. Khi kiểm tra, xem values của release đang chạy vì một số file mẫu có thể còn ID của môi trường cũ.
 
 ## 1. Kiểm tra controller và IAM {#1-check-the-controller-and-iam}
 

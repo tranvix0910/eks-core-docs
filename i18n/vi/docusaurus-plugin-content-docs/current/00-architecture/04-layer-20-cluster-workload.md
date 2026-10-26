@@ -14,14 +14,14 @@ Sau khi có network, chúng ta sẽ tạo cluster `eks-workload`, Managed Node G
 | Tài nguyên | Chi tiết |
 |---|---|
 | EKS `eks-workload` | Kubernetes 1.34, public endpoint, control-plane log gửi CloudWatch và lưu 7 ngày |
-| Managed Node Group `infra` | 3 × `t3.large` On-Demand, AL2023, label `role=infra` — chạy công cụ vận hành |
+| Managed Node Group `infra` | 3 × `t3.large` On-Demand, AL2023, label `role=infra`, taint `CriticalAddonsOnly=true:NoSchedule` — chỉ chạy công cụ vận hành; các platform chart đều có toleration cho taint này, còn Pod ứng dụng thì không |
 | EKS add-on | VPC CNI, CoreDNS, kube-proxy, EBS CSI, EFS CSI, Pod Identity Agent |
 | Phần AWS của Karpenter | Node IAM role, controller IAM (Pod Identity), SQS interruption queue, EventBridge rule |
 | EFS | File system có mount target trong từng workload subnet; cho phép NFS (2049) từ node |
 | ECR | Bảy repository `shopnow/*` lưu image ứng dụng |
-| Pod Identity association | EBS CSI, EFS CSI, tải Balancer controller, Karpenter |
+| Pod Identity association | EBS CSI, EFS CSI, Load Balancer Controller, Karpenter |
 
-layer này cũng quản lý LBC, Karpenter, ArgoCD, Prometheus, Metrics Server và StorageClass `gp3`, `efs-sc`. Các thành phần này cần EKS hoạt động trước, nên sẽ apply ở cuối [bước 1.3](05-layer-21-cluster-observability.md#6-finish-cluster-1).
+Layer này cũng quản lý LBC, Karpenter, ArgoCD, Prometheus, Metrics Server và StorageClass `gp3`, `efs-sc`. Các thành phần này cần EKS hoạt động trước, nên sẽ apply ở cuối [bước 1.3](05-layer-21-cluster-observability.md#6-finish-cluster-1).
 
 ## 1. Kiểm tra biến Terraform {#1-review-the-inputs}
 
@@ -80,7 +80,7 @@ terraform -chdir="$TF_DIR/20-cluster-workload" output -raw karpenter_node_iam_ro
 
 **Kết quả:**
 
-- Ba node `Ready` có label `role=infra`, mỗi AZ một node.
+- Ba node `Ready` có label `role=infra`, mỗi AZ một node, mỗi node có taint `CriticalAddonsOnly`.
 - Pod CoreDNS, VPC CNI, EBS CSI và EFS CSI `Running` trong `kube-system`.
 - EFS file system ID (`fs-…`), bảy ECR URL và tên node role của Karpenter.
 

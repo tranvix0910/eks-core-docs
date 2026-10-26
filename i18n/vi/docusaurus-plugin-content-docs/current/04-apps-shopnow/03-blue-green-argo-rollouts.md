@@ -17,7 +17,7 @@ kubectl --context eks-workload -n shopnow get svc shopnow-frontend-service shopn
 
 ## 2. Deploy phiên bản mới {#2-deliver-a-new-version-through-argocd}
 
-build và push frontend với image tag mới, cập nhật Application/values rồi ArgoCD sync. Dùng tag riêng cho mỗi phiên bản để Kubernetes có thể phân biệt image.
+Build và push frontend với image tag mới, cập nhật Application/values rồi ArgoCD sync. Dùng tag riêng cho mỗi phiên bản để Kubernetes có thể phân biệt image.
 
 ```bash
 argocd app get shopnow-frontend

@@ -5,7 +5,7 @@ sidebar_label: "2.3 Mixed pool 1:3"
 
 # Bước 2.3 — Mixed pool 1:3 {#step-23--mixed-pool-configure-and-measure-the-13-ratio}
 
-mixed pool sử dụng hai NodePool là `ms-od` và `ms-spot`. Chúng ta sẽ xem cách cấu hình giới hạn capacity, sau đó chạy bài test với 1 node On-Demand và 3 node Spot.
+Mixed pool sử dụng hai NodePool là `ms-od` và `ms-spot`. Chúng ta sẽ xem cách cấu hình giới hạn capacity, sau đó chạy bài test với 1 node On-Demand và 3 node Spot.
 
 **Thời gian:** khoảng 20 phút. **Chạy từ:** `$GITOPS_DIR`.
 

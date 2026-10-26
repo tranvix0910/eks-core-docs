@@ -1,6 +1,7 @@
 // Sidebar = the workshop, in the order you run it. Each core page sets its own
 // sidebar_label in front matter ("1.2 Cluster 1 · Workload"), so items here only
-// list ids. Optional and reference pages sit in the last, collapsed group.
+// list ids. Each numbered part opens its intro page (docs/00-sections), like a
+// chapter index. Optional and reference pages sit in the last, collapsed group.
 
 const doc = (id, label) => (label ? { type: 'doc', id, label } : { type: 'doc', id });
 const section = (label, items, extra = {}) => ({
@@ -22,14 +23,14 @@ module.exports = {
       doc('architecture/organizational-constraints-and-prerequisites'),
       doc('architecture/architecture-overview'),
       doc('architecture/architecture-diagrams'),
-    ], { className: 'sb-icon sb-icon-book' }),
+    ], { className: 'sb-icon sb-icon-book', link: { type: 'doc', id: 'sections/before-you-start' } }),
 
     section('1 · Infrastructure with Terraform', [
       doc('architecture/terraform-workflow'),
       doc('architecture/layer-10-network'),
       doc('architecture/layer-20-cluster-workload'),
       doc('architecture/layer-21-cluster-observability'),
-    ], { className: 'sb-icon sb-icon-building' }),
+    ], { className: 'sb-icon sb-icon-building', link: { type: 'doc', id: 'sections/infrastructure' } }),
 
     section('2 · Platform on cluster 1', [
       doc('platform-addons/gitops-bootstrap-order'),
@@ -37,7 +38,7 @@ module.exports = {
       doc('karpenter/on-demand-spot-ratio-and-limits'),
       doc('karpenter/arm64-validation'),
       doc('platform-addons/kite-dashboard'),
-    ], { className: 'sb-icon sb-icon-servers' }),
+    ], { className: 'sb-icon sb-icon-servers', link: { type: 'doc', id: 'sections/platform' } }),
 
     section('3 · Microservices', [
       doc('apps-shopnow/docker-build-multi-arch-and-ci'),
@@ -45,7 +46,7 @@ module.exports = {
       doc('apps-shopnow/efs-persistent-volumes'),
       doc('apps-shopnow/pod-placement'),
       doc('apps-shopnow/availability-and-pdb'),
-    ], { className: 'sb-icon sb-icon-puzzle' }),
+    ], { className: 'sb-icon sb-icon-puzzle', link: { type: 'doc', id: 'sections/microservices' } }),
 
     section('4 · Centralized observability', [
       doc('observability/observability-architecture-overview'),
@@ -53,14 +54,14 @@ module.exports = {
       doc('observability/mimir-metrics-pipeline'),
       doc('observability/loki-logging-pipeline'),
       doc('observability/grafana-dashboards'),
-    ], { className: 'sb-icon sb-icon-chart' }),
+    ], { className: 'sb-icon sb-icon-chart', link: { type: 'doc', id: 'sections/observability' } }),
 
     section('5 · Accept and operate', [
       doc('operations/workshop-acceptance'),
       doc('operations/lifecycle-and-cleanup'),
       doc('operations/master-incident-catalogue', 'Troubleshooting'),
       doc('operations/system-verification-and-diagnostics', 'Diagnostics commands'),
-    ], { className: 'sb-divider' }),
+    ], { className: 'sb-divider', link: { type: 'doc', id: 'sections/accept-and-operate' } }),
 
     {
       type: 'category',
