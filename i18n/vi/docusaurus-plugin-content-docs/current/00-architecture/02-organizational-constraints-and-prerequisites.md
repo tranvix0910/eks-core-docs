@@ -1,9 +1,9 @@
 ---
-title: "Bước 0.1 — Chuẩn bị và thiết lập"
-sidebar_label: "0.1 Chuẩn bị và thiết lập"
+title: "Bước 0.1 — Chuẩn Bị và Thiết Lập"
+sidebar_label: "0.1 Chuẩn Bị và Thiết Lập"
 ---
 
-# Bước 0.1 — Chuẩn bị và thiết lập {#step-01--prerequisites-and-setup}
+# Bước 0.1 — Chuẩn Bị và Th2ưiết Lập {#step-01--prerequisites-and-setup}
 
 Đầu tiên, chúng ta cần chuẩn bị tài khoản AWS, cài các công cụ và clone repo. Sau khi hoàn tất phần này, bạn có thể dùng cùng một cấu hình môi trường để chạy các bước Terraform và Kubernetes phía sau.
 
@@ -11,7 +11,7 @@ sidebar_label: "0.1 Chuẩn bị và thiết lập"
 
 ## 1. Tài khoản AWS {#1-aws-account}
 
-Bạn cần tài khoản AWS hoặc IAM role có quyền tạo VPC, EC2, EKS, IAM, EFS, ECR, S3, ELB, Route 53 và SQS. Nếu dùng tài khoản của công ty, kiểm tra thêm region được phép và các giới hạn của tổ chức.
+Bạn cần tài khoản AWS hoặc IAM role có quyền tạo VPC, EC2, EKS, IAM, EFS, ECR, S3, ELB, Route 53 và SQS.
 
 Kiểm tra Service Quotas tại region triển khai. Cấu hình mẫu dùng `ap-northeast-1`:
 
@@ -27,28 +27,31 @@ aws service-quotas list-service-quotas --service-code ec2 \
   --query 'Quotas[?contains(QuotaName, `vCPU`)].{Name:QuotaName,Value:Value}' --output table
 ```
 
-Nếu tài khoản AWS thuộc Organization, kiểm tra SCP cho phép tạo EKS và EFS tại region đã chọn. Explicit Deny trong SCP vẫn chặn thao tác dù IAM Role có quyền Admin.
-
-## 2. Tools {#2-tools}
+## 2. Công cụ {#2-tools}
 
 | Công cụ | Phiên bản | Dùng để |
 |---|---|---|
-| AWS CLI | v2 | credentials, đăng nhập ECR, kiểm tra |
-| Terraform | ≥ 1.10, < 2.0 | Tạo hạ tầng |
-| kubectl | Chênh tối đa một minor version so với EKS 1.34 | Truy cập cluster |
-| Helm | v3 | cert-manager, Alloy |
-| Docker có buildx | Phiên bản gần đây | build image |
-| argocd CLI | Tương ứng với server | `argocd app wait` |
-| git, jq, python3, curl, openssl | Phiên bản gần đây | Script và kiểm tra |
+| AWS CLI | 2.35.24 | Credentials, đăng nhập ECR, kiểm tra tài nguyên AWS |
+| Terraform | 1.15.5 (code yêu cầu ≥ 1.10, < 2.0) | Tạo ba layer hạ tầng |
+| kubectl | 1.34.11 (cùng minor với EKS 1.34) | Truy cập cluster |
+| Helm | 4.2.3 | Cài cert-manager, Argo Rollouts, Alloy |
+| Docker có buildx | Docker 29.5.3, buildx 0.34.1 | Build và push image |
+| argocd CLI | 3.5.0 (khớp với ArgoCD chart 10.3.0) | `argocd app wait`, `sync`, `diff` |
+
+Các lệnh trong workshop cũng dùng `git`, `jq` và `curl`; hầu hết máy đã có sẵn.
 
 ```bash
-aws --version && terraform version && kubectl version --client && helm version
-docker buildx version && argocd version --client && jq --version && python3 --version
+aws --version              # aws-cli/2.35.x
+terraform version          # Terraform v1.15.x
+kubectl version --client   # Client Version: v1.34.x
+helm version --short       # v4.2.x
+docker buildx version      # github.com/docker/buildx v0.34.x
+argocd version --client    # argocd: v3.5.x
 ```
 
-## 3. AWS profile {#3-aws-profile}
+## 3. AWS Profile {#3-aws-profile}
 
-Trước tiên, kiểm tra các AWS profile đã có trên máy và chọn profile sẽ dùng cho workshop. Tên `eks-core` trong ví dụ chỉ là tên mẫu. Bạn cần thay bằng profile thực tế và dùng cùng tên đó trong `workshop.env`, Terraform provider và S3 backend:
+Trước tiên, kiểm tra các AWS Profile đã có trên máy và chọn Profile sẽ dùng cho Workshop. Tên `eks-core` trong ví dụ chỉ là tên mẫu. Cần thay bằng Profile thực tế và dùng cùng tên đó trong `workshop.env`, Terraform Provider và S3 Backend:
 
 ```bash
 aws configure list-profiles

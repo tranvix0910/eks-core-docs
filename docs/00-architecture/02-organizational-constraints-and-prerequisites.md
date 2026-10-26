@@ -34,17 +34,22 @@ If your organization applies Service Control Policies (SCPs), confirm they allow
 
 | Tool | Version | Used for |
 |---|---|---|
-| AWS CLI | v2 | Credentials, ECR login, checks |
-| Terraform | ≥ 1.10, < 2.0 | Infrastructure |
-| kubectl | within one minor version of EKS 1.34 | Cluster access |
-| Helm | v3 | cert-manager, Alloy |
-| Docker with buildx | recent | Building images |
-| argocd CLI | matching the server | `argocd app wait` |
-| git, jq, python3, curl, openssl | any recent | Scripts and checks |
+| AWS CLI | 2.35.24 | Credentials, ECR login, AWS checks |
+| Terraform | 1.15.5 (the code requires ≥ 1.10, < 2.0) | All three infrastructure layers |
+| kubectl | 1.34.11 (same minor as EKS 1.34) | Cluster access |
+| Helm | 4.2.3 | cert-manager, Argo Rollouts, Alloy |
+| Docker with buildx | Docker 29.5.3, buildx 0.34.1 | Building and pushing images |
+| argocd CLI | 3.5.0 (matches ArgoCD chart 10.3.0) | `argocd app wait`, `sync`, `diff` |
+
+The commands also use `git`, `jq` and `curl`, which most systems already have.
 
 ```bash
-aws --version && terraform version && kubectl version --client && helm version
-docker buildx version && argocd version --client && jq --version && python3 --version
+aws --version              # aws-cli/2.35.x
+terraform version          # Terraform v1.15.x
+kubectl version --client   # Client Version: v1.34.x
+helm version --short       # v4.2.x
+docker buildx version      # github.com/docker/buildx v0.34.x
+argocd version --client    # argocd: v3.5.x
 ```
 
 ## 3. AWS profile
