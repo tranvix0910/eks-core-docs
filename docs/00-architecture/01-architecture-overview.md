@@ -10,6 +10,136 @@ sidebar_label: "0.2 Architecture"
 **Time:** about 10 minutes of reading.
 :::
 
+## Kubernetes and EKS at a glance
+
+**Inside a Kubernetes cluster.** Every arrow goes through `kube-apiserver`: the scheduler, controllers and kubelets do not call each other, they read and write state through the API server, and only the API server talks to etcd. `cloud-controller-manager` is the part that calls the cloud provider's APIs.
+
+```mermaid
+flowchart TB
+  Admin(["Admin · kubectl"])
+  AWS(["AWS APIs<br/>EC2 · ELB · EBS"])
+
+  subgraph CP["Control plane"]
+    direction LR
+    SCH["kube-scheduler"]
+    CM["kube-controller-manager"]
+    API["kube-apiserver"]
+    ETCD[("etcd")]
+    CCM["cloud-controller-manager"]
+  end
+
+  subgraph DP["Data plane · worker nodes"]
+    direction LR
+    subgraph N1["Worker node 1"]
+      direction TB
+      K1["kubelet"]
+      X1["kube-proxy"]
+      subgraph R1["Container runtime (CRI)"]
+        P1a["Pod"]
+        P1b["Pod"]
+      end
+    end
+    subgraph N2["Worker node 2"]
+      direction TB
+      K2["kubelet"]
+      X2["kube-proxy"]
+      subgraph R2["Container runtime (CRI)"]
+        P2a["Pod"]
+        P2b["Pod"]
+      end
+    end
+  end
+
+  Admin -.-> API
+  SCH <-.-> API
+  CM <-.-> API
+  API <-.-> ETCD
+  CCM <-.-> API
+  CCM -.-> AWS
+  API <-.-> K1
+  API <-.-> K2
+  K1 -.-> R1
+  K2 -.-> R2
+```
+
+**How the main objects fit together.** An Ingress becomes an ALB, the ALB sends traffic to a Service, the Service spreads it over the Pods a Deployment manages, and the Pods read ConfigMaps and Secrets and keep data on volumes through PVCs.
+
+```mermaid
+flowchart LR
+  User(["Browser"]) --> ALB["ALB<br/>created from an Ingress"]
+  ALB --> SVC["Service<br/>stable name and IP"]
+
+  subgraph DEP["Deployment · replicas: 2"]
+    RS["ReplicaSet"] --> PodA["Pod"]
+    RS --> PodB["Pod"]
+  end
+
+  SVC --> PodA
+  SVC --> PodB
+  CFG["ConfigMap · Secret"] -.-> PodA
+  CFG -.-> PodB
+  PodA --> PVC[("PVC → PV<br/>EFS or EBS")]
+  PodB --> PVC
+```
+
+**What happens when you deploy.** The desired state is stored first; controllers, the scheduler, Karpenter and the kubelet then make it real.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Argo as ArgoCD
+  participant API as kube-apiserver
+  participant ETCD as etcd
+  participant CTRL as Deployment and ReplicaSet controllers
+  participant SCH as kube-scheduler
+  participant KAR as Karpenter
+  participant KL as kubelet
+
+  Argo->>API: apply Deployment (replicas: 2)
+  API->>ETCD: store the desired state
+  CTRL->>API: see the Deployment, create 2 Pods (Pending)
+  SCH->>API: see the Pending Pods
+  alt a node has room
+    SCH->>API: bind each Pod to a node
+  else no node fits
+    KAR->>API: see the unschedulable Pods
+    KAR->>KAR: launch an EC2 instance in a matching NodePool
+    SCH->>API: bind the Pods to the new node
+  end
+  KL->>API: see Pods bound to this node
+  KL->>KL: pull the image from ECR, start the containers
+  KL->>API: report Running
+```
+
+**What EKS runs for you.** AWS runs the control plane; the nodes, Pod networking and add-ons live in your VPC.
+
+```mermaid
+flowchart LR
+  Dev(["kubectl · ArgoCD · Terraform"])
+
+  subgraph AWSSIDE["Run by AWS · EKS"]
+    CP["Control plane<br/>kube-apiserver · etcd · scheduler · controllers<br/>across 3 Availability Zones"]
+  end
+
+  subgraph YOURS["Your AWS account · VPC"]
+    subgraph MNG["Managed Node Group: infra"]
+      N1["EC2 nodes<br/>platform tools"]
+    end
+    subgraph KP["Karpenter NodePools"]
+      N2["EC2 nodes<br/>Spot · On-Demand · ARM64"]
+    end
+    CNI["VPC CNI<br/>Pod IPs from your subnets"]
+    ADD["Add-ons<br/>Load Balancer Controller · EBS CSI · EFS CSI"]
+  end
+
+  Dev -->|"EKS API endpoint<br/>IAM authentication"| CP
+  CP <-->|"ENIs in your subnets"| N1
+  CP <--> N2
+  N1 --- CNI
+  N2 --- CNI
+  ADD -.-> N1
+```
+
 ## The big picture
 
 [![Architecture overview](/img/architecture/01-overview.png)](/img/architecture/01-overview.png)

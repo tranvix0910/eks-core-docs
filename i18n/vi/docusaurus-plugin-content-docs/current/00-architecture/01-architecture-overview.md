@@ -11,30 +11,30 @@ Trong phần này, chúng ta sẽ tìm hiểu các thành phần của EKS và c
 
 ## Kubernetes Và Amazon EKS {#kubernetes-and-eks}
 
-Phần này đi từ câu hỏi "Kubernetes là gì" đến "EKS khác Kubernetes tự dựng ở đâu". Nếu đã quen Kubernetes, bạn có thể đọc lướt tới mục 5.
+Phần này đi từ câu hỏi "Kubernetes là gì?" đến "EKS là gì?". Nếu đã quen Kubernetes, bạn có thể bỏ qua mục 1 & 2 và chuyển sang mục 3.
 
 ### 1. Kubernetes Giải Quyết Vấn Đề Gì?
 
 Với một ứng dụng nhỏ, bạn có thể SSH vào một máy chủ rồi chạy `docker run`. Cách này nhanh nhưng mọi việc đều làm tay: container chết thì phải tự chạy lại, máy chủ hỏng thì phải chuyển container sang máy khác, muốn thêm bản sao để chịu tải thì phải tự chọn máy còn trống CPU, RAM.
 
-Ứng dụng trong workshop có 6 service backend, 1 frontend và 2 database, chạy trên nhiều EC2 instance. Làm tay những việc trên cho chừng ấy container là không khả thi. **Kubernetes là hệ thống làm thay các việc đó**: bạn mô tả trạng thái mong muốn, Kubernetes tự đưa hệ thống về trạng thái đó và giữ nguyên như vậy.
+Ứng dụng trong workshop có 6 service backend, 1 frontend và 2 database, chạy trên nhiều EC2 instance. Làm tay những việc trên cho chừng ấy container là không khả thi. **Kubernetes là hệ thống làm thay các việc đó**: chỉ cần mô tả trạng thái mong muốn, Kubernetes tự đưa hệ thống về trạng thái đó và giữ nguyên như vậy.
 
-Cách làm việc này gọi là **khai báo** (declarative). Bạn không ra lệnh "chạy container A trên máy B", mà viết "service product cần 2 bản sao, mỗi bản 256Mi RAM". Kubernetes liên tục so sánh **trạng thái mong muốn** với **trạng thái thực tế** và sửa phần chênh lệch. Vòng lặp so sánh và sửa này gọi là **reconcile**, và là ý tưởng quan trọng nhất cần nhớ.
+Cách làm việc này gọi là **khai báo** (declarative). Thay vì ra lệnh "chạy container A trên máy B", chỉ cần mô tả "service product cần 2 bản sao, mỗi bản 256Mi RAM". Kubernetes liên tục so sánh **trạng thái mong muốn** với **trạng thái thực tế** và sửa phần chênh lệch. Vòng lặp so sánh và sửa này gọi là **reconcile**, và là ý tưởng quan trọng nhất cần nhớ.
 
 ### 2. Một Kubernetes Cluster Gồm Những Gì?
 
-Một cluster có hai phần: **control plane** (bộ não, ra quyết định) và **worker node** (tay chân, chạy container).
+Một cluster có hai phần: **Control Plane** (bộ não, ra quyết định) và **Worker Node** (tay chân, chạy container).
 
-**Control plane** gồm bốn thành phần chính:
+**Control Plane** gồm bốn thành phần chính:
 
 | Thành phần | Làm gì | Ví dụ dễ hình dung |
 |---|---|---|
-| API server | Cửa vào duy nhất của cluster. `kubectl`, ArgoCD, Karpenter đều gửi yêu cầu tới đây | Quầy lễ tân: mọi yêu cầu đều đi qua đây |
+| API Server | Cửa vào duy nhất của cluster. `kubectl`, ArgoCD, Karpenter đều gửi yêu cầu tới đây | Quầy lễ tân: mọi yêu cầu đều đi qua đây |
 | etcd | Cơ sở dữ liệu lưu toàn bộ trạng thái mong muốn và thực tế của cluster | Sổ ghi chép của cả hệ thống |
 | Scheduler | Chọn node cho Pod mới dựa trên CPU, RAM còn trống, label, taint | Người xếp chỗ ngồi |
-| Controller manager | Chạy các controller, mỗi controller canh một loại object và reconcile nó | Người quản lý ca, thấy thiếu người thì gọi thêm |
+| Controller Manager | Chạy các controller, mỗi controller canh một loại object và reconcile nó | Người quản lý ca, thấy thiếu người thì gọi thêm |
 
-**Worker node** là máy chạy container; trong workshop là EC2 instance. Mỗi node có:
+**Worker Node** là máy chạy container; trong workshop là EC2 instance. Mỗi node có:
 
 | Thành phần | Làm gì |
 |---|---|
@@ -42,11 +42,61 @@ Một cluster có hai phần: **control plane** (bộ não, ra quyết định) 
 | Container runtime (containerd) | Thực sự kéo image và chạy container |
 | kube-proxy | Cấu hình mạng trên node để địa chỉ của Service chuyển tới đúng Pod |
 
-### 3. Các Object Bạn Sẽ Gặp Trong Workshop
+Sơ đồ dưới đây cho thấy các thành phần trên nói chuyện với nhau ra sao. Mọi mũi tên đều đi qua **kube-apiserver**: scheduler, controller và kubelet không gọi trực tiếp cho nhau mà cùng đọc, ghi trạng thái qua API server; chỉ API server đọc và ghi vào etcd. **cloud-controller-manager** là phần gọi API của nhà cung cấp cloud (trên AWS: tạo load balancer, gắn thông tin EC2 vào node).
 
-Trạng thái mong muốn được viết dưới dạng **object** (thường là file YAML). Đây là các object chính, kèm ví dụ trong chính workshop này:
+```mermaid
+flowchart TB
+  Admin(["Admin · kubectl"])
+  AWS(["AWS APIs<br/>EC2 · ELB · EBS"])
 
-| Object | Ý nghĩa | Trong workshop |
+  subgraph CP["Control plane"]
+    direction LR
+    SCH["kube-scheduler"]
+    CM["kube-controller-manager"]
+    API["kube-apiserver"]
+    ETCD[("etcd")]
+    CCM["cloud-controller-manager"]
+  end
+
+  subgraph DP["Data plane · worker nodes"]
+    direction LR
+    subgraph N1["Worker node 1"]
+      direction TB
+      K1["kubelet"]
+      X1["kube-proxy"]
+      subgraph R1["Container runtime (CRI)"]
+        P1a["Pod"]
+        P1b["Pod"]
+      end
+    end
+    subgraph N2["Worker node 2"]
+      direction TB
+      K2["kubelet"]
+      X2["kube-proxy"]
+      subgraph R2["Container runtime (CRI)"]
+        P2a["Pod"]
+        P2b["Pod"]
+      end
+    end
+  end
+
+  Admin -.-> API
+  SCH <-.-> API
+  CM <-.-> API
+  API <-.-> ETCD
+  CCM <-.-> API
+  CCM -.-> AWS
+  API <-.-> K1
+  API <-.-> K2
+  K1 -.-> R1
+  K2 -.-> R2
+```
+
+### 3. Các Object Chính Trong Kubernetes
+
+Trạng thái mong muốn được viết dưới dạng **Object** (thường là file YAML). Đây là các object chính, kèm ví dụ trong chính workshop này:
+
+| Object | Ý nghĩa | Trong Workshop |
 |---|---|---|
 | Pod | Đơn vị nhỏ nhất Kubernetes chạy: một hoặc vài container dùng chung IP và volume | Mỗi bản sao của product service là một Pod |
 | Deployment | Khai báo "cần N bản sao của Pod này" và cách cập nhật phiên bản. Nó tạo ReplicaSet, ReplicaSet tạo Pod | Hầu hết backend là Deployment 2 replica (discovery-server chạy 1) |
@@ -55,22 +105,71 @@ Trạng thái mong muốn được viết dưới dạng **object** (thường l
 | ConfigMap, Secret | Cấu hình và dữ liệu bí mật tách khỏi image | Cấu hình Spring, mật khẩu database |
 | PersistentVolumeClaim (PVC) | Yêu cầu một ổ đĩa; Kubernetes cấp volume thật (EBS, EFS) | Backend mount EFS tại `/data`, database dùng EBS `gp3` |
 | DaemonSet | Chạy đúng một Pod trên mỗi node | Alloy thu log trên từng node |
-| StatefulSet | Giống Deployment nhưng Pod có tên và ổ đĩa cố định | JavaMelody collector |
-| Namespace | Chia cluster thành các vùng để nhóm resource | `shopnow`, `argocd`, `monitoring`, `kube-system` |
+| StatefulSet | Giống Deployment nhưng Pod có tên và ổ đĩa cố định | JavaMelody Collector |
+| Namespace | Chia cluster thành các vùng để nhóm resource | `app`, `argocd`, `monitoring`, `kube-system` |
 | Label, taint | Label là nhãn để chọn object; taint trên node để chặn Pod không có toleration | `role=infra`, `workload=microservices` |
+
+Quan hệ giữa các object khi một request từ trình duyệt đi tới ứng dụng: Ingress tạo ra ALB, ALB chuyển tới Service, Service chia đều cho các Pod do Deployment quản lý; Pod đọc cấu hình từ ConfigMap, Secret và ghi dữ liệu vào volume qua PVC.
+
+```mermaid
+flowchart LR
+  User(["Browser"]) --> ALB["ALB<br/>created from an Ingress"]
+  ALB --> SVC["Service<br/>stable name and IP"]
+
+  subgraph DEP["Deployment · replicas: 2"]
+    RS["ReplicaSet"] --> PodA["Pod"]
+    RS --> PodB["Pod"]
+  end
+
+  SVC --> PodA
+  SVC --> PodB
+  CFG["ConfigMap · Secret"] -.-> PodA
+  CFG -.-> PodB
+  PodA --> PVC[("PVC → PV<br/>EFS or EBS")]
+  PodB --> PVC
+```
 
 ### 4. Điều Gì Xảy Ra Khi Bạn Triển Khai Một Ứng Dụng?
 
 Lấy ví dụ ArgoCD apply Deployment của product service với 2 replica:
 
-1. ArgoCD gửi Deployment tới **API server**; API server kiểm tra quyền rồi lưu vào **etcd**.
-2. **Deployment controller** thấy chưa có Pod nào, tạo ReplicaSet; ReplicaSet controller tạo 2 Pod ở trạng thái `Pending`.
+1. ArgoCD gửi Deployment tới **API Server**; API Server kiểm tra quyền rồi lưu vào **etcd**.
+2. **Deployment Controller** thấy chưa có Pod nào, tạo ReplicaSet; ReplicaSet controller tạo 2 Pod ở trạng thái `Pending`.
 3. **Scheduler** tìm node phù hợp cho từng Pod: còn đủ CPU, RAM, khớp `nodeSelector`, có toleration cho taint, và thỏa topology spread (hai Pod khác node, khác zone).
 4. Nếu không có node nào phù hợp, Pod vẫn `Pending`. Lúc này **Karpenter** thấy Pod chờ, tạo EC2 instance mới trong pool phù hợp, node mới tham gia cluster.
 5. **kubelet** trên node được chọn kéo image từ ECR và khởi động container; Pod chuyển sang `Running`.
 6. Từ đây vòng reconcile tiếp tục chạy: Pod chết thì ReplicaSet tạo Pod mới; node mất thì Pod được xếp sang node khác.
 
 Toàn bộ phần thực hành phía sau đều là biến thể của 6 bước này: bạn thay đổi trạng thái mong muốn (bằng Terraform, `kubectl` hoặc Git), còn Kubernetes và các controller lo phần còn lại.
+
+Cùng sáu bước đó dưới dạng sơ đồ tuần tự. Nhánh `alt` cho thấy hai trường hợp: còn node trống thì Pod được xếp ngay, không còn thì Karpenter tạo node mới trước.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Argo as ArgoCD
+  participant API as kube-apiserver
+  participant ETCD as etcd
+  participant CTRL as Deployment and ReplicaSet controllers
+  participant SCH as kube-scheduler
+  participant KAR as Karpenter
+  participant KL as kubelet
+
+  Argo->>API: apply Deployment (replicas: 2)
+  API->>ETCD: store the desired state
+  CTRL->>API: see the Deployment, create 2 Pods (Pending)
+  SCH->>API: see the Pending Pods
+  alt a node has room
+    SCH->>API: bind each Pod to a node
+  else no node fits
+    KAR->>API: see the unschedulable Pods
+    KAR->>KAR: launch an EC2 instance in a matching NodePool
+    SCH->>API: bind the Pods to the new node
+  end
+  KL->>API: see Pods bound to this node
+  KL->>KL: pull the image from ECR, start the containers
+  KL->>API: report Running
+```
 
 ### 5. Các Cách Chạy Kubernetes
 
@@ -96,6 +195,35 @@ Tự dựng một control plane đạt chuẩn production cần ít nhất 3 má
 | Quyền truy cập | Gắn IAM với Kubernetes: access entry cho người dùng, Pod Identity cho Pod | Quyết định ai và Pod nào được quyền gì |
 | Load balancer, ổ đĩa | Các add-on: AWS Load Balancer Controller, EBS CSI, EFS CSI | Cài, cấu hình và khai báo Ingress, StorageClass |
 | Ứng dụng | — | Toàn bộ: image, Deployment, Service, scaling, giám sát |
+
+Sơ đồ phân chia trách nhiệm trên EKS: control plane nằm trong account do AWS quản lý, còn node, mạng Pod và add-on nằm trong VPC của bạn. Control plane nói chuyện với kubelet qua các network interface (ENI) mà EKS đặt vào subnet của bạn.
+
+```mermaid
+flowchart LR
+  Dev(["kubectl · ArgoCD · Terraform"])
+
+  subgraph AWSSIDE["Run by AWS · EKS"]
+    CP["Control plane<br/>kube-apiserver · etcd · scheduler · controllers<br/>across 3 Availability Zones"]
+  end
+
+  subgraph YOURS["Your AWS account · VPC"]
+    subgraph MNG["Managed Node Group: infra"]
+      N1["EC2 nodes<br/>platform tools"]
+    end
+    subgraph KP["Karpenter NodePools"]
+      N2["EC2 nodes<br/>Spot · On-Demand · ARM64"]
+    end
+    CNI["VPC CNI<br/>Pod IPs from your subnets"]
+    ADD["Add-ons<br/>Load Balancer Controller · EBS CSI · EFS CSI"]
+  end
+
+  Dev -->|"EKS API endpoint<br/>IAM authentication"| CP
+  CP <-->|"ENIs in your subnets"| N1
+  CP <--> N2
+  N1 --- CNI
+  N2 --- CNI
+  ADD -.-> N1
+```
 
 Có nhiều cách cấp worker node cho EKS, workshop dùng hai cách đầu:
 
