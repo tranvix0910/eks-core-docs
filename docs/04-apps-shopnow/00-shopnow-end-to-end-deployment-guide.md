@@ -66,6 +66,9 @@ The script fills in your Git URL, revision, ECR image repository and tag. It wri
 
 ```bash
 cd "$GITOPS_DIR"
+export WORKSHOP_REPO_URL=https://github.com/tranvix0910/eks-core-gitops.git   # repo ArgoCD reads (or your fork)
+export WORKSHOP_REVISION=main                                                # branch, tag or commit to deploy
+export IMAGE_TAG=workshop-v1                                                 # same tag as step 3.1
 bash examples/workshop/prepare-applications.sh
 ls .workshop/applications
 ```

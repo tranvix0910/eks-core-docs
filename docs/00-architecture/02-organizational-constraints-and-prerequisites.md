@@ -10,27 +10,7 @@ sidebar_label: "0.1 Prerequisites and setup"
 **Time:** about 20 minutes. **Run from:** any directory.
 :::
 
-## 1. AWS account
-
-You need an AWS account (or a role in one) that can create VPC, EC2, EKS, IAM, EFS, ECR, S3, ELB, Route 53 and SQS resources.
-
-Check these quotas in the region you will use (the default is `ap-northeast-1`):
-
-| Quota | Why |
-|---|---|
-| Running On-Demand Standard instances (vCPU) | Infra nodes, monitoring nodes, the On-Demand part of pool 2 |
-| All Standard Spot Instance Requests (vCPU) | Pools 1 and 2 |
-| EC2-VPC Elastic IPs | One NAT gateway |
-| VPCs per region | One new VPC |
-
-```bash
-aws service-quotas list-service-quotas --service-code ec2 \
-  --query 'Quotas[?contains(QuotaName, `vCPU`)].{Name:QuotaName,Value:Value}' --output table
-```
-
-If your organization applies Service Control Policies (SCPs), confirm they allow EKS and EFS in the target region. An explicit SCP deny overrides any IAM permission.
-
-## 2. Tools
+## 1. Tools
 
 | Tool | Version | Used for |
 |---|---|---|
@@ -52,7 +32,7 @@ docker buildx version      # github.com/docker/buildx v0.34.x
 argocd version --client    # argocd: v3.5.x
 ```
 
-## 3. AWS profile
+## 2. AWS profile
 
 Choose an AWS CLI profile that already exists on your machine. **`eks-core` is an example name, not a required or automatically created profile.** Use the same chosen name in `workshop.env`, the Terraform provider configuration, and the S3 backend configuration:
 
@@ -62,7 +42,7 @@ export AWS_PROFILE=eks-core   # example: replace with an existing profile from t
 aws sts get-caller-identity --profile "$AWS_PROFILE"
 ```
 
-## 4. Clone the four repositories side by side
+## 3. Clone the four repositories side by side
 
 The Terraform layers read Helm values from `../eks-core-gitops`, so keep the repositories in one parent directory.
 
@@ -74,9 +54,9 @@ git clone https://github.com/tranvix0910/eks-core-apps.git
 git clone https://github.com/tranvix0910/eks-core-docs.git
 ```
 
-## 5. Variables used in every step
+## 4. Variables used in every step
 
-Put these in a file such as `~/eks-core/workshop.env` and `source` it in every new terminal. **Replace the example `AWS_PROFILE=eks-core` line with the profile selected in step 3 before sourcing.** This file deliberately pins your chosen profile; exporting a different name before sourcing will not override that line.
+Put these in a file such as `~/eks-core/workshop.env` and `source` it in every new terminal. **Replace the example `AWS_PROFILE=eks-core` line with the profile selected in step 2 before sourcing.** This file deliberately pins your chosen profile; exporting a different name before sourcing will not override that line.
 
 ```bash
 # Where the repos live
@@ -87,7 +67,7 @@ export APPS_DIR=$WORKSHOP_HOME/eks-core-apps
 export PLAN_DIR=$WORKSHOP_HOME/plans          # saved Terraform plans
 
 # AWS
-export AWS_PROFILE=eks-core                  # replace with the profile selected in step 3
+export AWS_PROFILE=eks-core                  # replace with the profile selected in step 2
 export AWS_REGION=ap-northeast-1              # where the clusters run
 export AWS_DEFAULT_REGION=$AWS_REGION
 export STATE_REGION=ap-southeast-1            # where the Terraform state bucket lives
@@ -100,11 +80,6 @@ if ! AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
 fi
 export AWS_ACCOUNT_ID
 
-# GitOps and images
-export WORKSHOP_REPO_URL=https://github.com/tranvix0910/eks-core-gitops.git   # or your fork
-export WORKSHOP_REVISION=main
-export IMAGE_TAG=workshop-v1
-
 mkdir -p "$PLAN_DIR"
 ```
 
@@ -112,7 +87,7 @@ mkdir -p "$PLAN_DIR"
 source ~/eks-core/workshop.env && printf '%s %s\n' "$AWS_ACCOUNT_ID" "$AWS_REGION"
 ```
 
-## 6. Create the Terraform state bucket
+## 5. Create the Terraform state bucket
 
 Each layer stores its state in one S3 bucket named `eks-tfstate-<account-id>`. Create it once:
 
@@ -123,7 +98,7 @@ aws s3api get-bucket-versioning --bucket "eks-tfstate-$AWS_ACCOUNT_ID" --region 
 
 **Expected:** `"Status": "Enabled"`. The bucket blocks public access and is encrypted. Locking uses S3 lock files (`use_lockfile = true`), so no DynamoDB table is needed by the backends.
 
-## 7. Give each layer your account values
+## 6. Give each layer your account values
 
 The code in Git is the same for everyone, but your **AWS account ID** and **AWS profile** are yours. Each of the three layers reads them from two small files. Both are in `.gitignore`, so they never reach GitHub.
 

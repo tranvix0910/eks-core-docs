@@ -114,7 +114,7 @@ Terraform tạo Ingress sau khi Helm release Kite sẵn sàng. AWS Load Balancer
 
 #### 2B.1 Kiểm tra Environment {#2b1-read-the-manifest}
 
-Source `workshop.env` theo [bước Cấu hình môi trường](../architecture/organizational-constraints-and-prerequisites#5-variables-used-in-every-step). Lệnh dùng `TF_DIR` và `terraform -chdir`, nên có thể chạy từ thư mục bất kỳ. Kiểm tra `AWS_PROFILE`, account ID và region khớp cấu hình layer 20. Dùng profile thực tế trên máy; `eks-core` chỉ là tên mẫu. S3 backend có thể dùng region riêng.
+Source `workshop.env` theo [bước Cấu hình môi trường](../architecture/organizational-constraints-and-prerequisites#4-variables-used-in-every-step). Lệnh dùng `TF_DIR` và `terraform -chdir`, nên có thể chạy từ thư mục bất kỳ. Kiểm tra `AWS_PROFILE`, account ID và region khớp cấu hình layer 20. Dùng profile thực tế trên máy; `eks-core` chỉ là tên mẫu. S3 backend có thể dùng region riêng.
 
 Chuẩn bị Python 3 và `jq` cho các lệnh kiểm tra bên dưới.
 

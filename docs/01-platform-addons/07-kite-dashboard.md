@@ -111,7 +111,7 @@ Terraform creates the Kubernetes Ingress after the Kite Helm release is ready. *
 
 #### 2B.1 Check the environment and prerequisites {#2b1-read-the-manifest}
 
-Load your workshop environment first ([prerequisites](../architecture/organizational-constraints-and-prerequisites#5-variables-used-in-every-step)). The commands use `TF_DIR` and `terraform -chdir`, so they work from the Terraform layer directory, GitOps repository, or any other directory. Set `AWS_PROFILE` to the profile actually used by your environment, not necessarily the sample name `eks-core`. Its identity and region must match layer 20's `aws_profile`, `account_id`, and `region` values. The S3 state region may differ from the EKS region.
+Load your workshop environment first ([prerequisites](../architecture/organizational-constraints-and-prerequisites#4-variables-used-in-every-step)). The commands use `TF_DIR` and `terraform -chdir`, so they work from the Terraform layer directory, GitOps repository, or any other directory. Set `AWS_PROFILE` to the profile actually used by your environment, not necessarily the sample name `eks-core`. Its identity and region must match layer 20's `aws_profile`, `account_id`, and `region` values. The S3 state region may differ from the EKS region.
 
 The examples also require Python 3 and `jq` for validation and JSON selection.
 
